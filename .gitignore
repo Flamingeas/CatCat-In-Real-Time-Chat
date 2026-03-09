@@ -1,0 +1,16 @@
+.idea
+/server/target
+/server/.env
+/target
+**/*.rs.bk
+Cargo.lock
+
+.vscode
+*.swp
+*.swo
+
+.env
+
+.DS_Store
+Thumbs.db
+/client/package-lock.json
