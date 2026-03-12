@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict h9Tcvj1SBEn2hjlqfGLxfJ0Bq0HAtgo1VA8HsT5M1YAoqrmYucEReDmn5C0MAwq
+\restrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
 
--- Dumped from database version 16.11 (Ubuntu 16.11-0ubuntu0.24.04.1)
--- Dumped by pg_dump version 16.11 (Ubuntu 16.11-0ubuntu0.24.04.1)
+-- Dumped from database version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
+-- Dumped by pg_dump version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -27,9 +27,9 @@ CREATE DATABASE catcat WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVID
 
 ALTER DATABASE catcat OWNER TO postgres;
 
-\unrestrict h9Tcvj1SBEn2hjlqfGLxfJ0Bq0HAtgo1VA8HsT5M1YAoqrmYucEReDmn5C0MAwq
+\unrestrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
 \connect catcat
-\restrict h9Tcvj1SBEn2hjlqfGLxfJ0Bq0HAtgo1VA8HsT5M1YAoqrmYucEReDmn5C0MAwq
+\restrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -41,6 +41,15 @@ SET check_function_bodies = false;
 SET xmloption = content;
 SET client_min_messages = warning;
 SET row_security = off;
+
+--
+-- Name: _sqlx_test; Type: SCHEMA; Schema: -; Owner: postgres
+--
+
+CREATE SCHEMA _sqlx_test;
+
+
+ALTER SCHEMA _sqlx_test OWNER TO postgres;
 
 --
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
@@ -86,9 +95,51 @@ $$;
 
 ALTER FUNCTION public.set_updated_at() OWNER TO postgres;
 
+--
+-- Name: database_ids; Type: SEQUENCE; Schema: _sqlx_test; Owner: postgres
+--
+
+CREATE SEQUENCE _sqlx_test.database_ids
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+ALTER SEQUENCE _sqlx_test.database_ids OWNER TO postgres;
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: databases; Type: TABLE; Schema: _sqlx_test; Owner: postgres
+--
+
+CREATE TABLE _sqlx_test.databases (
+    db_name text NOT NULL,
+    test_path text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE _sqlx_test.databases OWNER TO postgres;
+
+--
+-- Name: channels; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.channels (
+    id uuid DEFAULT public.gen_random_uuid() NOT NULL,
+    name text NOT NULL,
+    server_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+ALTER TABLE public.channels OWNER TO postgres;
 
 --
 -- Name: server_members; Type: TABLE; Schema: public; Owner: postgres
@@ -135,6 +186,22 @@ CREATE TABLE public.users (
 
 
 ALTER TABLE public.users OWNER TO postgres;
+
+--
+-- Name: databases databases_pkey; Type: CONSTRAINT; Schema: _sqlx_test; Owner: postgres
+--
+
+ALTER TABLE ONLY _sqlx_test.databases
+    ADD CONSTRAINT databases_pkey PRIMARY KEY (db_name);
+
+
+--
+-- Name: channels channels_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.channels
+    ADD CONSTRAINT channels_pkey PRIMARY KEY (id);
+
 
 --
 -- Name: server_members server_members_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
@@ -185,6 +252,20 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: databases_created_at; Type: INDEX; Schema: _sqlx_test; Owner: postgres
+--
+
+CREATE INDEX databases_created_at ON _sqlx_test.databases USING btree (created_at);
+
+
+--
+-- Name: idx_channels_server_id; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_channels_server_id ON public.channels USING btree (server_id);
+
+
+--
 -- Name: idx_server_members_server; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -199,6 +280,20 @@ CREATE INDEX idx_server_members_user ON public.server_members USING btree (user_
 
 
 --
+-- Name: uniq_channels_name_per_server; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE UNIQUE INDEX uniq_channels_name_per_server ON public.channels USING btree (server_id, lower(name));
+
+
+--
+-- Name: channels trg_channels_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE TRIGGER trg_channels_updated_at BEFORE UPDATE ON public.channels FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+
+--
 -- Name: servers trg_servers_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -210,6 +305,14 @@ CREATE TRIGGER trg_servers_updated_at BEFORE UPDATE ON public.servers FOR EACH R
 --
 
 CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+
+--
+-- Name: channels channels_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.channels
+    ADD CONSTRAINT channels_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.servers(id) ON DELETE CASCADE;
 
 
 --
@@ -240,5 +343,5 @@ ALTER TABLE ONLY public.servers
 -- PostgreSQL database dump complete
 --
 
-\unrestrict h9Tcvj1SBEn2hjlqfGLxfJ0Bq0HAtgo1VA8HsT5M1YAoqrmYucEReDmn5C0MAwq
+\unrestrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
 
