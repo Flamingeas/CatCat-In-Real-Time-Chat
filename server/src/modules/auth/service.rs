@@ -132,30 +132,64 @@ mod tests {
         by_email: Mutex<HashMap<String, User>>,
         by_username: Mutex<HashMap<String, User>>,
         create_should_fail: Mutex<bool>,
+        find_by_email_should_fail: Mutex<bool>,
+        find_by_username_should_fail: Mutex<bool>,
     }
 
     impl MockUserRepo {
         fn insert_user(&self, user: User) {
-            self.by_email.lock().unwrap().insert(user.email.to_lowercase(), user.clone());
-            self.by_username.lock().unwrap().insert(user.username.clone(), user);
+            self.by_email
+                .lock()
+                .unwrap()
+                .insert(user.email.to_lowercase(), user.clone());
+            self.by_username
+                .lock()
+                .unwrap()
+                .insert(user.username.clone(), user);
         }
 
         fn set_create_fail(&self, v: bool) {
             *self.create_should_fail.lock().unwrap() = v;
+        }
+
+        fn set_find_by_email_fail(&self, v: bool) {
+            *self.find_by_email_should_fail.lock().unwrap() = v;
+        }
+
+        fn set_find_by_username_fail(&self, v: bool) {
+            *self.find_by_username_should_fail.lock().unwrap() = v;
         }
     }
 
     #[async_trait::async_trait]
     impl UserRepo for MockUserRepo {
         async fn find_by_email(&self, email: &str) -> Result<Option<User>, String> {
-            Ok(self.by_email.lock().unwrap().get(&email.to_lowercase()).cloned())
+            if *self.find_by_email_should_fail.lock().unwrap() {
+                return Err("forced find_by_email failure".to_string());
+            }
+
+            Ok(self
+                .by_email
+                .lock()
+                .unwrap()
+                .get(&email.to_lowercase())
+                .cloned())
         }
 
         async fn find_by_username(&self, username: &str) -> Result<Option<User>, String> {
+            if *self.find_by_username_should_fail.lock().unwrap() {
+                return Err("forced find_by_username failure".to_string());
+            }
+
             Ok(self.by_username.lock().unwrap().get(username).cloned())
         }
 
-        async fn create(&self, username: &str, email: &str, password_hash: &str) -> Result<User, String> {
+        async fn create(
+            &self,
+            username: &str,
+            email: &str,
+            password_hash: &str,
+        ) -> Result<User, String> {
             if *self.create_should_fail.lock().unwrap() {
                 return Err("forced create failure".to_string());
             }
@@ -179,7 +213,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_signup_success() {
+    async fn signup_success() {
         let mock = Arc::new(MockUserRepo::default());
         let service = service_with_mock(mock);
 
@@ -198,7 +232,25 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_signup_fails_when_username_too_short() {
+    async fn signup_trims_username_and_normalizes_email() {
+        let mock = Arc::new(MockUserRepo::default());
+        let service = service_with_mock(mock);
+
+        let (user, _) = service
+            .signup(CreateUser {
+                username: "   tester   ".to_string(),
+                email: "  TEST@Example.COM  ".to_string(),
+                password: "password123".to_string(),
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(user.username, "tester");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[actix_web::test]
+    async fn signup_fails_when_username_too_short() {
         let mock = Arc::new(MockUserRepo::default());
         let service = service_with_mock(mock);
 
@@ -215,7 +267,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_signup_fails_when_email_exists() {
+    async fn signup_fails_when_email_exists_even_with_different_case() {
         let mock = Arc::new(MockUserRepo::default());
         let service = service_with_mock(mock.clone());
 
@@ -232,7 +284,7 @@ mod tests {
         let err = service
             .signup(CreateUser {
                 username: "tester".to_string(),
-                email: "test@example.com".to_string(),
+                email: "TEST@EXAMPLE.COM".to_string(),
                 password: "password123".to_string(),
             })
             .await
@@ -242,7 +294,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_signup_fails_when_username_exists() {
+    async fn signup_fails_when_username_exists() {
         let mock = Arc::new(MockUserRepo::default());
         let service = service_with_mock(mock.clone());
 
@@ -269,7 +321,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_signup_fails_when_create_fails() {
+    async fn signup_fails_when_create_fails() {
         let mock = Arc::new(MockUserRepo::default());
         mock.set_create_fail(true);
         let service = service_with_mock(mock);
@@ -287,7 +339,41 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_login_success() {
+    async fn signup_currently_ignores_find_by_email_repo_error() {
+        let mock = Arc::new(MockUserRepo::default());
+        mock.set_find_by_email_fail(true);
+        let service = service_with_mock(mock);
+
+        let result = service
+            .signup(CreateUser {
+                username: "tester".to_string(),
+                email: "test@example.com".to_string(),
+                password: "password123".to_string(),
+            })
+            .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[actix_web::test]
+    async fn signup_currently_ignores_find_by_username_repo_error() {
+        let mock = Arc::new(MockUserRepo::default());
+        mock.set_find_by_username_fail(true);
+        let service = service_with_mock(mock);
+
+        let result = service
+            .signup(CreateUser {
+                username: "tester".to_string(),
+                email: "test@example.com".to_string(),
+                password: "password123".to_string(),
+            })
+            .await;
+
+        assert!(result.is_ok());
+    }
+
+    #[actix_web::test]
+    async fn login_success() {
         let mock = Arc::new(MockUserRepo::default());
         let service = service_with_mock(mock.clone());
 
@@ -313,7 +399,31 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_login_fails_when_user_not_found() {
+    async fn login_normalizes_email_before_lookup() {
+        let mock = Arc::new(MockUserRepo::default());
+        let service = service_with_mock(mock.clone());
+
+        let password_hash = hash("password123", BCRYPT_COST).unwrap();
+        let user = User {
+            id: Uuid::new_v4(),
+            username: "tester".to_string(),
+            email: "test@example.com".to_string(),
+            password_hash,
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        mock.insert_user(user);
+
+        let (resp, _) = service
+            .login("  TEST@example.com  ".to_string(), "password123".to_string())
+            .await
+            .unwrap();
+
+        assert_eq!(resp.email, "test@example.com");
+    }
+
+    #[actix_web::test]
+    async fn login_fails_when_user_not_found() {
         let mock = Arc::new(MockUserRepo::default());
         let service = service_with_mock(mock);
 
@@ -326,7 +436,7 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn test_login_fails_when_password_invalid() {
+    async fn login_fails_when_password_invalid() {
         let mock = Arc::new(MockUserRepo::default());
         let service = service_with_mock(mock.clone());
 
@@ -347,5 +457,42 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(err, "Invalid credentials");
+    }
+
+    #[actix_web::test]
+    async fn login_fails_when_repo_lookup_fails() {
+        let mock = Arc::new(MockUserRepo::default());
+        mock.set_find_by_email_fail(true);
+        let service = service_with_mock(mock);
+
+        let err = service
+            .login("test@example.com".to_string(), "password123".to_string())
+            .await
+            .unwrap_err();
+
+        assert!(err.contains("Database error:"));
+    }
+
+    #[actix_web::test]
+    async fn login_fails_when_password_hash_is_invalid() {
+        let mock = Arc::new(MockUserRepo::default());
+        let service = service_with_mock(mock.clone());
+
+        let user = User {
+            id: Uuid::new_v4(),
+            username: "tester".to_string(),
+            email: "test@example.com".to_string(),
+            password_hash: "not_a_valid_bcrypt_hash".to_string(),
+            created_at: Utc::now(),
+            updated_at: Utc::now(),
+        };
+        mock.insert_user(user);
+
+        let err = service
+            .login("test@example.com".to_string(), "password123".to_string())
+            .await
+            .unwrap_err();
+
+        assert_eq!(err, "Failed to verify password");
     }
 }
