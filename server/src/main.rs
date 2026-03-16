@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use actix::Actor;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
@@ -12,8 +14,8 @@ mod websocket;
 use config::{AppState, DatabaseConfig, EnvConfig};
 use crate::modules::auth::service::AuthService;
 use crate::modules::auth::AuthMiddleware;
-use crate::modules::channel::repository::ChannelRepository;
-use crate::modules::channel::service::ChannelService;
+use crate::modules::channel::repository::{ChannelRepository, ChannelRepositoryTrait};
+use crate::modules::channel::service::{ChannelService, ChannelServiceTrait};
 use crate::modules::server::repository::ServerRepository;
 use crate::modules::server::service::ServerService;
 use crate::modules::user::repository::UserRepository;
@@ -37,7 +39,8 @@ async fn main() -> std::io::Result<()> {
     let app_state = web::Data::new(AppState { db: db_config });
 
     let user_repo = UserRepository::new(app_state.db.pg.clone());
-    let auth_service = web::Data::new(AuthService::new(user_repo, env_config.jwt_secret.clone()));
+    let auth_service =
+        web::Data::new(AuthService::new(user_repo, env_config.jwt_secret.clone()));
 
     let ws_server = WsServer::new().start();
 
@@ -46,8 +49,11 @@ async fn main() -> std::io::Result<()> {
     let server_repo = ServerRepository::new(app_state.db.pg.clone());
     let server_service = web::Data::new(ServerService::new(server_repo));
 
-    let channel_repo = ChannelRepository::new(app_state.db.pg.clone());
-    let channel_service = web::Data::new(ChannelService::new(channel_repo));
+    let channel_repo: Arc<dyn ChannelRepositoryTrait> =
+        Arc::new(ChannelRepository::new(app_state.db.pg.clone()));
+
+    let channel_service: web::Data<Arc<dyn ChannelServiceTrait>> =
+        web::Data::new(Arc::new(ChannelService::new(channel_repo)));
 
     let pg_pool = app_state.db.pg.clone();
     let mongo_db = app_state.db.mongo.clone();
