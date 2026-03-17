@@ -35,3 +35,5 @@ serde_urlencoded = "0.7.1"
 awc = "3.8.1"
 actix-test = "0.1.5"
 dotenvy = "0.15"
+utoipa = { version = "4", features = ["actix_extras", "uuid", "chrono"] }
+utoipa-swagger-ui = { version = "6", features = ["actix-web"] }

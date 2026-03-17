@@ -4,6 +4,8 @@ use actix::Actor;
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
 use dotenv::dotenv;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 mod config;
 mod models;
@@ -20,6 +22,65 @@ use crate::modules::server::repository::ServerRepository;
 use crate::modules::server::service::ServerService;
 use crate::modules::user::repository::UserRepository;
 use crate::websocket::server::WsServer;
+
+// --- DÉCLARATION DU SWAGGER ---
+#[derive(OpenApi)]
+#[openapi(
+    paths(
+        // Routes d'authentification
+        crate::modules::auth::route::login,
+        crate::modules::auth::route::signup,
+        
+        // Routes des salons
+        crate::modules::channel::route::create_channel,
+        crate::modules::channel::route::channel_list,
+        crate::modules::channel::route::channel_update,
+        crate::modules::channel::route::channel_delete,
+
+        // Les routes Messages
+        crate::modules::message::route::send_message,
+        crate::modules::message::route::get_messages,
+        crate::modules::message::route::update_message,
+        crate::modules::message::route::delete_message,
+
+        // Serveurs :
+        crate::modules::server::route::create_server,
+        crate::modules::server::route::list_servers,
+        crate::modules::server::route::update_server,
+        crate::modules::server::route::join_server,
+        crate::modules::server::route::leave_server,
+        crate::modules::server::route::list_members,
+    ),
+    components(
+        schemas(
+            // Modèles de requêtes et de réponses
+            crate::modules::auth::route::LoginRequest, 
+            crate::models::user::CreateUser,
+            crate::models::channel::CreateChannel,
+            crate::models::channel::UpdateChannel,
+            crate::models::channel::ChannelResponse,
+            crate::models::channel::ChannelDetailedResponse,
+            crate::models::channel::Channel,
+            crate::modules::message::route::SendMessageRequest,
+            crate::modules::message::route::UpdateMessageRequest,
+            crate::models::message::MessageResponse,
+            crate::models::server::CreateServer,
+            crate::models::server::UpdateServer,
+            crate::models::server::ServerResponse,
+            crate::models::server::ServerDetailedResponse,
+            crate::models::server::JoinServerRequest,
+            crate::models::server::Server,
+        )
+    ),
+    tags(
+        (name = "Authentication", description = "Gestion des comptes utilisateurs"),
+        (name = "Channels", description = "Gestion des salons textuels"),
+        (name = "Messages", description = "Envoi et historique des messages (MongoDB)"),
+        (name = "Servers", description = "Gestion des serveurs"),
+        (name = "Server Members", description = "Gestion des rôles et des utilisateurs"),
+    )
+)]
+struct ApiDoc;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -58,6 +119,9 @@ async fn main() -> std::io::Result<()> {
     let pg_pool = app_state.db.pg.clone();
     let mongo_db = app_state.db.mongo.clone();
 
+    // Génération de la documentation OpenAPI
+    let openapi = ApiDoc::openapi();
+
     HttpServer::new(move || {
         let env_config = env_config_data.clone();
 
@@ -87,6 +151,13 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ws_server.clone()))
             .app_data(web::Data::new(pg_pool.clone()))
             .app_data(web::Data::new(mongo_db.clone()))
+            
+            // --- NOUVEAU : On ajoute la route visuelle du Swagger ---
+            .service(
+                SwaggerUi::new("/swagger-ui/{_:.*}")
+                    .url("/api-docs/openapi.json", openapi.clone()),
+            )
+
             .route("/ws", web::get().to(websocket::routes::ws_index))
             .configure(modules::auth::route::config)
             .service(

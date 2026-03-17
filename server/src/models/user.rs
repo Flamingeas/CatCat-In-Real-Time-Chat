@@ -3,8 +3,9 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use validator::Validate;
+use utoipa::ToSchema;
 
-#[derive(Debug, Serialize, Deserialize, FromRow, Clone)]
+#[derive(Debug, Serialize, Deserialize, FromRow, Clone, ToSchema)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -14,7 +15,7 @@ pub struct User {
     pub updated_at: DateTime<Utc>
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateUser {
     #[validate(length(min = 3, max = 50, message = "Username must be between 3 and 50 characters"))]
     pub username: String,

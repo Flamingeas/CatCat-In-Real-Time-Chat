@@ -7,9 +7,21 @@ use validator::Validate;
 use crate::modules::auth::AuthenticatedUser;
 use crate::modules::server::service::{JoinServerError, LeaveServerError, ServerService};
 use crate::models::server::{CreateServer, JoinServerRequest, ServerResponse, UpdateServer};
-use crate::models::server_member::UpdateServerMemberRole;
+use crate::models::server_member::UpdateServerMemberRole; // Assurez-vous d'avoir ToSchema sur cette struct !
 use crate::websocket::server::{ServerEvent, WsServer};
+use uuid::Uuid;
 
+#[utoipa::path(
+    post,
+    path = "/api/servers",
+    tag = "Servers",
+    request_body = CreateServer,
+    responses(
+        (status = 201, description = "Serveur créé avec succès", body = ServerResponse),
+        (status = 400, description = "Erreur de validation")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn create_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -25,6 +37,15 @@ pub async fn create_server(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/servers",
+    tag = "Servers",
+    responses(
+        (status = 200, description = "Liste des serveurs rejoints", body = [ServerResponse])
+    ),
+    security(("jwt" = []))
+)]
 pub async fn list_servers(user: AuthenticatedUser, service: web::Data<ServerService>) -> impl Responder {
     match service.list_my_servers(user.user_id).await {
         Ok(servers) => {
@@ -35,6 +56,20 @@ pub async fn list_servers(user: AuthenticatedUser, service: web::Data<ServerServ
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/servers/{id}",
+    tag = "Servers",
+    params(
+        ("id" = Uuid, Path, description = "L'ID du serveur à modifier")
+    ),
+    request_body = UpdateServer,
+    responses(
+        (status = 200, description = "Serveur mis à jour", body = ServerResponse),
+        (status = 403, description = "Seul le propriétaire peut modifier le serveur")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn update_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -54,6 +89,18 @@ pub async fn update_server(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/servers/join",
+    tag = "Servers",
+    request_body = JoinServerRequest,
+    responses(
+        (status = 200, description = "Serveur rejoint", body = ServerResponse),
+        (status = 404, description = "Code d'invitation introuvable"),
+        (status = 409, description = "Déjà membre de ce serveur")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn join_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -98,6 +145,19 @@ pub async fn join_server(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/servers/{id}/leave",
+    tag = "Servers",
+    params(
+        ("id" = Uuid, Path, description = "L'ID du serveur à quitter")
+    ),
+    responses(
+        (status = 200, description = "Serveur quitté avec succès"),
+        (status = 409, description = "Vous n'êtes pas/plus membre")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn leave_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -130,6 +190,19 @@ pub async fn leave_server(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/servers/{id}/members",
+    tag = "Server Members",
+    params(
+        ("id" = Uuid, Path, description = "L'ID du serveur")
+    ),
+    responses(
+        (status = 200, description = "Liste des membres"), // Mettre la structure ServerMemberDetailedResponse ici si vous l'avez !
+        (status = 403, description = "Pas membre du serveur")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn list_members(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,

@@ -3,8 +3,9 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use validator::Validate;
+use utoipa::ToSchema;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Channel {
     pub id: Uuid,
     pub name: String,
@@ -13,19 +14,19 @@ pub struct Channel {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateChannel {
     #[validate(length(min = 1, max = 100, message = "Channel name must be between 1 and 100 characters"))]
     pub name: String,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateChannel {
     #[validate(length(min = 1, max = 100))]
     pub name: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ChannelResponse {
     pub id: Uuid,
     pub name: String,
@@ -46,7 +47,7 @@ impl From<Channel> for ChannelResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct ChannelDetailedResponse {
     pub id: Uuid,
     pub name: String,
@@ -67,6 +68,7 @@ impl Channel {
         }
     }
 }
+
 
 #[cfg(test)]
 mod tests {
