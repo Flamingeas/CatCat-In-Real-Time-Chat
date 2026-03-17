@@ -5,12 +5,27 @@ use sqlx::Error;
 use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
+use utoipa::{ToSchema, IntoParams}; // <-- NOUVEAUX IMPORTS
 
 use crate::models::message::{CreateMessage, MessageResponse, UpdateMessage};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::websocket::server::{ClientMessage, WsServer};
 use super::service::{MessageService, ServiceError};
 
+#[utoipa::path(
+    post,
+    path = "/api/channels/{channel_id}/messages",
+    tag = "Messages",
+    params(
+        ("channel_id" = Uuid, Path, description = "L'ID du salon où envoyer le message")
+    ),
+    request_body = SendMessageRequest,
+    responses(
+        (status = 201, description = "Message envoyé", body = MessageResponse),
+        (status = 400, description = "Erreur de validation")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn send_message(
     pg_pool: web::Data<PgPool>,
     mongo_db: web::Data<Database>,
@@ -21,17 +36,22 @@ pub async fn send_message(
 ) -> impl Responder {
     let channel_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-
-    send_message_with_service(
-        &service,
-        ws_server.get_ref(),
-        user.user_id,
-        channel_id,
-        &data,
-    )
-        .await
+    send_message_with_service(&service, ws_server.get_ref(), user.user_id, channel_id, &data).await
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/channels/{channel_id}/messages",
+    tag = "Messages",
+    params(
+        ("channel_id" = Uuid, Path, description = "L'ID du salon"),
+        GetMessagesQueryParams // <-- On passe les paramètres de recherche ici !
+    ),
+    responses(
+        (status = 200, description = "Historique des messages récupéré", body = [MessageResponse])
+    ),
+    security(("jwt" = []))
+)]
 pub async fn get_messages(
     pg_pool: web::Data<PgPool>,
     mongo_db: web::Data<Database>,
@@ -41,10 +61,23 @@ pub async fn get_messages(
 ) -> impl Responder {
     let channel_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-
     get_messages_with_service(&service, user.user_id, channel_id, &query).await
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/messages/{id}",
+    tag = "Messages",
+    params(
+        ("id" = Uuid, Path, description = "L'ID du message à modifier")
+    ),
+    request_body = UpdateMessageRequest,
+    responses(
+        (status = 200, description = "Message modifié", body = MessageResponse),
+        (status = 403, description = "Interdit (Ce n'est pas votre message)")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn update_message(
     pg_pool: web::Data<PgPool>,
     mongo_db: web::Data<Database>,
@@ -54,10 +87,22 @@ pub async fn update_message(
 ) -> impl Responder {
     let message_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-
     update_message_with_service(&service, user.user_id, message_id, &data).await
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/messages/{id}",
+    tag = "Messages",
+    params(
+        ("id" = Uuid, Path, description = "L'ID du message à supprimer")
+    ),
+    responses(
+        (status = 204, description = "Message supprimé"),
+        (status = 403, description = "Interdit (Pas les droits)")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn delete_message(
     pg_pool: web::Data<PgPool>,
     mongo_db: web::Data<Database>,
@@ -67,23 +112,24 @@ pub async fn delete_message(
 ) -> impl Responder {
     let message_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-
     delete_message_with_service(&service, ws_server.get_ref(), user.user_id, message_id).await
 }
 
-#[derive(Debug, serde::Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate, ToSchema)] // <-- Ajout ToSchema
 pub struct SendMessageRequest {
     #[validate(length(min = 1, max = 2000))]
+    #[schema(example = "Salut tout le monde !")]
     pub content: String,
 }
 
-#[derive(Debug, serde::Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, Validate, ToSchema)] // <-- Ajout ToSchema
 pub struct UpdateMessageRequest {
     #[validate(length(min = 1, max = 2000))]
+    #[schema(example = "J'ai corrigé ma faute de frappe")]
     pub content: String,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, serde::Deserialize, IntoParams)] // <-- Ajout de IntoParams pour les query
 pub struct GetMessagesQueryParams {
     pub limit: Option<i64>,
     pub before: Option<chrono::DateTime<chrono::Utc>>,

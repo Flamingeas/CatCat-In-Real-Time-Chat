@@ -9,6 +9,22 @@ use crate::models::channel::{ChannelResponse, CreateChannel, UpdateChannel};
 use crate::modules::auth::AuthenticatedUser;
 use crate::modules::channel::service::ChannelServiceTrait;
 
+#[utoipa::path(
+    post,
+    path = "/api/servers/{serverId}/channels",
+    tag = "Channels",
+    params(
+        ("serverId" = Uuid, Path, description = "L'ID du serveur dans lequel créer le salon")
+    ),
+    request_body = CreateChannel,
+    responses(
+        (status = 201, description = "Salon créé", body = ChannelResponse),
+        (status = 400, description = "Erreur de validation ou impossible de créer le salon")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
 pub async fn create_channel(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
@@ -27,6 +43,22 @@ pub async fn create_channel(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/servers/{serverId}/channels",
+    tag = "Channels",
+    params(
+        ("serverId" = Uuid, Path, description = "L'ID du serveur pour lequel lister les salons")
+    ),
+    responses(
+        (status = 200, description = "Liste des salons", body = [ChannelResponse]),
+        (status = 403, description = "Non autorisé à voir ces salons (pas membre)"),
+        (status = 400, description = "Erreur lors de la récupération")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
 pub async fn channel_list(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
@@ -43,6 +75,23 @@ pub async fn channel_list(
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/channels/{id}",
+    tag = "Channels",
+    params(
+        ("id" = Uuid, Path, description = "L'ID du salon à modifier")
+    ),
+    request_body = UpdateChannel,
+    responses(
+        (status = 200, description = "Salon mis à jour", body = ChannelResponse),
+        (status = 400, description = "Erreur de validation ou de mise à jour"),
+        (status = 403, description = "Non autorisé à modifier ce salon")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
 pub async fn channel_update(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
@@ -67,6 +116,21 @@ pub async fn channel_update(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/channels/{id}",
+    tag = "Channels",
+    params(
+        ("id" = Uuid, Path, description = "L'ID du salon à supprimer")
+    ),
+    responses(
+        (status = 200, description = "Salon supprimé avec succès"),
+        (status = 400, description = "Erreur lors de la suppression")
+    ),
+    security(
+        ("jwt" = [])
+    )
+)]
 pub async fn channel_delete(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,

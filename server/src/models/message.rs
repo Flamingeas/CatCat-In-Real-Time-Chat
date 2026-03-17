@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use validator::Validate;
+use utoipa::ToSchema;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
@@ -18,7 +19,7 @@ pub struct Message {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, serde::Deserialize, validator::Validate)]
 pub struct CreateMessage {
     #[validate(length(min = 1, max = 2000, message = "Message must be between 1 and 2000 characters"))]
     pub content: String,
@@ -31,7 +32,7 @@ pub struct UpdateMessage {
     pub content: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)]
 pub struct MessageResponse {
     pub message_id: Uuid,
     pub content: String,

@@ -1,18 +1,20 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use sqlx::PgPool;
+// use sqlx::PgPool; <-- J'ai enlevé ça pour supprimer le warning jaune !
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use validator::Validate;
 use rand::Rng;
+use utoipa::ToSchema; // Correction: il y avait un ':' en trop dans votre code original (use:utoipa...)
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)] // <-- Ajout
 pub struct UpdateServer {
     #[validate(length(min = 3, max = 50))]
+    #[schema(example = "Mon nouveau nom de serveur")]
     pub name: Option<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)] // <-- Ajout
 pub struct Server {
     pub id: Uuid,
     pub name: String,
@@ -22,13 +24,14 @@ pub struct Server {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)] // <-- Ajout
 pub struct CreateServer {
     #[validate(length(min = 3, max = 50, message = "Server name must be between 3 and 50 characters."))]
+    #[schema(example = "Le serveur des potes")]
     pub name: String,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)] // <-- Ajout
 pub struct ServerResponse {
     pub id: Uuid,
     pub name: String,
@@ -51,7 +54,7 @@ impl From<Server> for ServerResponse {
     }
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Serialize, ToSchema)] // <-- Ajout
 pub struct ServerDetailedResponse {
     pub id: Uuid,
     pub name: String,
@@ -63,16 +66,17 @@ pub struct ServerDetailedResponse {
     pub created_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+#[derive(Debug, Deserialize, Validate, ToSchema)] // <-- Ajout
 pub struct JoinServerRequest {
     #[validate(length(equal = 8, message = "Invalid invitation code"))]
+    #[schema(example = "A1B2C3D4")]
     pub invitation_code: String,
 }
 
 impl Server {
     pub fn generate_invitation_code() -> String {
         const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng(); // Correction du warning "thread_rng is deprecated" !
 
         (0..8)
             .map(|_| {
@@ -82,6 +86,7 @@ impl Server {
             .collect()
     }
 }
+
 
 #[cfg(test)]
 mod tests {

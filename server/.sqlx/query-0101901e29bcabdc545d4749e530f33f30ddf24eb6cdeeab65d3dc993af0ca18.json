@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT EXISTS (\n                SELECT 1\n                FROM channels c\n                INNER JOIN server_members sm\n                    ON sm.server_id = c.server_id\n                WHERE c.id = $1\n                  AND sm.user_id = $2\n                  AND sm.role IN ('owner', 'admin')\n            )\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "0101901e29bcabdc545d4749e530f33f30ddf24eb6cdeeab65d3dc993af0ca18"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            UPDATE server_members\n            SET role = 'member'\n            WHERE server_id = $1 AND user_id = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "27fb4f104f8271770d7fd14f0bbdb1d5cd1c5b6b01c4a402040c9e9efa72f66d"
+}

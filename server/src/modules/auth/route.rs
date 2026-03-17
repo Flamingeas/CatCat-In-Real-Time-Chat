@@ -2,12 +2,25 @@ use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use crate::modules::auth::service::AuthService;
 use crate::models::user::CreateUser;
+use utoipa::ToSchema;
 
-#[derive(Deserialize)]
+
+#[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
     pub email: String,
     pub password: String,
 }
+
+#[utoipa::path(
+    post,
+    path = "/auth/signup",
+    tag = "Authentication",
+    request_body = CreateUser, 
+    responses(
+        (status = 201, description = "Utilisateur créé"),
+        (status = 400, description = "Erreur de validation ou email existant")
+    )
+)]
 
 pub async fn signup(
     service: web::Data<AuthService>,
@@ -27,6 +40,17 @@ pub async fn signup(
         }
     }
 }
+
+#[utoipa::path(
+    post,
+    path = "/auth/login",
+    tag = "Authentication",
+    request_body = LoginRequest,
+    responses(
+        (status = 200, description = "Connexion réussie (Renvoie le Token JWT)"),
+        (status = 401, description = "Identifiants invalides")
+    )
+)]
 
 pub async fn login(
     service: web::Data<AuthService>,
