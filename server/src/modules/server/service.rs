@@ -2,6 +2,7 @@ use uuid::Uuid;
 
 use crate::models::server::{Server, UpdateServer};
 use crate::models::server_member::{ServerMemberResponse, ServerMemberRole};
+use crate::models::server_ban::ServerBanResponse;
 use crate::modules::server::repository::ServerRepository;
 
 #[derive(Clone)]
@@ -14,6 +15,7 @@ pub enum JoinServerError {
     InvalidCode,
     NotFound,
     AlreadyMember,
+    Forbidden,
     Db,
 }
 
@@ -69,11 +71,35 @@ impl ServerService {
                 Ok(server)
             }
             Err(sqlx::Error::RowNotFound) => Err(JoinServerError::NotFound),
+            Err(sqlx::Error::Protocol(msg)) if msg.contains("User is banned") => {
+                Err(JoinServerError::Forbidden)
+            }
             Err(e) => {
                 log::error!("join_by_invitation_code error: {:?}", e);
                 Err(JoinServerError::Db)
             }
         }
+    }
+
+    pub async fn list_bans(
+        &self,
+        requester_id: Uuid,
+        server_id: Uuid,
+    ) -> Result<Vec<ServerBanResponse>, String> {
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
+
+        if server.owner_id != requester_id {
+            return Err("Forbidden".into());
+        }
+
+        self.repo.list_bans(server_id).await.map_err(|e| {
+            log::error!("list_bans error: {:?}", e);
+            "Unable to list bans".to_string()
+        })
     }
 
     pub async fn leave_server(&self, server_id: Uuid, user_id: Uuid) -> Result<(), LeaveServerError> {
@@ -167,6 +193,7 @@ impl ServerService {
                 "Unable to update role".to_string()
             })
     }
+
     pub async fn get_server_owner_id(&self, server_id: Uuid) -> Result<Uuid, String> {
         let server = self.repo.find_by_id(server_id).await.map_err(|e| {
             log::error!("get_server_owner_id/find_by_id error: {:?}", e);
@@ -174,6 +201,7 @@ impl ServerService {
         })?;
         Ok(server.owner_id)
     }
+
     pub async fn transfer_owner(
         &self,
         requester_id: Uuid,
@@ -204,6 +232,7 @@ impl ServerService {
                 "Unable to transfer owner".to_string()
             })
     }
+
     pub async fn kick_member(&self, requester_id: Uuid, server_id: Uuid, target_user_id: Uuid) -> Result<(), String> {
         let server = self.repo.find_by_id(server_id).await.map_err(|_| "Server not found".to_string())?;
 
@@ -218,6 +247,57 @@ impl ServerService {
         self.repo.remove_member(server_id, target_user_id).await.map_err(|e| {
             log::error!("kick_member error: {:?}", e);
             "Unable to remove member".to_string()
+        })
+    }
+
+    pub async fn ban_member(
+        &self,
+        requester_id: Uuid,
+        server_id: Uuid,
+        target_user_id: Uuid,
+    ) -> Result<(), String> {
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
+
+        if server.owner_id != requester_id {
+            return Err("Forbidden".into());
+        }
+
+        if target_user_id == server.owner_id {
+            return Err("Cannot ban owner".into());
+        }
+
+        self.repo
+            .ban_member(server_id, target_user_id, requester_id, None, None)
+            .await
+            .map_err(|e| {
+                log::error!("ban_member error: {:?}", e);
+                "Unable to ban member".to_string()
+            })
+    }
+
+    pub async fn unban_member(
+        &self,
+        requester_id: Uuid,
+        server_id: Uuid,
+        target_user_id: Uuid,
+    ) -> Result<(), String> {
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
+
+        if server.owner_id != requester_id {
+            return Err("Forbidden".into());
+        }
+
+        self.repo.unban_member(server_id, target_user_id).await.map_err(|e| {
+            log::error!("unban_member error: {:?}", e);
+            "Unable to unban member".to_string()
         })
     }
 }

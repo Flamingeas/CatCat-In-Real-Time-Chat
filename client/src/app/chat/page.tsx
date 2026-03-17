@@ -7,13 +7,25 @@ import localFont from "next/font/local";
 import { Nunito } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import {
+  getServerMembers,
+  kickMember,
+  setMemberRole as setMemberRoleRequest,
+  transferOwner as transferOwnerRequest,
+  leaveServer as leaveServerRequest,
+  joinServerByCode,
+  type Member,
+  type MemberRole,
+} from "@/features/chat/services/members.service";
+import { api } from "@/lib/api";
 import logoImage from "../images/logo_catcat.svg";
+import { MemberActionsMenu } from "@/features/chat/components/member-actions-menu";
+import { banMember } from "@/features/chat/services/bans.service";
+import BanList from "@/features/chat/components/ban-list";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 const WS_URL = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws") as string;
 
 type Server = {
@@ -23,14 +35,6 @@ type Server = {
     invitation_code: string;
     created_at: string;
     updated_at: string;
-};
-
-type MemberRole = "owner" | "admin" | "member";
-
-type Member = {
-    user_id: string;
-    username: string;
-    role?: MemberRole;
 };
 
 type Channel = {
@@ -68,28 +72,10 @@ type WsEvent =
     | { type: "user_typing"; channel_id: string; user_id: string; username?: string }
     | { type: "typing"; channel_id: string; user_id: string; username?: string }
     | { type: "message_deleted"; message_id: string; channel_id: string; server_id: string }
+    | { type: "server_member_banned"; server_id: string; user_id: string; username: string }
+    | { type: "server_member_unbanned"; server_id: string; user_id: string; username: string }
     | { type: string; [k: string]: any };
 
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-
-    const res = await fetch(`${API_BASE}${path}`, {
-        ...init,
-        headers: {
-            "Content-Type": "application/json",
-            ...(init?.headers || {}),
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-    });
-
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`${res.status} ${res.statusText} - ${text}`);
-    }
-
-    if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
-}
 
 function getInitials(username?: string) {
     if (!username || username.length < 1) return "??";
@@ -244,6 +230,7 @@ export default function ChatPage() {
 
     const channelCreatedLabel = useMemo(() => formatDateTimeFR(selectedChannel?.created_at), [selectedChannel?.created_at]);
     const channelUpdatedLabel = useMemo(() => formatDateTimeFR(selectedChannel?.updated_at), [selectedChannel?.updated_at]);
+    const [showBans, setShowBans] = useState(false);
 
     const myRole: MemberRole = useMemo(() => {
         if (!me || !selectedServerId) return "member";
@@ -341,16 +328,19 @@ export default function ChatPage() {
         if (selectId) setSelectedServerId(selectId);
         else if (!selectedServerId && list.length > 0) setSelectedServerId(list[0].id);
     }
-    async function transferOwner(serverId: string, newOwnerId: string) {
-        await api(`/api/servers/${serverId}/transfer-owner`, {
-            method: "POST",
-            body: JSON.stringify({ new_owner_id: newOwnerId }),
-        });
 
-        pushToast("Propriétaire modifié", "success");
-        await refreshServers(serverId);
-        await reloadMembers(serverId);
+    async function transferOwner(serverId: string, newOwnerId: string) {
+        try {
+            await transferOwnerRequest(serverId, newOwnerId);
+            pushToast("Propriétaire modifié", "success");
+            await refreshServers(serverId);
+            await reloadMembers(serverId);
+        } catch (e: any) {
+            pushToast("Action refusée", "warn");
+            console.error(e);
+        }
     }
+
     function removeMember(serverId: string, user_id: string) {
         const currentSid = selectedServerIdRef.current;
         if (!currentSid || String(serverId) !== String(currentSid)) return;
@@ -375,6 +365,18 @@ export default function ChatPage() {
         });
     }
 
+    async function handleBanMember(serverId: string, userId: string) {
+        try {
+            await banMember(serverId, userId)
+
+            removeMember(serverId, userId)
+
+            pushToast("Membre banni définitivement", "warn")
+        } catch (e) {
+            pushToast("Action refusée", "warn")
+        }
+    }
+
     function setMemberRoleLocal(serverId: string, user_id: string, role: MemberRole) {
         const currentSid = selectedServerIdRef.current;
         if (!currentSid || String(serverId) !== String(currentSid)) return;
@@ -393,7 +395,7 @@ export default function ChatPage() {
 
     async function reloadMembers(serverId: string) {
         try {
-            const m = await api<Member[]>(`/api/servers/${serverId}/members`);
+            const m = await getServerMembers(serverId);
             setMembers(m.map((x) => ({ ...x, role: (x.role ?? "member") as MemberRole })));
         } catch (e: any) {
             const msg = String(e?.message ?? "");
@@ -643,10 +645,7 @@ export default function ChatPage() {
         if (!serverId) return;
 
         try {
-            await api<{ message: string }>(`/api/servers/${serverId}/members/${userId}/role`, {
-                method: "PATCH",
-                body: JSON.stringify({ role }),
-            });
+            await setMemberRoleRequest(serverId, userId, role);
 
             setMemberRoleLocal(serverId, userId, role);
 
@@ -675,10 +674,9 @@ export default function ChatPage() {
         }
     }
 
-    async function kickMember(serverId: string, userId: string) {
-        if (!serverId) return;
+    async function handleKickMember(serverId: string, userId: string) {
         try {
-            await api<{ message: string }>(`/api/servers/${serverId}/members/${userId}`, { method: "DELETE" });
+            await kickMember(serverId, userId);
             removeMember(serverId, userId);
             pushToast("Membre expulsé", "warn");
         } catch (e: any) {
@@ -793,12 +791,21 @@ export default function ChatPage() {
 
                     if (isMe) {
                         pushToast("Tu as été expulsé du serveur", "warn");
+
                         setSelectedServerId(null);
                         setMembers([]);
                         setChannels([]);
                         setSelectedChannelId(null);
                         setOnlineUserIds(new Set());
-                        refreshServers().catch(() => {});
+                        setMessages([]);
+                        setShowBans(false);
+
+                        api<Server[]>("/api/servers")
+                            .then((list) => {
+                                setServers(list);
+                                setSelectedServerId(list.length ? list[0].id : null);
+                            })
+                            .catch(() => {});
                     } else {
                         pushToast(`${username} a été expulsé`, "warn");
                     }
@@ -934,6 +941,56 @@ export default function ChatPage() {
                     setMessages((prev) => prev.map((m) => (String(m.message_id) === mid ? { ...m, is_deleted: true, content: "" } : m)));
                     return;
                 }
+                if (msg.type === "server_member_banned") {
+                    const sid = String((msg as any).server_id ?? "");
+                    const uid = String((msg as any).user_id ?? "");
+                    const username = String((msg as any).username ?? "quelqu’un");
+
+                    if (!sid || !uid) return;
+
+                    const currentSid = selectedServerIdRef.current;
+                    if (currentSid && sid !== String(currentSid)) return;
+
+                    const isMe = myIdRef.current && String(myIdRef.current) === uid;
+
+                    removeMember(sid, uid);
+
+                    if (isMe) {
+                        pushToast("Tu as été banni du serveur", "warn");
+
+                        setSelectedServerId(null);
+                        setMembers([]);
+                        setChannels([]);
+                        setSelectedChannelId(null);
+                        setOnlineUserIds(new Set());
+                        setMessages([]);
+
+                        api<Server[]>("/api/servers")
+                            .then((list) => {
+                                setServers(list);
+                                setSelectedServerId(list.length ? list[0].id : null);
+                            })
+                            .catch(() => {});
+                    } else {
+                        pushToast(`${username} a été banni`, "warn");
+                    }
+
+                    return;
+                }
+                if (msg.type === "server_member_unbanned") {
+                    const sid = String(msg.server_id ?? "");
+                    const uid = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "quelqu’un");
+
+                    if (!sid || !uid) return;
+
+                    const currentSid = selectedServerIdRef.current;
+                    if (currentSid && sid !== String(currentSid)) return;
+
+                    pushToast(`${username} a été débanni`, "success");
+
+                    return;
+                }
             } catch {}
         };
 
@@ -1035,10 +1092,7 @@ export default function ChatPage() {
         }
         try {
             setIsJoining(true);
-            const joined = await api<Server>("/api/servers/join", {
-                method: "POST",
-                body: JSON.stringify({ invitation_code: code }),
-            });
+            const joined = await joinServerByCode(code);
 
             setIsJoinOpen(false);
             setJoinCode("");
@@ -1195,7 +1249,7 @@ export default function ChatPage() {
         try {
             setIsLeaving(true);
 
-            await api<void>(`/api/servers/${selectedServerId}/leave`, { method: "DELETE" });
+            await leaveServerRequest(selectedServerId);
             wsSend({ type: "leave_server", server_id: selectedServerId });
 
             setMembers([]);
@@ -1631,114 +1685,115 @@ export default function ChatPage() {
                     ) : members.length === 0 ? (
                         <div className="text-sm text-[#DCCBC4]/50 px-2 py-2">Aucun membre.</div>
                     ) : (
-                        <div className="flex flex-col gap-1">
-                            {members.map((m) => {
-                                const online = onlineUserIds.has(String(m.user_id));
-                                const ownerByServerField = selectedServer?.owner_id && String(selectedServer.owner_id) === String(m.user_id);
-                                const ownerByRole = m.role === "owner";
-                                const isOwnerMember = ownerByRole || ownerByServerField;
-
-                                const isMe = myIdRef.current && String(myIdRef.current) === String(m.user_id);
-                                const canManageThis = Boolean(selectedServerId && isOwner && !isOwnerMember && !isMe);
-
-                                const isTyping =
+                        <>
+                            <div className="flex flex-col gap-1">
+                                {members.map((m) => {
+                                    const online = onlineUserIds.has(String(m.user_id));
+                                    const ownerByServerField = selectedServer?.owner_id && String(selectedServer.owner_id) === String(m.user_id);
+                                    const ownerByRole = m.role === "owner";
+                                    const isOwnerMember = ownerByRole || ownerByServerField;
+                                    
+                                    const isMe = myIdRef.current && String(myIdRef.current) === String(m.user_id);
+                                    const canManageThis = Boolean(selectedServerId && isOwner && !isOwnerMember && !isMe);
+                                    
+                                    const isTyping =
                                     !!selectedChannelId &&
                                     !!typingUsers[String(m.user_id)] &&
                                     String(typingUsers[String(m.user_id)]?.channelId) === String(selectedChannelId);
-
-                                return (
-                                    <div key={m.user_id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#1E1211] transition-colors">
-                                        <div className="relative">
-                                            <div className="w-9 h-9 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4]">
-                                                {getInitials(m.username)}
-                                            </div>
-                                            <span
-                                                className={[
-                                                    "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0605]",
-                                                    isTyping ? "bg-[#EB5E28]" : online ? "bg-green-500" : "bg-[#ffffff]/20",
-                                                ].join(" ")}
-                                            />
-                                        </div>
-                                        <div className="flex flex-col leading-tight min-w-0 flex-1">
-                                            <div className="flex items-center gap-2 min-w-0">
-                                                <span className="text-white font-bold text-sm truncate">@{m.username}</span>
-                                                {isOwnerMember && (
-                                                    <span title="Owner" className="text-[#FBBF24]">
-                                                        <CrownIcon />
-                                                    </span>
-                                                )}
-                                                {m.role === "admin" && !isOwnerMember && (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#1E1211] border border-[#ffffff]/10 text-[#DCCBC4]/70">
-                                                        admin
-                                                    </span>
-                                                )}
-                                            </div>
-                                            <span className="text-xs text-[#DCCBC4]/50">{isTyping ? "Écrit…" : online ? "En ligne" : "Hors ligne"}</span>
-                                        </div>
-
-                                        {canManageThis && (
+                                    
+                                    return (
+                                        <div key={m.user_id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#1E1211] transition-colors">
                                             <div className="relative">
-                                                <button
-                                                    onClick={() => setOpenMenuFor((prev) => (prev === String(m.user_id) ? null : String(m.user_id)))}
-                                                    className="w-9 h-9 rounded-xl border border-[#ffffff]/10 text-[#DCCBC4]/70 hover:bg-[#0F0908] hover:text-white cursor-pointer flex items-center justify-center"
-                                                    title="Actions"
-                                                >
-                                                    ⋯
-                                                </button>
-
-                                                {openMenuFor === String(m.user_id) && (
-                                                    <div ref={menuRef} className="absolute right-0 mt-2 w-44 rounded-2xl border border-[#ffffff]/10 bg-[#0a0605] shadow-2xl overflow-hidden z-50">
-                                                        <button
-                                                            onClick={() => {
-                                                                if (!selectedServerId) return;
-                                                                setOpenMenuFor(null);
-                                                                const nextRole: MemberRole = m.role === "admin" ? "member" : "admin";
-                                                                const label = nextRole === "admin" ? `Mettre ${m.username} admin ?` : `Retirer ${m.username} des admins ?`;
-                                                                if (!window.confirm(label)) return;
-                                                                setMemberRole(selectedServerId, String(m.user_id), nextRole);
-                                                            }}
-                                                            className="w-full text-left px-4 py-3 text-sm hover:bg-[#0F0908] text-[#DCCBC4] cursor-pointer"
-                                                        >
-                                                            {m.role === "admin" ? "Retirer admin" : "Rendre admin"}
-                                                        </button>
-
-                                                        <div className="h-px bg-[#ffffff]/10" />
-                                                        <button
-                                                            onClick={() => {
-                                                                if (!selectedServerId) return;
-                                                                setOpenMenuFor(null);
-                                                                if (!window.confirm(`Mettre ${m.username} owner ?`)) return;
-                                                                transferOwner(selectedServerId, String(m.user_id));
-                                                            }}
-                                                            className="w-full text-left px-4 py-3 text-sm hover:bg-[#0F0908] text-[#DCCBC4] cursor-pointer"
-                                                        >
-                                                            Rendre propriétaire
-                                                        </button>
-                                                        <div className="h-px bg-[#ffffff]/10" />
-
-                                                        <button
-                                                            onClick={() => {
-                                                                if (!selectedServerId) return;
-                                                                setOpenMenuFor(null);
-                                                                if (!window.confirm(`Expulser ${m.username} du serveur ?`)) return;
-                                                                kickMember(selectedServerId, String(m.user_id));
-                                                            }}
-                                                            className="w-full text-left px-4 py-3 text-sm hover:bg-[#0F0908] text-red-300 cursor-pointer"
-                                                        >
-                                                            Expulser
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                <div className="w-9 h-9 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4]">
+                                                    {getInitials(m.username)}
+                                                </div>
+                                                <span
+                                                    className={[
+                                                        "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0605]",
+                                                        isTyping ? "bg-[#EB5E28]" : online ? "bg-green-500" : "bg-[#ffffff]/20",
+                                                    ].join(" ")}
+                                                    />
                                             </div>
-                                        )}
+                                            <div className="flex flex-col leading-tight min-w-0 flex-1">
+                                                <div className="flex items-center gap-2 min-w-0">
+                                                    <span className="text-white font-bold text-sm truncate">@{m.username}</span>
+                                                    {isOwnerMember && (
+                                                        <span title="Owner" className="text-[#FBBF24]">
+                                                            <CrownIcon />
+                                                        </span>
+                                                    )}
+                                                    {m.role === "admin" && !isOwnerMember && (
+                                                        <span className="text-xs px-2 py-0.5 rounded-full bg-[#1E1211] border border-[#ffffff]/10 text-[#DCCBC4]/70">
+                                                            admin
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <span className="text-xs text-[#DCCBC4]/50">{isTyping ? "Écrit…" : online ? "En ligne" : "Hors ligne"}</span>
+                                            </div>
+
+                                            {canManageThis && (
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={() => setOpenMenuFor((prev) => (prev === String(m.user_id) ? null : String(m.user_id)))}
+                                                        className="w-9 h-9 rounded-xl border border-[#ffffff]/10 text-[#DCCBC4]/70 hover:bg-[#0F0908] hover:text-white cursor-pointer flex items-center justify-center"
+                                                        title="Actions"
+                                                        >
+                                                        ⋯
+                                                    </button>
+                                                    {openMenuFor === String(m.user_id) && (
+                                                        <MemberActionsMenu
+                                                        username={m.username}
+                                                        userId={String(m.user_id)}
+                                                        serverId={selectedServerId}
+                                                        role={m.role}
+                                                        onKick={handleKickMember}
+                                                        onBan={handleBanMember}
+                                                        onSetRole={setMemberRole}
+                                                        onTransferOwner={transferOwner}
+                                                        />
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            {myRole != "member" &&
+                                <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#1E1211] transition-colors">
+                                        <button
+                                            onClick={() => setShowBans(true)}
+                                            className="text-xs text-[#DCCBC4]/60 hover:text-white cursor-pointer"
+                                            >
+                                            Utilisateurs bannis
+                                        </button>
                                     </div>
-                                );
-                            })}
-                        </div>
+                                </div>
+                            }
+                        </>
                     )}
                 </div>
             </div>
+            {showBans && myRole != "member" && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                    <div className="bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-6 w-[420px]">
+                    
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className="text-lg font-semibold">Utilisateurs bannis</h2>
 
+                        <button
+                        onClick={() => setShowBans(false)}
+                        className="text-[#DCCBC4]/60 hover:text-white cursor-pointer"
+                        >
+                        ✕
+                        </button>
+                    </div>
+
+                    <BanList serverId={selectedServerId!} />
+
+                    </div>
+                </div>
+            )}
             {isChannelEditOpen && selectedChannel && canEditChannel && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div className="absolute inset-0 bg-black/70" onClick={() => !isChannelSaving && setIsChannelEditOpen(false)} />
@@ -1886,14 +1941,14 @@ export default function ChatPage() {
                             <button
                                 onClick={() => setIsJoinOpen(false)}
                                 disabled={isJoining}
-                                className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50"
+                                className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
                             >
                                 Annuler
                             </button>
                             <button
                                 onClick={joinServer}
                                 disabled={isJoining}
-                                className="px-4 py-2 rounded-xl bg-[#EB5E28] text-[#1E1211] font-bold hover:bg-white disabled:opacity-50"
+                                className="px-4 py-2 rounded-xl bg-[#EB5E28] text-[#1E1211] font-bold hover:bg-white disabled:opacity-50 cursor-pointer"
                             >
                                 {isJoining ? "Rejoindre..." : "Rejoindre"}
                             </button>

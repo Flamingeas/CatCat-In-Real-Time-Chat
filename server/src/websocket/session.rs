@@ -132,7 +132,6 @@ pub enum OutgoingMessage {
         username: String,
         status: UserStatus,
     },
-
     NewMessage {
         message_id: Uuid,
         channel_id: Uuid,
@@ -141,13 +140,11 @@ pub enum OutgoingMessage {
         content: String,
         created_at: String,
     },
-
     MessageDeleted {
         server_id: Uuid,
         channel_id: Uuid,
         message_id: Uuid,
     },
-
     UserTyping {
         channel_id: Uuid,
         user_id: Uuid,
@@ -168,7 +165,6 @@ pub enum OutgoingMessage {
         user_id: Uuid,
         username: String,
     },
-
     ServerMemberRoleUpdated {
         server_id: Uuid,
         user_id: Uuid,
@@ -180,6 +176,16 @@ pub enum OutgoingMessage {
         user_id: Uuid,
         username: String,
     },
+    ServerMemberBanned {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
+    ServerMemberUnbanned {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    }
 }
 
 impl actix::Message for OutgoingMessage {
