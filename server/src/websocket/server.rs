@@ -60,6 +60,8 @@ pub enum ServerEvent {
     MemberLeft { server_id: Uuid, user_id: Uuid, username: String },
     MemberRoleUpdated { server_id: Uuid, user_id: Uuid, username: String, role: String },
     MemberKicked { server_id: Uuid, user_id: Uuid, username: String },
+    MemberBanned { server_id: Uuid, user_id: Uuid, username: String },
+    MemberUnbanned { server_id: Uuid, user_id: Uuid, username: String }
 }
 
 pub struct WsServer {
@@ -385,6 +387,39 @@ impl Handler<ServerEvent> for WsServer {
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberKicked {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+            }
+            ServerEvent::MemberBanned { server_id, user_id, username } => {
+                self.send_to(
+                    user_id,
+                    OutgoingMessage::ServerMemberBanned {
+                        server_id,
+                        user_id,
+                        username: username.clone(),
+                    },
+                );
+
+                if let Some(set) = self.server_rooms.get_mut(&server_id) {
+                    set.remove(&user_id);
+                }
+
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberBanned {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+            }
+            ServerEvent::MemberUnbanned { server_id, user_id, username } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberUnbanned {
                         server_id,
                         user_id,
                         username,

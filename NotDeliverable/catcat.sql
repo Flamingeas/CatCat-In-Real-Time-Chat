@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
+\restrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
 
 -- Dumped from database version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
@@ -27,9 +27,9 @@ CREATE DATABASE catcat WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVID
 
 ALTER DATABASE catcat OWNER TO postgres;
 
-\unrestrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
+\unrestrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
 \connect catcat
-\restrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
+\restrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -142,6 +142,22 @@ CREATE TABLE public.channels (
 ALTER TABLE public.channels OWNER TO postgres;
 
 --
+-- Name: server_bans; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.server_bans (
+    server_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    banned_by uuid NOT NULL,
+    created_at timestamp without time zone DEFAULT now() NOT NULL,
+    expires_at timestamp without time zone,
+    reason text
+);
+
+
+ALTER TABLE public.server_bans OWNER TO postgres;
+
+--
 -- Name: server_members; Type: TABLE; Schema: public; Owner: postgres
 --
 
@@ -201,6 +217,14 @@ ALTER TABLE ONLY _sqlx_test.databases
 
 ALTER TABLE ONLY public.channels
     ADD CONSTRAINT channels_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: server_bans server_bans_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.server_bans
+    ADD CONSTRAINT server_bans_pkey PRIMARY KEY (server_id, user_id);
 
 
 --
@@ -316,6 +340,30 @@ ALTER TABLE ONLY public.channels
 
 
 --
+-- Name: server_bans server_bans_banned_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.server_bans
+    ADD CONSTRAINT server_bans_banned_by_fkey FOREIGN KEY (banned_by) REFERENCES public.users(id);
+
+
+--
+-- Name: server_bans server_bans_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.server_bans
+    ADD CONSTRAINT server_bans_server_id_fkey FOREIGN KEY (server_id) REFERENCES public.servers(id) ON DELETE CASCADE;
+
+
+--
+-- Name: server_bans server_bans_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.server_bans
+    ADD CONSTRAINT server_bans_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: server_members server_members_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
 --
 
@@ -343,5 +391,5 @@ ALTER TABLE ONLY public.servers
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 0nFF4jwnj4f3GZAwY48jebbWqofJ5O7s7YYXrzBF70BVXog6HcQumSwNM0NeZDB
+\unrestrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
 
