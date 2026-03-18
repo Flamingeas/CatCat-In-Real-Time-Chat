@@ -23,6 +23,27 @@ use crate::modules::server::service::ServerService;
 use crate::modules::user::repository::UserRepository;
 use crate::websocket::server::WsServer;
 
+use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
+use utoipa::Modify;
+
+struct SecurityAddon;
+
+impl Modify for SecurityAddon {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        if let Some(components) = openapi.components.as_mut() {
+            components.add_security_scheme(
+                "jwt",
+                SecurityScheme::Http(
+                    HttpBuilder::new()
+                        .scheme(HttpAuthScheme::Bearer)
+                        .bearer_format("JWT")
+                        .build(),
+                ),
+            );
+        }
+    }
+}
+
 // --- DÉCLARATION DU SWAGGER ---
 #[derive(OpenApi)]
 #[openapi(
@@ -30,6 +51,11 @@ use crate::websocket::server::WsServer;
         // Routes d'authentification
         crate::modules::auth::route::login,
         crate::modules::auth::route::signup,
+        crate::modules::user::route::get_me,
+        crate::modules::user::route::get_user,
+        crate::modules::user::route::list_users,
+        crate::modules::user::route::update_me,
+        crate::modules::user::route::delete_me,
         
         // Routes des salons
         crate::modules::channel::route::create_channel,
@@ -56,6 +82,9 @@ use crate::websocket::server::WsServer;
             // Modèles de requêtes et de réponses
             crate::modules::auth::route::LoginRequest, 
             crate::models::user::CreateUser,
+            crate::models::user::UpdateUser,
+            crate::models::user::UserResponse,
+            crate::models::user::UserPublicResponse,
             crate::models::channel::CreateChannel,
             crate::models::channel::UpdateChannel,
             crate::models::channel::ChannelResponse,
@@ -78,7 +107,8 @@ use crate::websocket::server::WsServer;
         (name = "Messages", description = "Envoi et historique des messages (MongoDB)"),
         (name = "Servers", description = "Gestion des serveurs"),
         (name = "Server Members", description = "Gestion des rôles et des utilisateurs"),
-    )
+    ),
+    modifiers(&SecurityAddon),
 )]
 struct ApiDoc;
 
