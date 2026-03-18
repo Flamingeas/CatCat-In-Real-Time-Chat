@@ -26,6 +26,12 @@ pub enum ClientMessage {
     JoinServer { user_id: Uuid, server_id: Uuid },
     LeaveServer { user_id: Uuid, server_id: Uuid },
 
+    ChannelCreated {
+        server_id: Uuid,
+        channel_id: Uuid,
+        name: String,
+        created_at: String,
+    },
     JoinChannel { user_id: Uuid, channel_id: Uuid },
     LeaveChannel { user_id: Uuid, channel_id: Uuid },
 
@@ -306,7 +312,22 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
-
+            ClientMessage::ChannelCreated {
+                server_id,
+                channel_id,
+                name,
+                created_at,
+            } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ChannelCreated {
+                        server_id,
+                        channel_id,
+                        name,
+                        created_at,
+                    },
+                );
+            }
             ClientMessage::BroadcastMessageDeleted {
                 server_id,
                 channel_id,

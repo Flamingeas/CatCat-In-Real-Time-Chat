@@ -68,6 +68,7 @@ type WsEvent =
     | { type: "server_member_role_updated"; server_id: string; user_id: string; username: string; role: MemberRole | string }
     | { type: "server_member_kicked"; server_id: string; user_id: string; username: string }
     | { type: "server_deleted"; server_id: string }
+    | { type: "channel_created"; server_id: string; channel_id: string; name: string; created_at: string }
     | { type: "new_message"; message_id: string; channel_id: string; user_id: string; username: string; content: string; created_at: string }
     | { type: "user_typing"; channel_id: string; user_id: string; username?: string }
     | { type: "typing"; channel_id: string; user_id: string; username?: string }
@@ -724,7 +725,14 @@ export default function ChatPage() {
                     if (meId) addOnline(meId);
                     return;
                 }
+                if (msg.type === "channel_created") {
+                    const sid = String(msg.server_id ?? "");
+                    if (sid !== String(selectedServerIdRef.current)) return;
 
+                    reloadChannels(sid).catch(() => {});
+                    pushToast(`Salon #${msg.name} créé`, "success");
+                    return;
+                }
                 if (msg.type === "server_member_joined") {
                     const currentSid = selectedServerIdRef.current;
                     if (currentSid && String(msg.server_id) !== String(currentSid)) return;
@@ -1833,7 +1841,6 @@ export default function ChatPage() {
                         </div>
 
                         <div className="mt-4 text-xs text-[#DCCBC4]/40">
-                            Endpoint attendu: <span className="text-[#DCCBC4]/70">PUT /api/channels/:id</span> avec{" "}
                             <span className="text-[#DCCBC4]/70">{`{ name }`}</span>
                         </div>
                     </div>
@@ -1952,10 +1959,6 @@ export default function ChatPage() {
                             >
                                 {isJoining ? "Rejoindre..." : "Rejoindre"}
                             </button>
-                        </div>
-                        <div className="mt-4 text-xs text-[#DCCBC4]/40">
-                            Endpoint attendu: <span className="text-[#DCCBC4]/70">POST /api/servers/join</span> avec{" "}
-                            <span className="text-[#DCCBC4]/70">{`{ invitation_code }`}</span>
                         </div>
                     </div>
                 </div>
