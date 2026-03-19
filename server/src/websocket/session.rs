@@ -163,6 +163,10 @@ pub enum OutgoingMessage {
         server_id: Uuid,
         channel_id: Uuid,
     },
+    ChannelUpdated {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
     ServerDeleted { server_id: Uuid },
     ServerMemberJoined {
         server_id: Uuid,

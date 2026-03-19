@@ -70,6 +70,7 @@ type WsEvent =
     | { type: "server_deleted"; server_id: string }
     | { type: "channel_created"; server_id: string; channel_id: string; name: string; created_at: string }
     | { type: "channel_deleted"; server_id: string; channel_id: string }
+    | { type: "channel_updated"; server_id: string; channel_id: string }
     | { type: "new_message"; message_id: string; channel_id: string; user_id: string; username: string; content: string; created_at: string }
     | { type: "user_typing"; channel_id: string; user_id: string; username?: string }
     | { type: "typing"; channel_id: string; user_id: string; username?: string }
@@ -755,6 +756,19 @@ export default function ChatPage() {
                     });
 
                     pushToast("Salon supprimé", "warn");
+                    return;
+                }
+                if (msg.type === "channel_updated") {
+                    const sid = String(msg.server_id ?? "");
+                    const cid = String(msg.channel_id ?? "");
+
+                    if (!sid || !cid) return;
+
+                    const currentSid = selectedServerIdRef.current;
+                    if (currentSid && sid !== String(currentSid)) return;
+
+                    reloadChannels(sid).catch(() => {});
+                    pushToast("Salon modifié", "info");
                     return;
                 }
                 if (msg.type === "server_member_joined") {
