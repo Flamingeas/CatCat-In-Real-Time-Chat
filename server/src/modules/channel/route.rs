@@ -107,6 +107,7 @@ pub async fn channel_list(
 pub async fn channel_update(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
+    ws: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
     payload: web::Json<UpdateChannel>,
 ) -> impl Responder {
@@ -120,7 +121,13 @@ pub async fn channel_update(
         .update_channel(channel_id, payload.into_inner(), user.user_id)
         .await
     {
-        Ok(channel) => HttpResponse::Ok().json(ChannelResponse::from(channel)),
+        Ok(channel) => {
+            ws.do_send(ClientMessage::ChannelUpdated {
+                server_id: channel.server_id,
+                channel_id: channel.id,
+            });
+            HttpResponse::Ok().json(ChannelResponse::from(channel))
+        },
         Err(e) if e == "Forbidden" => {
             HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
         }

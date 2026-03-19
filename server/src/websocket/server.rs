@@ -35,6 +35,7 @@ pub enum ClientMessage {
     JoinChannel { user_id: Uuid, channel_id: Uuid },
     LeaveChannel { user_id: Uuid, channel_id: Uuid },
     ChannelDeleted { server_id: Uuid, channel_id: Uuid },
+    ChannelUpdated { server_id: Uuid, channel_id: Uuid },
     Typing { user_id: Uuid, username: String, channel_id: Uuid },
 
     SendMessage { user_id: Uuid, username: String, channel_id: Uuid, content: String },
@@ -62,6 +63,7 @@ pub enum ClientMessage {
 #[rtype(result = "()")]
 pub enum ServerEvent {
     ServerDeleted { server_id: Uuid },
+    ServerUpdated { server_id: Uuid },
     MemberJoined { server_id: Uuid, user_id: Uuid, username: String },
     MemberLeft { server_id: Uuid, user_id: Uuid, username: String },
     MemberRoleUpdated { server_id: Uuid, user_id: Uuid, username: String, role: String },
@@ -274,6 +276,18 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
+            ClientMessage::ChannelUpdated {
+                server_id,
+                channel_id,
+            } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ChannelUpdated {
+                        server_id,
+                        channel_id,
+                    },
+                );
+            }
             ClientMessage::Typing { user_id, username, channel_id } => {
                 self.broadcast_to_channel(
                     channel_id,
@@ -380,6 +394,12 @@ impl Handler<ServerEvent> for WsServer {
                 self.broadcast_to_server(server_id, OutgoingMessage::ServerDeleted { server_id });
                 self.server_rooms.remove(&server_id);
             }
+            ServerEvent::ServerUpdated { server_id } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerUpdated { server_id }
+                );
+            }
             ServerEvent::MemberJoined { server_id, user_id, username } => {
                 self.broadcast_to_server(
                     server_id,
@@ -412,10 +432,6 @@ impl Handler<ServerEvent> for WsServer {
                 );
             }
             ServerEvent::MemberKicked { server_id, user_id, username } => {
-                if let Some(set) = self.server_rooms.get_mut(&server_id) {
-                    set.remove(&user_id);
-                }
-
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberKicked {
@@ -424,6 +440,10 @@ impl Handler<ServerEvent> for WsServer {
                         username,
                     },
                 );
+
+                if let Some(set) = self.server_rooms.get_mut(&server_id) {
+                    set.remove(&user_id);
+                }
             }
             ServerEvent::MemberBanned { server_id, user_id, username } => {
                 self.send_to(

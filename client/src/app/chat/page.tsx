@@ -68,8 +68,10 @@ type WsEvent =
     | { type: "server_member_role_updated"; server_id: string; user_id: string; username: string; role: MemberRole | string }
     | { type: "server_member_kicked"; server_id: string; user_id: string; username: string }
     | { type: "server_deleted"; server_id: string }
+    | { type: "server_updated"; server_id: string }
     | { type: "channel_created"; server_id: string; channel_id: string; name: string; created_at: string }
     | { type: "channel_deleted"; server_id: string; channel_id: string }
+    | { type: "channel_updated"; server_id: string; channel_id: string }
     | { type: "new_message"; message_id: string; channel_id: string; user_id: string; username: string; content: string; created_at: string }
     | { type: "user_typing"; channel_id: string; user_id: string; username?: string }
     | { type: "typing"; channel_id: string; user_id: string; username?: string }
@@ -273,7 +275,7 @@ export default function ChatPage() {
     function pushToast(text: string, kind: Toast["kind"] = "info") {
         const id = `${Date.now()}_${Math.random()}`;
         setToasts((prev) => [...prev, { id, text, kind }]);
-        window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2500);
+        window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
     }
 
     useEffect(() => {
@@ -704,6 +706,7 @@ export default function ChatPage() {
             try {
                 const msg = JSON.parse(e.data) as WsEvent;
                 if (!msg || typeof msg !== "object") return;
+                console.log(msg)
 
                 if (msg.type === "presence_snapshot" && msg.server_id && Array.isArray(msg.online)) {
                     const currentSid = selectedServerIdRef.current;
@@ -757,6 +760,19 @@ export default function ChatPage() {
                     pushToast("Salon supprimé", "warn");
                     return;
                 }
+                if (msg.type === "channel_updated") {
+                    const sid = String(msg.server_id ?? "");
+                    const cid = String(msg.channel_id ?? "");
+
+                    if (!sid || !cid) return;
+
+                    const currentSid = selectedServerIdRef.current;
+                    if (currentSid && sid !== String(currentSid)) return;
+
+                    reloadChannels(sid).catch(() => {});
+                    pushToast("Salon modifié", "info");
+                    return;
+                }
                 if (msg.type === "server_member_joined") {
                     const currentSid = selectedServerIdRef.current;
                     if (currentSid && String(msg.server_id) !== String(currentSid)) return;
@@ -807,21 +823,23 @@ export default function ChatPage() {
                     if (!isMe) pushToast(`${msg.username} est maintenant ${role}`, "info");
                     return;
                 }
-
                 if (msg.type === "server_member_kicked") {
-                    const sid = String((msg as any).server_id ?? "");
-                    const uid = String((msg as any).user_id ?? "");
-                    const username = String((msg as any).username ?? "quelqu’un");
+                    const sid = String(msg.server_id ?? "");
+                    const uid = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "quelqu’un");
+
                     if (!sid || !uid) return;
 
                     const currentSid = selectedServerIdRef.current;
                     if (currentSid && sid !== String(currentSid)) return;
 
-                    const isMe = myIdRef.current && String(myIdRef.current) === uid;
+                    const isMe = !!myIdRef.current && String(myIdRef.current) === uid;
 
                     removeMember(sid, uid);
 
                     if (isMe) {
+                        wsSend({ type: "leave_server", server_id: sid });
+
                         pushToast("Tu as été expulsé du serveur", "warn");
 
                         setSelectedServerId(null);
@@ -841,6 +859,7 @@ export default function ChatPage() {
                     } else {
                         pushToast(`${username} a été expulsé`, "warn");
                     }
+
                     return;
                 }
 
@@ -860,7 +879,14 @@ export default function ChatPage() {
                     setServers((prev) => prev.filter((s) => String(s.id) !== sid));
                     return;
                 }
+                if (msg.type === "server_updated") {
+                    const sid = String(msg.server_id ?? "");
+                    if (!sid) return;
 
+                    refreshServers(sid).catch(() => {});
+                    pushToast("Serveur modifié", "info");
+                    return;
+                }
                 if (msg.type === "user_connected" || msg.type === "user_disconnected" || msg.type === "user_status_changed") {
                     const currentSid = selectedServerIdRef.current;
                     const sid = msg.server_id != null ? String(msg.server_id) : null;
@@ -916,7 +942,7 @@ export default function ChatPage() {
                             delete copy[uid];
                             return copy;
                         });
-                    }, 2000);
+                    }, 5000);
 
                     typingTimeoutsRef.current.set(uid, t);
                     return;
