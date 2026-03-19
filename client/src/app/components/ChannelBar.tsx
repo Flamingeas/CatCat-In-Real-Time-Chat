@@ -30,6 +30,7 @@ type ChannelBarProps = {
     onOpenCreateChannel: () => void;
     setServers: (servers: Server[]) => void;
     onSelectChannel: (id: string) => void;
+    setSelectedServerId: (id: string) => void;
 };
 
 type Channel = {
@@ -100,7 +101,7 @@ function PencilIcon() {
     );
 }
 
-export default function ChannelBar({selectedServerId, servers, canCreateChannel, channels, setChannels, selectedChannelId, onOpenCreateChannel, setServers, onSelectChannel}: ChannelBarProps) {
+export default function ChannelBar({selectedServerId, servers, canCreateChannel, channels, setChannels, selectedChannelId, onOpenCreateChannel, setServers, onSelectChannel, setSelectedServerId}: ChannelBarProps) {
 
 
     const selectedServer = useMemo(() => servers.find((s) => s.id === selectedServerId) ?? null, [servers, selectedServerId]);
@@ -112,14 +113,22 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
 
     const [isChannelEditOpen, setIsChannelEditOpen] = useState(false);
     const [isChannelSaving, setIsChannelSaving] = useState(false);
-
+    const [deleteConfirm, setDeleteConfirm] = useState("");
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [settingsError, setSettingsError] = useState<string | null>(null);
-    const [deleteConfirm, setDeleteConfirm] = useState("");
+    const wsRef = useRef<WebSocket | null>(null);
+
     const [settingsName, setSettingsName] = useState("");
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [me, setMe] = useState<{ id: string; username: string } | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
+
+    function wsSend(obj: any) {
+        const ws = wsRef.current;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        ws.send(JSON.stringify(obj));
+    }
+
     const myRole: MemberRole = useMemo(() => {
         if (!me || !selectedServerId) return "member";
         if (selectedServer?.owner_id && String(selectedServer.owner_id) === String(me.id)) {
@@ -132,6 +141,7 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
     const isOwner = myRole === "owner";
 
     const canEditChannel = myRole === "owner" || myRole === "admin";
+
     function openServerSettings() {
         if (!selectedServer || !isOwner) return;
         setSettingsError(null);
@@ -191,6 +201,7 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
 
         try {
             setIsSavingSettings(true);
+            console.log("test delete")
             await api<void>(`/api/servers/${selectedServer.id}`, { method: "DELETE" });
 
             wsSend({ type: "leave_server", server_id: selectedServer.id });
@@ -206,6 +217,8 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
             setIsSavingSettings(false);
         }
     }
+
+
     useEffect(() => {
         const storedUser = localStorage.getItem("user");
         if (!storedUser) return;

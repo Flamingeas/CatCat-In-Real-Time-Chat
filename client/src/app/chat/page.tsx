@@ -109,19 +109,6 @@
         );
     }
     
-    function GearIcon() {
-        return (
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.607 2.303.07 2.572-1.065z"
-                />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-        );
-    }
-    
     function UserPlusIcon() {
         return (
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -139,25 +126,6 @@
                 <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M21 19V5a2 2 0 00-2-2h-6" />
-            </svg>
-        );
-    }
-    
-    function LeaveIcon() {
-        return (
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10 17l5-5-5-5" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12H3" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 19V5a2 2 0 00-2-2h-6" />
-            </svg>
-        );
-    }
-    
-    function PencilIcon() {
-        return (
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 20h9" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4 12.5-12.5z" />
             </svg>
         );
     }
@@ -187,7 +155,8 @@
     
         const [servers, setServers] = useState<Server[]>([]);
         const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
-    
+        const [settingsError, setSettingsError] = useState<string | null>(null);
+
         const [isCreateOpen, setIsCreateOpen] = useState(false);
         const [serverName, setServerName] = useState("");
         const [createError, setCreateError] = useState<string | null>(null);
@@ -344,6 +313,7 @@
             if (selectId) setSelectedServerId(selectId);
             else if (!selectedServerId && list.length > 0) setSelectedServerId(list[0].id);
         }
+
         async function transferOwner(serverId: string, newOwnerId: string) {
             await api(`/api/servers/${serverId}/transfer-owner`, {
                 method: "POST",
@@ -1064,31 +1034,7 @@
             }
         }
     
-        async function deleteServer() {
-            if (!selectedServer || !isOwner) return;
-    
-            if (deleteConfirm.trim().toLowerCase() !== "delete") {
-                setSettingsError("Tape DELETE pour confirmer la suppression.");
-                return;
-            }
-    
-            try {
-                setIsSavingSettings(true);
-                await api<void>(`/api/servers/${selectedServer.id}`, { method: "DELETE" });
-    
-                wsSend({ type: "leave_server", server_id: selectedServer.id });
-    
-                setIsSettingsOpen(false);
-    
-                const list = await api<Server[]>("/api/servers");
-                setServers(list);
-                setSelectedServerId(list.length ? list[0].id : null);
-            } catch (e: any) {
-                setSettingsError(e?.message ?? "Impossible de supprimer le serveur.");
-            } finally {
-                setIsSavingSettings(false);
-            }
-        }
+
     
         async function leaveServer() {
             if (!selectedServerId) return;
@@ -1169,7 +1115,7 @@
                         onOpenCreateChannel={openCreateChannel}
                         setServers={setServers}
                         onSelectChannel={setSelectedChannelId}
-
+                        setSelectedServerId={setSelectedServerId}
                     />
                 </div>
     
