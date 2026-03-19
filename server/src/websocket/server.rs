@@ -26,9 +26,15 @@ pub enum ClientMessage {
     JoinServer { user_id: Uuid, server_id: Uuid },
     LeaveServer { user_id: Uuid, server_id: Uuid },
 
+    ChannelCreated {
+        server_id: Uuid,
+        channel_id: Uuid,
+        name: String,
+        created_at: String,
+    },
     JoinChannel { user_id: Uuid, channel_id: Uuid },
     LeaveChannel { user_id: Uuid, channel_id: Uuid },
-
+    ChannelDeleted { server_id: Uuid, channel_id: Uuid },
     Typing { user_id: Uuid, username: String, channel_id: Uuid },
 
     SendMessage { user_id: Uuid, username: String, channel_id: Uuid, content: String },
@@ -256,7 +262,18 @@ impl Handler<ClientMessage> for WsServer {
                     set.remove(&user_id);
                 }
             }
-
+            ClientMessage::ChannelDeleted {
+                server_id,
+                channel_id,
+            } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ChannelDeleted {
+                        server_id,
+                        channel_id,
+                    },
+                );
+            }
             ClientMessage::Typing { user_id, username, channel_id } => {
                 self.broadcast_to_channel(
                     channel_id,
@@ -306,7 +323,22 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
-
+            ClientMessage::ChannelCreated {
+                server_id,
+                channel_id,
+                name,
+                created_at,
+            } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ChannelCreated {
+                        server_id,
+                        channel_id,
+                        name,
+                        created_at,
+                    },
+                );
+            }
             ClientMessage::BroadcastMessageDeleted {
                 server_id,
                 channel_id,
