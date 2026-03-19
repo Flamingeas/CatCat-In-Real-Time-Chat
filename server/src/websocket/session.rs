@@ -159,6 +159,10 @@ pub enum OutgoingMessage {
         name: String,
         created_at: String,
     },
+    ChannelDeleted {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
     ServerDeleted { server_id: Uuid },
     ServerMemberJoined {
         server_id: Uuid,

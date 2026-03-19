@@ -9,7 +9,7 @@ pub trait ChannelRepositoryTrait: Send + Sync {
     async fn create(&self, server_id: Uuid, name: &str) -> Result<Channel, String>;
     async fn list_for_server(&self, server_id: Uuid) -> Result<Vec<Channel>, String>;
     async fn update(&self, channel_id: Uuid, payload: UpdateChannel) -> Result<Channel, String>;
-    async fn delete(&self, channel_id: Uuid) -> Result<(), String>;
+    async fn delete(&self, channel_id: Uuid) -> Result<Channel, String>;
     async fn user_is_member(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String>;
     async fn user_can_manage_channels(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String>;
     async fn user_can_manage_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<bool, String>;
@@ -71,16 +71,23 @@ impl ChannelRepository {
             .await
     }
 
-    pub async fn delete(&self, channel_id: Uuid) -> Result<(), sqlx::Error> {
-        let res = sqlx::query!(r#"DELETE FROM channels WHERE id = $1"#, channel_id)
-            .execute(&self.pool)
+    pub async fn delete(&self, channel_id: Uuid) -> Result<Channel, sqlx::Error> {
+        let channel = sqlx::query_as!(
+        Channel,
+        r#"
+        DELETE FROM channels
+        WHERE id = $1
+        RETURNING id, name, server_id, created_at, updated_at
+        "#,
+        channel_id
+    )
+            .fetch_optional(&self.pool)
             .await?;
 
-        if res.rows_affected() == 0 {
-            return Err(sqlx::Error::RowNotFound);
+        match channel {
+            Some(channel) => Ok(channel),
+            None => Err(sqlx::Error::RowNotFound),
         }
-
-        Ok(())
     }
 
     pub async fn user_is_member(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String> {
@@ -177,7 +184,7 @@ impl ChannelRepositoryTrait for ChannelRepository {
             .map_err(|e| e.to_string())
     }
 
-    async fn delete(&self, channel_id: Uuid) -> Result<(), String> {
+    async fn delete(&self, channel_id: Uuid) -> Result<Channel, String> {
         ChannelRepository::delete(self, channel_id)
             .await
             .map_err(|e| e.to_string())

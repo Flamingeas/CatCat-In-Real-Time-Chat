@@ -146,14 +146,22 @@ pub async fn channel_update(
 pub async fn channel_delete(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
+    ws: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let channel_id = path.into_inner();
 
     match service.delete_channel(channel_id, user.user_id).await {
-        Ok(_) => HttpResponse::Ok().json(json!({
-            "message": "Channel supprimé avec succès"
-        })),
+        Ok(channel) => {
+            ws.do_send(ClientMessage::ChannelDeleted {
+                server_id: channel.server_id,
+                channel_id: channel.id,
+            });
+
+            HttpResponse::Ok().json(json!({
+                "message": "Channel supprimé avec succès"
+            }))
+        }
         Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
     }
 }
@@ -227,9 +235,9 @@ mod tests {
 
         async fn delete_channel(
             &self,
-            _channel_id: Uuid,
-            _user_id: Uuid,
-        ) -> Result<(), String> {
+            channel_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<Channel, String> {
             self.delete_result.clone().unwrap()
         }
     }
