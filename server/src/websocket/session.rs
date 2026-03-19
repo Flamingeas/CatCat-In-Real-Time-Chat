@@ -106,6 +106,7 @@ pub enum IncomingMessage {
     StatusChange { status: UserStatus, server_id: Option<Uuid> },
 
     Ping { t: Option<i64> },
+
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -178,6 +179,16 @@ pub enum OutgoingMessage {
     ServerMemberKicked {
         server_id: Uuid,
         user_id: Uuid,
+        username: String,
+    },
+    ServerMemberBanned {
+        server_id: uuid::Uuid,
+        user_id: uuid::Uuid,
+        username: String,
+    },
+    ServerMemberUnbanned {
+        server_id: uuid::Uuid,
+        user_id: uuid::Uuid,
         username: String,
     },
 }

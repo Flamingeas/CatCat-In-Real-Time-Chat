@@ -220,6 +220,43 @@ impl ServerService {
             "Unable to remove member".to_string()
         })
     }
+
+    pub async fn ban_member(
+        &self,
+        admin_id: uuid::Uuid,
+        server_id: uuid::Uuid,
+        target_user_id: uuid::Uuid,
+    ) -> Result<(), String> {
+        // Optionnel : Ajouter ici une vérification pour s'assurer que admin_id a bien le droit de bannir
+        self.repo
+            .ban_member(server_id, target_user_id, admin_id, "Banned via API".to_string(), None)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    pub async fn unban_member(
+        &self,
+        admin_id: uuid::Uuid,
+        server_id: uuid::Uuid,
+        target_user_id: uuid::Uuid,
+    ) -> Result<(), String> {
+        // Optionnel : Vérification des droits ici aussi
+        self.repo
+            .unban_member(server_id, target_user_id)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    pub async fn list_bans(
+        &self,
+        _user_id: uuid::Uuid, // Le _ indique à Rust qu'on n'utilise pas cette variable pour l'instant
+        server_id: uuid::Uuid,
+    ) -> Result<Vec<serde_json::Value>, String> { // Mettez votre vrai type de retour ici (ex: Vec<ServerBan>)
+        self.repo
+            .list_bans(server_id)
+            .await
+            .map_err(|e| e.to_string())
+    }
 }
 
 #[cfg(test)]

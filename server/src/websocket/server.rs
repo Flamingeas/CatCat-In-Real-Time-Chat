@@ -60,6 +60,8 @@ pub enum ServerEvent {
     MemberLeft { server_id: Uuid, user_id: Uuid, username: String },
     MemberRoleUpdated { server_id: Uuid, user_id: Uuid, username: String, role: String },
     MemberKicked { server_id: Uuid, user_id: Uuid, username: String },
+    MemberBanned {server_id: uuid::Uuid, user_id: uuid::Uuid, username: String},
+    MemberUnbanned {server_id: uuid::Uuid, user_id: uuid::Uuid, username: String},
 }
 
 pub struct WsServer {
@@ -333,6 +335,7 @@ impl Handler<ClientMessage> for WsServer {
                     );
                 }
             }
+          
         }
     }
 }
@@ -385,6 +388,32 @@ impl Handler<ServerEvent> for WsServer {
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberKicked {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+            }
+            ServerEvent::MemberBanned { server_id, user_id, username } => {
+                // Exactement comme le kick : on l'éjecte des salons en direct !
+                if let Some(set) = self.server_rooms.get_mut(&server_id) {
+                    set.remove(&user_id);
+                }
+
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberBanned {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+            }
+            ServerEvent::MemberUnbanned { server_id, user_id, username } => {
+                // Pour le déban, on prévient juste le serveur (il rejoindra les salons plus tard s'il est réinvité)
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberUnbanned {
                         server_id,
                         user_id,
                         username,

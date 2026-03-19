@@ -404,6 +404,90 @@ impl ServerRepository {
 
         Ok(())
     }
+    pub async fn ban_member(
+        &self,
+        server_id: uuid::Uuid,
+        user_id: uuid::Uuid,
+        banned_by: uuid::Uuid,
+        reason: String,
+        expires_at: Option<chrono::DateTime<chrono::Utc>>,
+    ) -> Result<(), sqlx::Error> {
+        let res = sqlx::query!(
+            r#"
+            INSERT INTO server_bans (server_id, user_id, banned_by, reason, expires_at)
+            VALUES ($1, $2, $3, $4, $5)
+            "#,
+            server_id,
+            user_id,
+            banned_by,
+            reason,
+            expires_at
+        )
+        .execute(&self.pool)
+        .await?;
+
+        // On supprime également l'utilisateur de la table server_members
+        sqlx::query!(
+            r#"
+            DELETE FROM server_members
+            WHERE server_id = $1 AND user_id = $2
+            "#,
+            server_id,
+            user_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn unban_member(
+        &self,
+        server_id: uuid::Uuid,
+        user_id: uuid::Uuid,
+    ) -> Result<(), sqlx::Error> {
+        sqlx::query!(
+            r#"
+            DELETE FROM server_bans
+            WHERE server_id = $1 AND user_id = $2
+            "#,
+            server_id,
+            user_id
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn list_bans(
+        &self,
+        server_id: uuid::Uuid,
+    ) -> Result<Vec<serde_json::Value>, sqlx::Error> {
+        // Retourne une liste JSON basique pour l'instant
+        let bans = sqlx::query!(
+            r#"
+            SELECT user_id, banned_by, reason, expires_at, created_at 
+            FROM server_bans 
+            WHERE server_id = $1
+            "#,
+            server_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let result = bans.into_iter().map(|b| {
+            serde_json::json!({
+                "user_id": b.user_id,
+                "banned_by": b.banned_by,
+                "reason": b.reason,
+                "expires_at": b.expires_at,
+                "created_at": b.created_at
+            })
+        }).collect();
+
+        Ok(result)
+    }
 }
 
 #[cfg(test)]

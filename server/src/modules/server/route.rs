@@ -3,6 +3,7 @@ use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use serde_json::json;
 use validator::Validate;
+use utoipa::IntoParams;
 
 use crate::modules::auth::AuthenticatedUser;
 use crate::modules::server::service::{JoinServerError, LeaveServerError, ServerService};
@@ -210,12 +211,25 @@ pub async fn list_members(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct MemberPath {
     pub id: uuid::Uuid,
     pub user_id: uuid::Uuid,
 }
 
+#[utoipa::path(
+    patch,
+    path = "/api/servers/{id}/members/{user_id}/role",
+    tag = "Server Members",
+    params(MemberPath),
+    request_body = UpdateServerMemberRole,
+    responses(
+        (status = 200, description = "Rôle mis à jour avec succès"),
+        (status = 400, description = "Erreur de requête"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn set_member_role(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -230,23 +244,10 @@ pub async fn set_member_role(
     let server_id = path.id;
     let target_user_id = path.user_id;
 
-    match service
-        .set_role(user.user_id, server_id, target_user_id, payload.role.clone())
-        .await
-    {
+    match service.set_role(user.user_id, server_id, target_user_id, payload.role.clone()).await {
         Ok(_) => {
-            let username = service
-                .get_username(target_user_id)
-                .await
-                .unwrap_or_else(|_| "unknown".to_string());
-
-            ws.do_send(ServerEvent::MemberRoleUpdated {
-                server_id,
-                user_id: target_user_id,
-                username,
-                role: payload.role.as_str().to_string(),
-            });
-
+            let username = service.get_username(target_user_id).await.unwrap_or_else(|_| "unknown".to_string());
+            ws.do_send(ServerEvent::MemberRoleUpdated { server_id, user_id: target_user_id, username, role: payload.role.as_str().to_string() });
             HttpResponse::Ok().json(json!({ "message": "Role updated" }))
         }
         Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
@@ -254,11 +255,23 @@ pub async fn set_member_role(
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
 pub struct TransferOwnerPayload {
     pub new_owner_id: uuid::Uuid,
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/servers/{id}/transfer-owner",
+    tag = "Servers",
+    params(("id" = Uuid, Path, description = "L'ID du serveur")),
+    request_body = TransferOwnerPayload,
+    responses(
+        (status = 200, description = "Propriétaire transféré", body = ServerResponse),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn transfer_owner(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -267,47 +280,36 @@ pub async fn transfer_owner(
     payload: web::Json<TransferOwnerPayload>,
 ) -> impl Responder {
     let server_id = path.into_inner();
-
     let old_owner_id = match service.get_server_owner_id(server_id).await {
         Ok(id) => id,
         Err(e) => return HttpResponse::BadRequest().json(json!({ "error": e })),
     };
 
-    match service
-        .transfer_owner(user.user_id, server_id, payload.new_owner_id)
-        .await
-    {
+    match service.transfer_owner(user.user_id, server_id, payload.new_owner_id).await {
         Ok(server) => {
-            let new_owner_username = service
-                .get_username(payload.new_owner_id)
-                .await
-                .unwrap_or_else(|_| "unknown".into());
-
-            ws.do_send(ServerEvent::MemberRoleUpdated {
-                server_id,
-                user_id: payload.new_owner_id,
-                username: new_owner_username,
-                role: "owner".into(),
-            });
-
-            let old_owner_username = service
-                .get_username(old_owner_id)
-                .await
-                .unwrap_or_else(|_| "unknown".into());
-
-            ws.do_send(ServerEvent::MemberRoleUpdated {
-                server_id,
-                user_id: old_owner_id,
-                username: old_owner_username,
-                role: "member".into(),
-            });
-
+            let new_owner_username = service.get_username(payload.new_owner_id).await.unwrap_or_else(|_| "unknown".into());
+            ws.do_send(ServerEvent::MemberRoleUpdated { server_id, user_id: payload.new_owner_id, username: new_owner_username, role: "owner".into() });
+            
+            let old_owner_username = service.get_username(old_owner_id).await.unwrap_or_else(|_| "unknown".into());
+            ws.do_send(ServerEvent::MemberRoleUpdated { server_id, user_id: old_owner_id, username: old_owner_username, role: "member".into() });
+            
             HttpResponse::Ok().json(ServerResponse::from(server))
         }
         Err(e) => HttpResponse::Forbidden().json(json!({ "error": e })),
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/servers/{id}/members/{user_id}",
+    tag = "Server Members",
+    params(MemberPath),
+    responses(
+        (status = 200, description = "Membre expulsé"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn kick_member(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -319,17 +321,8 @@ pub async fn kick_member(
 
     match service.kick_member(user.user_id, server_id, target_user_id).await {
         Ok(_) => {
-            let username = service
-                .get_username(target_user_id)
-                .await
-                .unwrap_or_else(|_| "unknown".to_string());
-
-            ws.do_send(ServerEvent::MemberKicked {
-                server_id,
-                user_id: target_user_id,
-                username,
-            });
-
+            let username = service.get_username(target_user_id).await.unwrap_or_else(|_| "unknown".to_string());
+            ws.do_send(ServerEvent::MemberKicked { server_id, user_id: target_user_id, username });
             HttpResponse::Ok().json(json!({ "message": "Member removed" }))
         }
         Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
@@ -337,6 +330,103 @@ pub async fn kick_member(
     }
 }
 
+#[utoipa::path(
+    post,
+    path = "/api/servers/{id}/bans/{user_id}",
+    tag = "Server Bans",
+    params(MemberPath),
+    responses(
+        (status = 200, description = "Membre banni"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
+pub async fn ban_member(
+    user: AuthenticatedUser,
+    service: web::Data<ServerService>,
+    ws: web::Data<Addr<WsServer>>,
+    path: web::Path<MemberPath>,
+) -> impl Responder {
+    let server_id = path.id;
+    let target_user_id = path.user_id;
+
+    match service.ban_member(user.user_id, server_id, target_user_id).await {
+        Ok(_) => {
+            let username = service.get_username(target_user_id).await.unwrap_or_else(|_| "unknown".to_string());
+            ws.do_send(ServerEvent::MemberBanned { server_id, user_id: target_user_id, username });
+            HttpResponse::Ok().json(json!({ "message": "Member banned" }))
+        }
+        Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/servers/{id}/bans",
+    tag = "Server Bans",
+    params(("id" = Uuid, Path, description = "L'ID du serveur")),
+    responses(
+        (status = 200, description = "Liste des membres bannis"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
+pub async fn ban_list(
+    user: AuthenticatedUser,
+    service: web::Data<ServerService>,
+    path: web::Path<uuid::Uuid>,
+) -> impl Responder {
+    let server_id = path.into_inner();
+
+    match service.list_bans(user.user_id, server_id).await {
+        Ok(bans) => HttpResponse::Ok().json(bans),
+        Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/servers/{id}/bans/{user_id}",
+    tag = "Server Bans",
+    params(MemberPath),
+    responses(
+        (status = 200, description = "Membre débanni"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
+pub async fn unban_member(
+    user: AuthenticatedUser,
+    service: web::Data<ServerService>,
+    ws: web::Data<Addr<WsServer>>,
+    path: web::Path<MemberPath>,
+) -> impl Responder {
+    let server_id = path.id;
+    let target_user_id = path.user_id;
+
+    match service.unban_member(user.user_id, server_id, target_user_id).await {
+        Ok(_) => {
+            let username = service.get_username(target_user_id).await.unwrap_or_else(|_| "unknown".to_string());
+            ws.do_send(ServerEvent::MemberUnbanned { server_id, user_id: target_user_id, username });
+            HttpResponse::Ok().json(json!({ "message": "Member unbanned" }))
+        }
+        Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/servers/{id}",
+    tag = "Servers",
+    params(("id" = Uuid, Path, description = "L'ID du serveur à supprimer")),
+    responses(
+        (status = 200, description = "Serveur supprimé avec succès")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn delete_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
