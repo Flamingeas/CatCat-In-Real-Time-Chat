@@ -208,20 +208,20 @@
         const [channelCreateError, setChannelCreateError] = useState<string | null>(null);
         const [isChannelCreating, setIsChannelCreating] = useState(false);
     
-        const [isChannelEditOpen, setIsChannelEditOpen] = useState(false);
-        const [channelEditName, setChannelEditName] = useState("");
+
+
         const [channelEditError, setChannelEditError] = useState<string | null>(null);
-        const [isChannelSaving, setIsChannelSaving] = useState(false);
+
     
         const wsRef = useRef<WebSocket | null>(null);
         const myIdRef = useRef<string | null>(null);
         const selectedServerIdRef = useRef<string | null>(null);
     
         const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-        const [settingsName, setSettingsName] = useState("");
-        const [settingsError, setSettingsError] = useState<string | null>(null);
+
+
         const [isSavingSettings, setIsSavingSettings] = useState(false);
-        const [deleteConfirm, setDeleteConfirm] = useState("");
+
     
         const [isLeaveOpen, setIsLeaveOpen] = useState(false);
         const [leaveError, setLeaveError] = useState<string | null>(null);
@@ -260,7 +260,7 @@
         const isOwner = myRole === "owner";
         const canCreateChannel = myRole === "owner" || myRole === "admin";
         const canInviteMember = myRole === "owner" || myRole === "admin";
-        const canEditChannel = myRole === "owner" || myRole === "admin";
+
         const canModerateMessages = myRole === "owner" || myRole === "admin";
         const [messages, setMessages] = useState<Message[]>([]);
         const [messagesLoading, setMessagesLoading] = useState(false);
@@ -423,49 +423,9 @@
             }
         }
     
-        function openEditChannel() {
-            if (!canEditChannel) return;
-            if (!selectedChannel) return;
-            setChannelEditError(null);
-            setChannelEditName(selectedChannel.name ?? "");
-            setIsChannelEditOpen(true);
-        }
+
     
-        async function saveChannelEdit() {
-            if (!canEditChannel) return;
-            if (!selectedServerId) return;
-            if (!selectedChannel) return;
-    
-            setChannelEditError(null);
-            const name = channelEditName.trim();
-    
-            if (name.length < 3) return setChannelEditError("Le nom doit faire au moins 3 caractères.");
-            if (name.length > 50) return setChannelEditError("Le nom doit faire maximum 50 caractères.");
-    
-            try {
-                setIsChannelSaving(true);
-    
-                const updated = await api<Channel>(`/api/channels/${String(selectedChannel.id)}`, {
-                    method: "PUT",
-                    body: JSON.stringify({ name }),
-                });
-    
-                setChannels((prev) =>
-                    prev.map((c) =>
-                        String(c.id) === String(selectedChannel.id) ? { ...c, name: updated.name ?? name, updated_at: updated.updated_at ?? c.updated_at } : c
-                    )
-                );
-    
-                setIsChannelEditOpen(false);
-                pushToast("Salon renommé", "success");
-    
-                await reloadChannels(selectedServerId);
-            } catch (e: any) {
-                setChannelEditError(e?.message ?? "Impossible de renommer le salon.");
-            } finally {
-                setIsChannelSaving(false);
-            }
-        }
+
     
         async function fetchMessages(channelId: string, opts?: { before?: string; append?: boolean }) {
             const before = opts?.before ? encodeURIComponent(opts.before) : null;
@@ -1068,32 +1028,7 @@
             }
         }
     
-        async function deleteChannel(channelId: string) {
-            if (!selectedServerId) return;
-            if (!canCreateChannel) return;
-    
-            try {
-                await api<void>(`/api/channels/${channelId}`, { method: "DELETE" });
-    
-                setChannels((prev) => {
-                    const next = prev.filter((c) => String(c.id) !== String(channelId));
-    
-                    setSelectedChannelId((prevSelected) => {
-                        if (prevSelected && String(prevSelected) !== String(channelId)) return prevSelected;
-                        return next.length ? String(next[0].id) : null;
-                    });
-    
-                    return next;
-                });
-    
-                pushToast("Salon supprimé", "warn");
-    
-                await reloadChannels(selectedServerId);
-            } catch (e: any) {
-                pushToast("Suppression refusée", "warn");
-                console.error(e);
-            }
-        }
+
     
         function openInviteMember() {
             if (!selectedServerId || !selectedServer) return;
@@ -1103,13 +1038,7 @@
             setIsInviteOpen(true);
         }
     
-        function openServerSettings() {
-            if (!selectedServer || !isOwner) return;
-            setSettingsError(null);
-            setDeleteConfirm("");
-            setSettingsName(selectedServer.name);
-            setIsSettingsOpen(true);
-        }
+
     
         async function saveServerSettings() {
             if (!selectedServer || !isOwner) return;
@@ -1233,10 +1162,14 @@
                     <ChannelBar
                         selectedServerId={selectedServerId}
                         servers={servers}
-                        isOwner={isOwner}
                         canCreateChannel={canCreateChannel}
                         channels={channels}
-                        onOpenServerSettings={openServerSettings}
+                        setChannels={setChannels}
+                        selectedChannelId={selectedChannelId}
+                        onOpenCreateChannel={openCreateChannel}
+                        setServers={setServers}
+                        onSelectChannel={setSelectedChannelId}
+
                     />
                 </div>
     
@@ -1588,51 +1521,7 @@
                     </div>
                 </div>
     
-                {isChannelEditOpen && selectedChannel && canEditChannel && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-black/70" onClick={() => !isChannelSaving && setIsChannelEditOpen(false)} />
-                        <div className="relative w-full max-w-md rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
-                            <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">Renommer le salon</h3>
-                                <button onClick={() => !isChannelSaving && setIsChannelEditOpen(false)} className="text-[#DCCBC4]/60 hover:text-white cursor-pointer">
-                                    ✕
-                                </button>
-                            </div>
-    
-                            <label className="block text-sm text-[#DCCBC4]/70 mb-2">Nom du salon</label>
-                            <input
-                                value={channelEditName}
-                                onChange={(e) => setChannelEditName(e.target.value)}
-                                placeholder="ex: general"
-                                className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
-                            />
-    
-                            {channelEditError && <div className="mt-3 text-sm text-red-400">{channelEditError}</div>}
-    
-                            <div className="mt-5 flex gap-2 justify-end">
-                                <button
-                                    onClick={() => setIsChannelEditOpen(false)}
-                                    disabled={isChannelSaving}
-                                    className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
-                                >
-                                    Annuler
-                                </button>
-                                <button
-                                    onClick={saveChannelEdit}
-                                    disabled={isChannelSaving}
-                                    className="px-4 py-2 rounded-xl bg-[#EB5E28] text-[#1E1211] font-bold hover:bg-white disabled:opacity-50 cursor-pointer"
-                                >
-                                    {isChannelSaving ? "Sauvegarde..." : "Sauvegarder"}
-                                </button>
-                            </div>
-    
-                            <div className="mt-4 text-xs text-[#DCCBC4]/40">
-                                Endpoint attendu: <span className="text-[#DCCBC4]/70">PUT /api/channels/:id</span> avec{" "}
-                                <span className="text-[#DCCBC4]/70">{`{ name }`}</span>
-                            </div>
-                        </div>
-                    </div>
-                )}
+
     
                 {isChannelCreateOpen && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1724,67 +1613,7 @@
                     </div>
                 )}
     
-                {isSettingsOpen && selectedServer && isOwner && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-                        <div className="absolute inset-0 bg-black/70" onClick={() => !isSavingSettings && setIsSettingsOpen(false)} />
-                        <div className="relative w-full max-w-lg rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
-                            <div className="flex items-center justify-between mb-4">
-                                <div>
-                                    <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">Paramètres du serveur</h3>
-                                    <div className="text-xs text-[#DCCBC4]/50 mt-1">Serveur: {selectedServer.name}</div>
-                                </div>
-                                <button onClick={() => !isSavingSettings && setIsSettingsOpen(false)} className="text-[#DCCBC4]/60 hover:text-white">
-                                    ✕
-                                </button>
-                            </div>
-                            <div className="rounded-2xl border border-[#ffffff]/10 bg-[#0a0605] p-4">
-                                <div className="text-white font-bold mb-2">Renommer le serveur</div>
-                                <label className="block text-sm text-[#DCCBC4]/70 mb-2">Nom</label>
-                                <input
-                                    value={settingsName}
-                                    onChange={(e) => setSettingsName(e.target.value)}
-                                    className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
-                                />
-                                <div className="mt-4 flex justify-end gap-2">
-                                    <button
-                                        onClick={saveServerSettings}
-                                        disabled={isSavingSettings}
-                                        className="px-4 py-2 rounded-xl bg-[#EB5E28] text-[#1E1211] font-bold hover:bg-white disabled:opacity-50 cursor-pointer"
-                                    >
-                                        {isSavingSettings ? "Sauvegarde..." : "Sauvegarder"}
-                                    </button>
-                                </div>
-                            </div>
-                            <div className="mt-4 rounded-2xl border border-red-500/20 bg-[#0a0605] p-4">
-                                <div className="text-red-300 font-bold mb-1">Supprimer le serveur</div>
-                                <div className="text-sm text-[#DCCBC4]/60">
-                                    Cette action est <span className="text-red-300 font-bold">irréversible</span>. Même s’il y a des membres dedans.
-                                </div>
-                                <div className="mt-3">
-                                    <div className="text-xs text-[#DCCBC4]/50 mb-2">
-                                        Tape <span className="text-red-300 font-bold">DELETE</span> pour confirmer
-                                    </div>
-                                    <input
-                                        value={deleteConfirm}
-                                        onChange={(e) => setDeleteConfirm(e.target.value)}
-                                        placeholder="DELETE"
-                                        className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-red-500/20 focus:outline-none focus:ring-1 focus:ring-red-400"
-                                    />
-                                </div>
-                                <div className="mt-4 flex justify-end">
-                                    <button
-                                        onClick={deleteServer}
-                                        disabled={isSavingSettings}
-                                        className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold hover:bg-red-400 disabled:opacity-50 cursor-pointer"
-                                    >
-                                        {isSavingSettings ? "Suppression..." : "Supprimer"}
-                                    </button>
-                                </div>
-                            </div>
-                            {settingsError && <div className="mt-4 text-sm text-red-400">{settingsError}</div>}
-                        </div>
-                    </div>
-                )}
+
     
                 {isLeaveOpen && selectedServer && !isOwner && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
