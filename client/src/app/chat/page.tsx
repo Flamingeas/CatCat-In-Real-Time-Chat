@@ -68,6 +68,7 @@ type WsEvent =
     | { type: "server_member_role_updated"; server_id: string; user_id: string; username: string; role: MemberRole | string }
     | { type: "server_member_kicked"; server_id: string; user_id: string; username: string }
     | { type: "server_deleted"; server_id: string }
+    | { type: "server_updated"; server_id: string }
     | { type: "channel_created"; server_id: string; channel_id: string; name: string; created_at: string }
     | { type: "channel_deleted"; server_id: string; channel_id: string }
     | { type: "channel_updated"; server_id: string; channel_id: string }
@@ -874,7 +875,14 @@ export default function ChatPage() {
                     setServers((prev) => prev.filter((s) => String(s.id) !== sid));
                     return;
                 }
+                if (msg.type === "server_updated") {
+                    const sid = String(msg.server_id ?? "");
+                    if (!sid) return;
 
+                    refreshServers(sid).catch(() => {});
+                    pushToast("Serveur modifié", "info");
+                    return;
+                }
                 if (msg.type === "user_connected" || msg.type === "user_disconnected" || msg.type === "user_status_changed") {
                     const currentSid = selectedServerIdRef.current;
                     const sid = msg.server_id != null ? String(msg.server_id) : null;

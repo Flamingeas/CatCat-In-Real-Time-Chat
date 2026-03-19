@@ -63,6 +63,7 @@ pub enum ClientMessage {
 #[rtype(result = "()")]
 pub enum ServerEvent {
     ServerDeleted { server_id: Uuid },
+    ServerUpdated { server_id: Uuid },
     MemberJoined { server_id: Uuid, user_id: Uuid, username: String },
     MemberLeft { server_id: Uuid, user_id: Uuid, username: String },
     MemberRoleUpdated { server_id: Uuid, user_id: Uuid, username: String, role: String },
@@ -392,6 +393,12 @@ impl Handler<ServerEvent> for WsServer {
             ServerEvent::ServerDeleted { server_id } => {
                 self.broadcast_to_server(server_id, OutgoingMessage::ServerDeleted { server_id });
                 self.server_rooms.remove(&server_id);
+            }
+            ServerEvent::ServerUpdated { server_id } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerUpdated { server_id }
+                );
             }
             ServerEvent::MemberJoined { server_id, user_id, username } => {
                 self.broadcast_to_server(
