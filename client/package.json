@@ -20,6 +20,10 @@
     "@types/react": "19.2.10",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
-    "tailwindcss": "^4.0.0"
+    "tailwindcss": "^4.0.0",
+    "typescript": "5.9.3"
+  },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.2.1"
   }
 }
