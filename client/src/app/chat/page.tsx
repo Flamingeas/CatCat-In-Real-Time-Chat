@@ -275,7 +275,7 @@ export default function ChatPage() {
     function pushToast(text: string, kind: Toast["kind"] = "info") {
         const id = `${Date.now()}_${Math.random()}`;
         setToasts((prev) => [...prev, { id, text, kind }]);
-        window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2500);
+        window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3500);
     }
 
     useEffect(() => {
@@ -942,7 +942,7 @@ export default function ChatPage() {
                             delete copy[uid];
                             return copy;
                         });
-                    }, 2000);
+                    }, 5000);
 
                     typingTimeoutsRef.current.set(uid, t);
                     return;
