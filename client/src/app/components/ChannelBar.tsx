@@ -144,7 +144,7 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
         try {
             const list = await api<Channel[]>(`/api/servers/${selectedServer.id}/channels`);
             setChannels(list);
-            setSelectedChannelId((prev) => {
+            onSelectChannel((prev) => {
                 if (prev && list.some((c) => String(c.id) === String(prev))) return prev;
                 return list.length ? String(list[0].id) : null;
             });
@@ -239,7 +239,7 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
             setChannels((prev) => {
                 const next = prev.filter((c) => String(c.id) !== String(channelId));
 
-                setSelectedChannelId((prevSelected) => {
+                onSelectChannel((prevSelected) => {
                     if (prevSelected && String(prevSelected) !== String(channelId)) return prevSelected;
                     return next.length ? String(next[0].id) : null;
                 });
