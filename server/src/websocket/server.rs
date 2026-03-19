@@ -432,10 +432,6 @@ impl Handler<ServerEvent> for WsServer {
                 );
             }
             ServerEvent::MemberKicked { server_id, user_id, username } => {
-                if let Some(set) = self.server_rooms.get_mut(&server_id) {
-                    set.remove(&user_id);
-                }
-
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberKicked {
@@ -444,6 +440,10 @@ impl Handler<ServerEvent> for WsServer {
                         username,
                     },
                 );
+
+                if let Some(set) = self.server_rooms.get_mut(&server_id) {
+                    set.remove(&user_id);
+                }
             }
             ServerEvent::MemberBanned { server_id, user_id, username } => {
                 self.send_to(

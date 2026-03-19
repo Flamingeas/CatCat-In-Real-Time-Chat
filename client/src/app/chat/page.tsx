@@ -706,6 +706,7 @@ export default function ChatPage() {
             try {
                 const msg = JSON.parse(e.data) as WsEvent;
                 if (!msg || typeof msg !== "object") return;
+                console.log(msg)
 
                 if (msg.type === "presence_snapshot" && msg.server_id && Array.isArray(msg.online)) {
                     const currentSid = selectedServerIdRef.current;
@@ -822,21 +823,23 @@ export default function ChatPage() {
                     if (!isMe) pushToast(`${msg.username} est maintenant ${role}`, "info");
                     return;
                 }
-
                 if (msg.type === "server_member_kicked") {
-                    const sid = String((msg as any).server_id ?? "");
-                    const uid = String((msg as any).user_id ?? "");
-                    const username = String((msg as any).username ?? "quelqu’un");
+                    const sid = String(msg.server_id ?? "");
+                    const uid = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "quelqu’un");
+
                     if (!sid || !uid) return;
 
                     const currentSid = selectedServerIdRef.current;
                     if (currentSid && sid !== String(currentSid)) return;
 
-                    const isMe = myIdRef.current && String(myIdRef.current) === uid;
+                    const isMe = !!myIdRef.current && String(myIdRef.current) === uid;
 
                     removeMember(sid, uid);
 
                     if (isMe) {
+                        wsSend({ type: "leave_server", server_id: sid });
+
                         pushToast("Tu as été expulsé du serveur", "warn");
 
                         setSelectedServerId(null);
@@ -856,6 +859,7 @@ export default function ChatPage() {
                     } else {
                         pushToast(`${username} a été expulsé`, "warn");
                     }
+
                     return;
                 }
 
