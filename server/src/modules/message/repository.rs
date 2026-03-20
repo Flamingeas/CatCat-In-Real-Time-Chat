@@ -117,7 +117,6 @@ impl<'a> MessageRepository<'a> {
                 "updated_at": BsonDateTime::now()
             }
         };
-
         let options = mongodb::options::FindOneAndUpdateOptions::builder()
             .return_document(mongodb::options::ReturnDocument::After)
             .build();
@@ -125,7 +124,7 @@ impl<'a> MessageRepository<'a> {
         let message = self
             .collection()
             .find_one_and_update(filter, update)
-            .with_options(options)
+            .return_document(mongodb::options::ReturnDocument::After)
             .await?
             .ok_or_else(|| {
                 mongodb::error::Error::from(std::io::Error::new(
@@ -146,7 +145,6 @@ impl<'a> MessageRepository<'a> {
         let filter = doc! {
             "message_id": uuid_bin0(message_id)
         };
-
         let update = doc! {
             "$set": { "deleted_at": BsonDateTime::now() }
         };
@@ -166,7 +164,6 @@ impl<'a> MessageRepository<'a> {
                 { "deleted_at": null }
             ]
         };
-
         self.collection().count_documents(filter).await
     }
 }

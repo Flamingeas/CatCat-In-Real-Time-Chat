@@ -1,10 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 
 use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::models::channel::{Channel, UpdateChannel};
-use crate::modules::channel::repository::{ChannelRepository, ChannelRepositoryTrait};
+use crate::modules::channel::repository::{ChannelRepositoryTrait};
 
 #[async_trait]
 pub trait ChannelServiceTrait: Send + Sync {
@@ -32,7 +32,7 @@ pub trait ChannelServiceTrait: Send + Sync {
         &self,
         channel_id: Uuid,
         user_id: Uuid,
-    ) -> Result<(), String>;
+    ) -> Result<Channel, String>;
 }
 
 pub struct ChannelService {
@@ -101,7 +101,7 @@ impl ChannelService {
         &self,
         channel_id: Uuid,
         user_id: Uuid,
-    ) -> Result<(), String> {
+    ) -> Result<Channel, String> {
         if !self.repo.user_can_manage_channel(channel_id, user_id).await? {
             return Err("Forbidden".into());
         }
@@ -141,17 +141,14 @@ impl ChannelServiceTrait for ChannelService {
         ChannelService::update_channel(self, channel_id, payload, user_id).await
     }
 
-    async fn delete_channel(
-        &self,
-        channel_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<(), String> {
+    async fn delete_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<Channel, String> {
         ChannelService::delete_channel(self, channel_id, user_id).await
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
     use super::*;
     use chrono::Utc;
 

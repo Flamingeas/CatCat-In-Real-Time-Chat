@@ -1,8 +1,10 @@
 use sqlx::{FromRow, PgPool, Postgres, Transaction};
 use uuid::Uuid;
+use chrono::NaiveDateTime;
 
 use crate::models::server::{Server, UpdateServer};
 use crate::models::server_member::{ServerMemberRole, ServerMemberResponse};
+use crate::models::server_ban::ServerBanResponse;
 
 #[derive(Debug, FromRow)]
 struct ServerMemberRow {
@@ -40,6 +42,113 @@ impl ServerRepository {
 
         tx.commit().await?;
         Ok(server)
+    }
+
+    pub async fn is_banned(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Error> {
+        let exists = sqlx::query_scalar::<_, bool>(
+            r#"
+        SELECT EXISTS(
+            SELECT 1
+            FROM server_bans
+            WHERE server_id = $1
+              AND user_id = $2
+              AND (expires_at IS NULL OR expires_at > NOW())
+        )
+        "#,
+        )
+            .bind(server_id)
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
+
+        Ok(exists)
+    }
+
+    pub async fn ban_member(
+        &self,
+        server_id: Uuid,
+        user_id: Uuid,
+        banned_by: Uuid,
+        reason: Option<String>,
+        expires_at: Option<NaiveDateTime>,
+    ) -> Result<(), sqlx::Error> {
+        let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
+
+        sqlx::query!(
+        r#"
+        INSERT INTO server_bans (server_id, user_id, banned_by, reason, expires_at)
+        VALUES ($1, $2, $3, $4, $5)
+        ON CONFLICT (server_id, user_id)
+        DO UPDATE SET
+            banned_by = EXCLUDED.banned_by,
+            reason = EXCLUDED.reason,
+            expires_at = EXCLUDED.expires_at,
+            created_at = NOW()
+        "#,
+        server_id,
+        user_id,
+        banned_by,
+        reason,
+        expires_at
+    )
+            .execute(&mut *tx)
+            .await?;
+
+        sqlx::query!(
+        r#"
+        DELETE FROM server_members
+        WHERE server_id = $1 AND user_id = $2
+        "#,
+        server_id,
+        user_id
+    )
+            .execute(&mut *tx)
+            .await?;
+
+        tx.commit().await?;
+        Ok(())
+    }
+
+    pub async fn list_bans(&self, server_id: Uuid) -> Result<Vec<ServerBanResponse>, sqlx::Error> {
+        let bans = sqlx::query_as::<_, ServerBanResponse>(
+            r#"
+        SELECT
+            sb.user_id,
+            u.username,
+            sb.reason,
+            sb.created_at,
+            sb.expires_at
+        FROM server_bans sb
+        INNER JOIN users u ON u.id = sb.user_id
+        WHERE sb.server_id = $1
+          AND (sb.expires_at IS NULL OR sb.expires_at > NOW())
+        ORDER BY sb.created_at DESC
+        "#,
+        )
+            .bind(server_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(bans)
+    }
+
+    pub async fn unban_member(&self, server_id: Uuid, user_id: Uuid) -> Result<(), sqlx::Error> {
+        let res = sqlx::query!(
+        r#"
+        DELETE FROM server_bans
+        WHERE server_id = $1 AND user_id = $2
+        "#,
+        server_id,
+        user_id
+    )
+            .execute(&self.pool)
+            .await?;
+
+        if res.rows_affected() == 0 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+
+        Ok(())
     }
 
     async fn insert_server_retrying_code(
@@ -101,22 +210,43 @@ impl ServerRepository {
 
         let server = sqlx::query_as::<_, Server>(
             r#"
-            SELECT id, name, owner_id, invitation_code, created_at, updated_at
-            FROM servers
-            WHERE invitation_code = $1
-            "#,
+        SELECT id, name, owner_id, invitation_code, created_at, updated_at
+        FROM servers
+        WHERE invitation_code = $1
+        "#,
         )
             .bind(code)
             .fetch_one(&mut *tx)
             .await?;
 
+        let is_banned = sqlx::query_scalar::<_, bool>(
+            r#"
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM server_bans
+                    WHERE server_id = $1
+                      AND user_id = $2
+                      AND (expires_at IS NULL OR expires_at > NOW())
+                )
+            "#,
+        )
+            .bind(server.id)
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await?;
+
+        if is_banned {
+            tx.rollback().await?;
+            return Err(sqlx::Error::Protocol("User is banned from this server".into()));
+        }
+
         let inserted = sqlx::query_scalar::<_, Uuid>(
             r#"
-            INSERT INTO server_members (server_id, user_id, role)
-            VALUES ($1, $2, 'member')
-            ON CONFLICT (server_id, user_id) DO NOTHING
-            RETURNING server_id
-            "#,
+        INSERT INTO server_members (server_id, user_id, role)
+        VALUES ($1, $2, 'member')
+        ON CONFLICT (server_id, user_id) DO NOTHING
+        RETURNING server_id
+        "#,
         )
             .bind(server.id)
             .bind(user_id)
@@ -532,6 +662,11 @@ mod tests {
     }
 
     async fn cleanup(pool: &PgPool, server_id: Uuid, user_ids: &[Uuid]) {
+        let _ = sqlx::query("DELETE FROM server_bans WHERE server_id = $1")
+            .bind(server_id)
+            .execute(pool)
+            .await;
+
         let _ = sqlx::query("DELETE FROM server_members WHERE server_id = $1")
             .bind(server_id)
             .execute(pool)

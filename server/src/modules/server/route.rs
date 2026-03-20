@@ -74,6 +74,7 @@ pub async fn list_servers(user: AuthenticatedUser, service: web::Data<ServerServ
 pub async fn update_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
+    ws: web::Data<Addr<WsServer>>,
     path: web::Path<uuid::Uuid>,
     payload: web::Json<UpdateServer>,
 ) -> impl Responder {
@@ -84,7 +85,12 @@ pub async fn update_server(
     let server_id = path.into_inner();
 
     match service.update_server(user.user_id, server_id, payload.into_inner()).await {
-        Ok(server) => HttpResponse::Ok().json(ServerResponse::from(server)),
+        Ok(server) => {
+            ws.do_send(ServerEvent::ServerUpdated {
+                server_id,
+            });
+            HttpResponse::Ok().json(ServerResponse::from(server))
+        },
         Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
         Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
     }
@@ -131,8 +137,15 @@ pub async fn join_server(
         Err(JoinServerError::InvalidCode) => {
             HttpResponse::BadRequest().json(json!({ "error": "Invalid invitation code." }))
         }
-        Err(JoinServerError::NotFound) => HttpResponse::NotFound().json(json!({ "error": "Server not found." })),
-        Err(JoinServerError::AlreadyMember) => HttpResponse::Conflict().json(json!({ "error": "Already a member." })),
+        Err(JoinServerError::NotFound) => {
+            HttpResponse::NotFound().json(json!({ "error": "Server not found." }))
+        }
+        Err(JoinServerError::AlreadyMember) => {
+            HttpResponse::Conflict().json(json!({ "error": "Already a member." }))
+        }
+        Err(JoinServerError::Forbidden) => {
+            HttpResponse::Forbidden().json(json!({ "error": "You are banned from this server." }))
+        }
         Err(JoinServerError::Db) => {
             HttpResponse::InternalServerError().json(json!({ "error": "Unable to join server." }))
         }
@@ -427,6 +440,84 @@ pub async fn unban_member(
     ),
     security(("jwt" = []))
 )]
+pub async fn ban_member(
+    user: AuthenticatedUser,
+    service: web::Data<ServerService>,
+    ws: web::Data<Addr<WsServer>>,
+    path: web::Path<MemberPath>,
+) -> impl Responder {
+    let server_id = path.id;
+    let target_user_id = path.user_id;
+
+    match service.ban_member(user.user_id, server_id, target_user_id).await {
+        Ok(_) => {
+            let username = service
+                .get_username(target_user_id)
+                .await
+                .unwrap_or_else(|_| "unknown".to_string());
+
+            ws.do_send(ServerEvent::MemberBanned {
+                server_id,
+                user_id: target_user_id,
+                username,
+            });
+
+            HttpResponse::Ok().json(json!({ "message": "Member banned" }))
+        }
+        Err(e) if e == "Forbidden" => {
+            HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
+        }
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
+pub async fn ban_list(
+    user: AuthenticatedUser,
+    service: web::Data<ServerService>,
+    path: web::Path<uuid::Uuid>,
+) -> impl Responder {
+    let server_id = path.into_inner();
+
+    match service.list_bans(user.user_id, server_id).await {
+        Ok(bans) => HttpResponse::Ok().json(bans),
+        Err(e) if e == "Forbidden" => {
+            HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
+        }
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
+pub async fn unban_member(
+    user: AuthenticatedUser,
+    service: web::Data<ServerService>,
+    ws: web::Data<Addr<WsServer>>,
+    path: web::Path<MemberPath>,
+) -> impl Responder {
+    let server_id = path.id;
+    let target_user_id = path.user_id;
+
+    match service.unban_member(user.user_id, server_id, target_user_id).await {
+        Ok(_) => {
+            let username = service
+                .get_username(target_user_id)
+                .await
+                .unwrap_or_else(|_| "unknown".to_string());
+
+            ws.do_send(ServerEvent::MemberUnbanned {
+                server_id,
+                user_id: target_user_id,
+                username,
+            });
+
+            HttpResponse::Ok().json(json!({ "message": "Member unbanned" }))
+        }
+        Err(e) if e == "Forbidden" => {
+            HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
+        }
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
 pub async fn delete_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -454,7 +545,10 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .route("/{id}/members/{user_id}", web::delete().to(kick_member))
         .route("/{id}/transfer-owner", web::post().to(transfer_owner))
         .route("/{id}", web::put().to(update_server))
-        .route("/{id}", web::delete().to(delete_server));
+        .route("/{id}", web::delete().to(delete_server))
+        .route("/{id}/bans/{user_id}", web::post().to(ban_member))
+        .route("/{id}/bans", web::get().to(ban_list))
+        .route("/{id}/bans/{user_id}", web::delete().to(unban_member));
 }
 
 #[cfg(test)]

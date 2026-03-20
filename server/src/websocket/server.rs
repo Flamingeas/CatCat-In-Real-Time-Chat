@@ -1,5 +1,7 @@
 use actix::{Actor, Context, Handler, Message, Recipient};
 use std::collections::{HashMap, HashSet};
+use chrono::{DateTime, Utc};
+use log::debug;
 use uuid::Uuid;
 
 use super::session::{OutgoingMessage, UserStatus};
@@ -26,9 +28,16 @@ pub enum ClientMessage {
     JoinServer { user_id: Uuid, server_id: Uuid },
     LeaveServer { user_id: Uuid, server_id: Uuid },
 
+    ChannelCreated {
+        server_id: Uuid,
+        channel_id: Uuid,
+        name: String,
+        created_at: String,
+    },
     JoinChannel { user_id: Uuid, channel_id: Uuid },
     LeaveChannel { user_id: Uuid, channel_id: Uuid },
-
+    ChannelDeleted { server_id: Uuid, channel_id: Uuid },
+    ChannelUpdated { server_id: Uuid, channel_id: Uuid },
     Typing { user_id: Uuid, username: String, channel_id: Uuid },
 
     SendMessage { user_id: Uuid, username: String, channel_id: Uuid, content: String },
@@ -50,18 +59,20 @@ pub enum ClientMessage {
     },
 
     StatusChange { user_id: Uuid, username: String, status: UserStatus, server_id: Option<Uuid> },
+    BroadcastMessageUpdated { server_id: Uuid, channel_id: Uuid, message_id: Uuid, content: String, updated_at: DateTime<Utc>},
 }
 
 #[derive(Message)]
 #[rtype(result = "()")]
 pub enum ServerEvent {
     ServerDeleted { server_id: Uuid },
+    ServerUpdated { server_id: Uuid },
     MemberJoined { server_id: Uuid, user_id: Uuid, username: String },
     MemberLeft { server_id: Uuid, user_id: Uuid, username: String },
     MemberRoleUpdated { server_id: Uuid, user_id: Uuid, username: String, role: String },
     MemberKicked { server_id: Uuid, user_id: Uuid, username: String },
-    MemberBanned {server_id: uuid::Uuid, user_id: uuid::Uuid, username: String},
-    MemberUnbanned {server_id: uuid::Uuid, user_id: uuid::Uuid, username: String},
+    MemberBanned { server_id: Uuid, user_id: Uuid, username: String },
+    MemberUnbanned { server_id: Uuid, user_id: Uuid, username: String }
 }
 
 pub struct WsServer {
@@ -256,7 +267,30 @@ impl Handler<ClientMessage> for WsServer {
                     set.remove(&user_id);
                 }
             }
-
+            ClientMessage::ChannelDeleted {
+                server_id,
+                channel_id,
+            } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ChannelDeleted {
+                        server_id,
+                        channel_id,
+                    },
+                );
+            }
+            ClientMessage::ChannelUpdated {
+                server_id,
+                channel_id,
+            } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ChannelUpdated {
+                        server_id,
+                        channel_id,
+                    },
+                );
+            }
             ClientMessage::Typing { user_id, username, channel_id } => {
                 self.broadcast_to_channel(
                     channel_id,
@@ -306,7 +340,22 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
-
+            ClientMessage::ChannelCreated {
+                server_id,
+                channel_id,
+                name,
+                created_at,
+            } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ChannelCreated {
+                        server_id,
+                        channel_id,
+                        name,
+                        created_at,
+                    },
+                );
+            }
             ClientMessage::BroadcastMessageDeleted {
                 server_id,
                 channel_id,
@@ -335,7 +384,26 @@ impl Handler<ClientMessage> for WsServer {
                     );
                 }
             }
-          
+            ClientMessage::BroadcastMessageUpdated {
+                server_id: _,
+                channel_id,
+                message_id,
+                content,
+                updated_at
+            } => {
+                debug!("Broadcasting message update {} in channel {}", message_id, channel_id);
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageUpdated {
+                        message_id,
+                        channel_id,
+                        user_id: Default::default(),
+                        username: "".to_string(),
+                        content,
+                        updated_at: updated_at.to_rfc3339(),
+                    },
+                );
+            }
         }
     }
 }
@@ -348,6 +416,12 @@ impl Handler<ServerEvent> for WsServer {
             ServerEvent::ServerDeleted { server_id } => {
                 self.broadcast_to_server(server_id, OutgoingMessage::ServerDeleted { server_id });
                 self.server_rooms.remove(&server_id);
+            }
+            ServerEvent::ServerUpdated { server_id } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerUpdated { server_id }
+                );
             }
             ServerEvent::MemberJoined { server_id, user_id, username } => {
                 self.broadcast_to_server(
@@ -381,13 +455,46 @@ impl Handler<ServerEvent> for WsServer {
                 );
             }
             ServerEvent::MemberKicked { server_id, user_id, username } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberKicked {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+
+                if let Some(set) = self.server_rooms.get_mut(&server_id) {
+                    set.remove(&user_id);
+                }
+            }
+            ServerEvent::MemberBanned { server_id, user_id, username } => {
+                self.send_to(
+                    user_id,
+                    OutgoingMessage::ServerMemberBanned {
+                        server_id,
+                        user_id,
+                        username: username.clone(),
+                    },
+                );
+
                 if let Some(set) = self.server_rooms.get_mut(&server_id) {
                     set.remove(&user_id);
                 }
 
                 self.broadcast_to_server(
                     server_id,
-                    OutgoingMessage::ServerMemberKicked {
+                    OutgoingMessage::ServerMemberBanned {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+            }
+            ServerEvent::MemberUnbanned { server_id, user_id, username } => {
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberUnbanned {
                         server_id,
                         user_id,
                         username,
