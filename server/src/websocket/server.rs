@@ -501,6 +501,32 @@ impl Handler<ServerEvent> for WsServer {
                     },
                 );
             }
+            ServerEvent::MemberBanned { server_id, user_id, username } => {
+                // Exactement comme le kick : on l'éjecte des salons en direct !
+                if let Some(set) = self.server_rooms.get_mut(&server_id) {
+                    set.remove(&user_id);
+                }
+
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberBanned {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+            }
+            ServerEvent::MemberUnbanned { server_id, user_id, username } => {
+                // Pour le déban, on prévient juste le serveur (il rejoindra les salons plus tard s'il est réinvité)
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberUnbanned {
+                        server_id,
+                        user_id,
+                        username,
+                    },
+                );
+            }
         }
     }
 }

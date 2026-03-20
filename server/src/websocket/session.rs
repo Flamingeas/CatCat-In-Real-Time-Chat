@@ -106,6 +106,7 @@ pub enum IncomingMessage {
     StatusChange { status: UserStatus, server_id: Option<Uuid> },
 
     Ping { t: Option<i64> },
+
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

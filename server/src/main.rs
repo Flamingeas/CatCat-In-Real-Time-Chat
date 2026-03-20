@@ -76,6 +76,15 @@ impl Modify for SecurityAddon {
         crate::modules::server::route::join_server,
         crate::modules::server::route::leave_server,
         crate::modules::server::route::list_members,
+
+        // Member actions :
+        crate::modules::server::route::set_member_role,
+        crate::modules::server::route::transfer_owner,
+        crate::modules::server::route::kick_member,
+        crate::modules::server::route::ban_member,
+        crate::modules::server::route::ban_list,
+        crate::modules::server::route::unban_member,
+        crate::modules::server::route::delete_server,
     ),
     components(
         schemas(
@@ -99,6 +108,8 @@ impl Modify for SecurityAddon {
             crate::models::server::ServerDetailedResponse,
             crate::models::server::JoinServerRequest,
             crate::models::server::Server,
+            crate::modules::server::route::TransferOwnerPayload,
+
         )
     ),
     tags(
