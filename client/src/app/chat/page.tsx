@@ -8,7 +8,10 @@
     import Link from "next/link";
     import { useRouter } from "next/navigation";
     
-    import logoImage from "../images/logo_catcat.svg";
+    //Handlers
+    import { useToast, pushToast } from "@/features/chat/handlers/toast.handler";
+    import reloadChannels from "@/features/chat/handlers/channels.handler"
+    
     
     import NavBar from "../components/NavBar";
     import ChannelBar from "../components/ChannelBar";
@@ -130,8 +133,6 @@
         );
     }
     
-    type Toast = { id: string; text: string; kind: "info" | "success" | "warn" };
-    
     function formatDateTimeFR(input?: string) {
         if (!input) return null;
         const d = new Date(input);
@@ -164,8 +165,7 @@
     
         const [isJoinOpen, setIsJoinOpen] = useState(false);
 
-
-
+        const toasts = useToast();
     
         const [members, setMembers] = useState<Member[]>([]);
         const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
@@ -200,7 +200,6 @@
         const [inviteCopied, setInviteCopied] = useState(false);
         const [inviteError, setInviteError] = useState<string | null>(null);
     
-        const [toasts, setToasts] = useState<Toast[]>([]);
         const lastJoinedToastRef = useRef<Record<string, boolean>>({});
         const lastLeftToastRef = useRef<Record<string, boolean>>({});
         const seenPresenceRef = useRef<Record<string, boolean>>({});
@@ -252,13 +251,7 @@
         useEffect(() => {
             selectedChannelIdRef.current = selectedChannelId;
         }, [selectedChannelId]);
-    
-        function pushToast(text: string, kind: Toast["kind"] = "info") {
-            const id = `${Date.now()}_${Math.random()}`;
-            setToasts((prev) => [...prev, { id, text, kind }]);
-            window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2500);
-        }
-    
+        
         useEffect(() => {
             myIdRef.current = me?.id ?? null;
         }, [me?.id]);
@@ -332,6 +325,11 @@
             removeOnline(idStr);
         }
     
+        useEffect(() =>{
+            if(selectedServerId){
+                reloadMembers(selectedServerId);
+            }
+        },[selectedServerId])
         function upsertMember(serverId: string, user_id: string, username: string) {
             const currentSid = selectedServerIdRef.current;
             if (!currentSid || String(serverId) !== String(currentSid)) return;
@@ -375,27 +373,6 @@
                 setMembers([]);
             }
         }
-    
-        async function reloadChannels(serverId: string) {
-            try {
-                const list = await api<Channel[]>(`/api/servers/${serverId}/channels`);
-                setChannels(list);
-                setSelectedChannelId((prev) => {
-                    if (prev && list.some((c) => String(c.id) === String(prev))) return prev;
-                    return list.length ? String(list[0].id) : null;
-                });
-            } catch (e: any) {
-                const msg = String(e?.message ?? "");
-                if (msg.startsWith("403")) pushToast("Accès refusé aux salons (403)", "warn");
-                if (msg.startsWith("404")) pushToast("Salons introuvables (404)", "warn");
-                setChannels([]);
-                setSelectedChannelId(null);
-            }
-        }
-    
-
-    
-
     
         async function fetchMessages(channelId: string, opts?: { before?: string; append?: boolean }) {
             const before = opts?.before ? encodeURIComponent(opts.before) : null;
@@ -887,19 +864,6 @@
             };
         }, []);
     
-        useEffect(() => {
-            (async () => {
-                try {
-                    const list = await api<Server[]>("/api/servers");
-                    setServers(list);
-                    if (!selectedServerId && list.length > 0) setSelectedServerId(list[0].id);
-                } catch (e) {
-                    console.error("Failed to load servers:", e);
-                }
-            })();
-        }, []);
-    
-
     
         useEffect(() => {
             if (!me?.id) return;
@@ -966,7 +930,11 @@
                 setIsChannelCreateOpen(false);
                 setChannelName("");
 
-                await reloadChannels(selectedServerId);
+                await reloadChannels({
+                    serverId: selectedServerId,
+                    setChannels,
+                    setSelectedChannelId,
+                });
                 setSelectedChannelId(String(created.id));
                 pushToast(`Salon #${created.name} créé`, "success");
             } catch (e: any) {
@@ -976,8 +944,6 @@
             }
         }
     
-
-    
         function openInviteMember() {
             if (!selectedServerId || !selectedServer) return;
             if (!canInviteMember) return;
@@ -985,34 +951,6 @@
             setInviteCopied(false);
             setIsInviteOpen(true);
         }
-    
-
-    
-        async function saveServerSettings() {
-            if (!selectedServer || !isOwner) return;
-    
-            setSettingsError(null);
-            const name = settingsName.trim();
-            if (name.length < 3) return setSettingsError("Le nom doit faire au moins 3 caractères.");
-            if (name.length > 50) return setSettingsError("Le nom doit faire maximum 50 caractères.");
-    
-            try {
-                setIsSavingSettings(true);
-                await api<Server>(`/api/servers/${selectedServer.id}`, {
-                    method: "PUT",
-                    body: JSON.stringify({ name }),
-                });
-    
-                setIsSettingsOpen(false);
-                await refreshServers(selectedServer.id);
-            } catch (e: any) {
-                setSettingsError(e?.message ?? "Impossible de renommer le serveur.");
-            } finally {
-                setIsSavingSettings(false);
-            }
-        }
-    
-
     
         if (!hasCheckedAuth) return null;
     

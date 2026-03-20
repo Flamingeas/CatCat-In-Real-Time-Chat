@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { KeyboardEvent } from "react";
-import Image from "next/image";
-import localFont from "next/font/local";
-import { Nunito } from "next/font/google";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+
+import { api } from "@/lib/api";
+
+//Handler
+import { pushToast } from "@/features/chat/handlers/toast.handler";
+import reloadChannels from "@/features/chat/handlers/channels.handler"
+
 import {
     getServerMembers,
     kickMember,
@@ -17,6 +18,7 @@ import {
     type Member,
     type MemberRole,
 } from "@/features/chat/services/members.service";
+
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 const WS_URL = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws") as string;
 
@@ -29,18 +31,6 @@ type Server = {
     updated_at: string;
 };
 
-type ChannelBarProps = {
-    selectedServerId: string | null;
-    servers: Server[];
-    canCreateChannel: boolean;
-    channels: Channel[];
-    setChannels: (channels: Channel[]) => void;
-    selectedChannelId: string | null;
-    onOpenCreateChannel: () => void;
-    setServers: (servers: Server[]) => void;
-    onSelectChannel: (id: string) => void;
-    setSelectedServerId: (id: string) => void;
-};
 
 type Channel = {
     id: string;
@@ -49,34 +39,6 @@ type Channel = {
     updated_at?: string;
 };
 
-type MemberRole = "owner" | "admin" | "member";
-
-type Member = {
-    user_id: string;
-    username: string;
-    role?: MemberRole;
-};
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
-    const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-
-    const res = await fetch(`${API_BASE}${path}`, {
-        ...init,
-        headers: {
-            "Content-Type": "application/json",
-            ...(init?.headers || {}),
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-    });
-
-    if (!res.ok) {
-        const text = await res.text().catch(() => "");
-        throw new Error(`${res.status} ${res.statusText} - ${text}`);
-    }
-
-    if (res.status === 204) return undefined as T;
-    return (await res.json()) as T;
-}
 
 function LeaveIcon() {
     return (
@@ -110,8 +72,7 @@ function PencilIcon() {
     );
 }
 
-export default function ChannelBar({selectedServerId, servers, canCreateChannel, channels, setChannels, selectedChannelId, onOpenCreateChannel, setServers, onSelectChannel, setSelectedServerId}: ChannelBarProps) {
-
+export default function ChannelBar({selectedServerId, servers, canCreateChannel, channels, setChannels, selectedChannelId, onOpenCreateChannel, setServers, onSelectChannel, setSelectedServerId}) {
 
     const selectedServer = useMemo(() => servers.find((s) => s.id === selectedServerId) ?? null, [servers, selectedServerId]);
     const selectedChannel = useMemo(() => channels.find((c) => String(c.id) === String(selectedChannelId)) ?? null, [channels, selectedChannelId]);
@@ -120,7 +81,6 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
     const [channelEditError, setChannelEditError] = useState<string | null>(null);
     const [channelName, setChannelName] = useState("");
     const [channelEditName, setChannelEditName] = useState("");
-    const [toasts, setToasts] = useState<Toast[]>([]);
 
     const [isChannelEditOpen, setIsChannelEditOpen] = useState(false);
     const [isChannelSaving, setIsChannelSaving] = useState(false);
@@ -142,6 +102,7 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
     const [isLeaveOpen, setIsLeaveOpen] = useState(false);
     const seenPresenceRef = useRef<Record<string, boolean>>({});
     const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
+    const [, setSelectedChannelId] = useState<string | null>(null);
 
     function wsSend(obj: any) {
         const ws = wsRef.current;
@@ -161,35 +122,12 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
 
     const canEditChannel = myRole === "owner" || myRole === "admin";
 
-    function pushToast(text: string, kind: Toast["kind"] = "info") {
-        const id = `${Date.now()}_${Math.random()}`;
-        setToasts((prev) => [...prev, { id, text, kind }]);
-        window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2500);
-    }
-
     function openServerSettings() {
         if (!selectedServer || !isOwner) return;
         setSettingsError(null);
         setDeleteConfirm("");
         setSettingsName(selectedServer.name);
         setIsSettingsOpen(true);
-    }
-
-    async function reloadChannels(selectedServerId: string) {
-        try {
-            const list = await api<Channel[]>(`/api/servers/${selectedServer.id}/channels`);
-            setChannels(list);
-            onSelectChannel((prev) => {
-                if (prev && list.some((c) => String(c.id) === String(prev))) return prev;
-                return list.length ? String(list[0].id) : null;
-            });
-        } catch (e: any) {
-            const msg = String(e?.message ?? "");
-            if (msg.startsWith("403")) pushToast("Accès refusé aux salons (403)", "warn");
-            if (msg.startsWith("404")) pushToast("Salons introuvables (404)", "warn");
-            setChannels([]);
-            onSelectChannel(null);
-        }
     }
 
     async function saveServerSettings() {
@@ -348,7 +286,12 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
         wsSend({ type: "join_server", server_id: selectedServerId });
 
         reloadMembers(selectedServerId);
-        reloadChannels(selectedServerId);
+        console.log(selectedServerId)
+        reloadChannels({
+            serverId: selectedServerId,
+            setChannels,
+            setSelectedChannelId,
+        });
 
         return () => {
             wsSend({ type: "leave_server", server_id: selectedServerId });
@@ -425,7 +368,11 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
             if (nextId) {
                 wsSend({ type: "join_server", server_id: nextId });
                 await reloadMembers(nextId);
-                await reloadChannels(nextId);
+                await reloadChannels({
+                    serverId: selectedServerId,
+                    setChannels,
+                    setSelectedChannelId,
+                });            
             }
 
             pushToast("Tu as quitté le serveur", "warn");
