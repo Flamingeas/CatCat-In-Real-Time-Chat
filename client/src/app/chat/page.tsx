@@ -270,8 +270,16 @@ export default function ChatPage() {
     const [typingUsers, setTypingUsers] = useState<Record<string, { username: string; channelId: string }>>({});
     const lastTypingSentAtRef = useRef<number>(0);
 
+    const [temporaryBanModal, setTemporaryBanModal] = useState<{
+    open: boolean;
+    userId: string;
+    username: string;
+    } | null>(null);
+
+    const [temporaryBanDuration, setTemporaryBanDuration] = useState("60");
+    const [temporaryBanError, setTemporaryBanError] = useState<string | null>(null);
+    const [isTemporaryBanning, setIsTemporaryBanning] = useState(false);
     const [temporarilyRestrictedServers, setTemporarilyRestrictedServers] = useState<Record<string, boolean>>({});
-    const isTemporarilyRestricted = !!(selectedServerId && temporarilyRestrictedServers[selectedServerId]);
 
     useEffect(() => {
         selectedChannelIdRef.current = selectedChannelId;
@@ -404,15 +412,23 @@ export default function ChatPage() {
         }
     }
 
-    async function handleBanTemporaryMember(serverId: string, userId: string) {
+    async function handleBanTemporaryMember(serverId: string, userId: string, durationMinutes: number) {
         try {
-            await banTemporaryMember(serverId, userId)
+            setIsTemporaryBanning(true);
+            setTemporaryBanError(null);
 
-            hideContent(serverId, userId)
+            await banTemporaryMember(serverId, userId, durationMinutes);
 
-            pushToast("Membre banni temporairement", "warn")
-        } catch (e) {
-            pushToast("Action refusée", "warn")
+            hideContent(serverId, userId);
+
+            pushToast(`Membre banni temporairement (${durationMinutes} min)`, "warn");
+
+            setTemporaryBanModal(null);
+            setTemporaryBanDuration("60");
+        } catch (e: any) {
+            setTemporaryBanError(e?.message ?? "Action refusée");
+        } finally {
+            setIsTemporaryBanning(false);
         }
     }
 
@@ -1305,7 +1321,16 @@ export default function ChatPage() {
             setIsChannelCreating(false);
         }
     }
-
+    function openTemporaryBanModal(userId: string, username: string) {
+        setOpenMenuFor(null);
+        setTemporaryBanError(null);
+        setTemporaryBanDuration("60");
+        setTemporaryBanModal({
+            open: true,
+            userId,
+            username,
+        });
+    }
     async function deleteChannel(channelId: string) {
         if (!selectedServerId) return;
         if (!canCreateChannel) return;
@@ -1852,7 +1877,7 @@ export default function ChatPage() {
                                     const isOwnerMember = ownerByRole || ownerByServerField;
                                     
                                     const isMe = myIdRef.current && String(myIdRef.current) === String(m.user_id);
-                                    const canManageThis = Boolean(selectedServerId && isOwner && !isOwnerMember && !isMe);
+                                    const canManageThis = Boolean(selectedServerId && isOwner && !isOwnerMember && !isMe || myRole === "admin" && !isMe && !isOwnerMember);
                                     
                                     const isTyping =
                                     !!selectedChannelId &&
@@ -1900,15 +1925,15 @@ export default function ChatPage() {
                                                     </button>
                                                     {openMenuFor === String(m.user_id) && (
                                                         <MemberActionsMenu
-                                                            username={m.username}
-                                                            userId={String(m.user_id)}
-                                                            serverId={selectedServerId}
-                                                            role={m.role}
-                                                            onKick={handleKickMember}
-                                                            onBan={handleBanMember}
-                                                            onBanTemporary={handleBanTemporaryMember}
-                                                            onSetRole={setMemberRole}
-                                                            onTransferOwner={transferOwner}
+                                                                username={m.username}
+                                                                userId={String(m.user_id)}
+                                                                serverId={selectedServerId}
+                                                                role={m.role}
+                                                                onKick={handleKickMember}
+                                                                onBan={handleBanMember}
+                                                                onOpenTemporaryBanModal={openTemporaryBanModal}
+                                                                onSetRole={myRole === "owner" ? setMemberRole : undefined}
+                                                                onTransferOwner={myRole === "owner" ? transferOwner : undefined}
                                                         />
                                                     )}
                                                 </div>
@@ -2257,6 +2282,82 @@ export default function ChatPage() {
                                     {isLeaving ? "Quitte..." : "Quitter"}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {temporaryBanModal?.open && selectedServerId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/70"
+                        onClick={() => !isTemporaryBanning && setTemporaryBanModal(null)}
+                    />
+
+                    <div className="relative w-full max-w-md rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">
+                                    Bannir temporairement
+                                </h3>
+                                <div className="text-xs text-[#DCCBC4]/50 mt-1">
+                                    Utilisateur : {temporaryBanModal.username}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => !isTemporaryBanning && setTemporaryBanModal(null)}
+                                className="text-[#DCCBC4]/60 hover:text-white cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <label className="block text-sm text-[#DCCBC4]/70 mb-2">
+                            Durée du bannissement
+                        </label>
+
+                        <select
+                            value={temporaryBanDuration}
+                            onChange={(e) => setTemporaryBanDuration(e.target.value)}
+                            disabled={isTemporaryBanning}
+                            className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
+                        >
+                            <option value="5">5 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 heure</option>
+                            <option value="180">3 heures</option>
+                            <option value="720">12 heures</option>
+                            <option value="1440">24 heures</option>
+                            <option value="10080">7 jours</option>
+                        </select>
+
+                        {temporaryBanError && (
+                            <div className="mt-3 text-sm text-red-400">{temporaryBanError}</div>
+                        )}
+
+                        <div className="mt-5 flex gap-2 justify-end">
+                            <button
+                                onClick={() => setTemporaryBanModal(null)}
+                                disabled={isTemporaryBanning}
+                                className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
+                            >
+                                Annuler
+                            </button>
+
+                            <button
+                                onClick={() =>
+                                    handleBanTemporaryMember(
+                                        selectedServerId,
+                                        temporaryBanModal.userId,
+                                        Number(temporaryBanDuration)
+                                    )
+                                }
+                                disabled={isTemporaryBanning}
+                                className="px-4 py-2 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-400 disabled:opacity-50 cursor-pointer"
+                            >
+                                {isTemporaryBanning ? "Bannissement..." : "Confirmer"}
+                            </button>
                         </div>
                     </div>
                 </div>
