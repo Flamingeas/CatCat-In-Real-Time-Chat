@@ -1,5 +1,7 @@
 use actix::{Actor, Context, Handler, Message, Recipient};
 use std::collections::{HashMap, HashSet};
+use chrono::{DateTime, Utc};
+use log::debug;
 use uuid::Uuid;
 
 use super::session::{OutgoingMessage, UserStatus};
@@ -50,6 +52,7 @@ pub enum ClientMessage {
     },
 
     StatusChange { user_id: Uuid, username: String, status: UserStatus, server_id: Option<Uuid> },
+    BroadcastMessageUpdated { server_id: Uuid, channel_id: Uuid, message_id: Uuid, content: String, updated_at: DateTime<Utc>},
 }
 
 #[derive(Message)]
@@ -334,6 +337,26 @@ impl Handler<ClientMessage> for WsServer {
                         },
                     );
                 }
+            }
+            ClientMessage::BroadcastMessageUpdated {
+                server_id: _,
+                channel_id,
+                message_id,
+                content,
+                updated_at
+            } => {
+                debug!("Broadcasting message update {} in channel {}", message_id, channel_id);
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageUpdated {
+                        message_id,
+                        channel_id,
+                        user_id: Default::default(),
+                        username: "".to_string(),
+                        content,
+                        updated_at: updated_at.to_rfc3339(),
+                    },
+                );
             }
         }
     }

@@ -140,6 +140,14 @@ pub enum OutgoingMessage {
         content: String,
         created_at: String,
     },
+    MessageUpdated {
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        username: String,
+        content: String,
+        updated_at: String,
+    },
     MessageDeleted {
         server_id: Uuid,
         channel_id: Uuid,

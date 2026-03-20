@@ -40,7 +40,10 @@ pub struct MessageResponse {
     pub username: String,
     pub channel_id: Uuid,
     pub server_id: Uuid,
+
     pub created_at: DateTime<Utc>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<DateTime<Utc>>,
     pub is_edited: bool,
     pub is_deleted: bool,
@@ -124,6 +127,9 @@ impl Message {
     }
     pub fn is_deleted(&self) -> bool {
         self.deleted_at.is_some()
+    }
+    pub fn is_edited(&self) -> bool {
+        self.updated_at > Option::from(self.created_at)
     }
     pub fn update_content(&mut self, new_content: String) {
         self.content = new_content;
