@@ -108,7 +108,8 @@ pub enum IncomingMessage {
     Ping { t: Option<i64> },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Serialize, Clone, Debug, actix::Message)]
+#[rtype(result = "()")]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OutgoingMessage {
     Authed { user_id: Uuid, username: String },
@@ -199,12 +200,22 @@ pub enum OutgoingMessage {
         server_id: Uuid,
         user_id: Uuid,
         username: String,
-    }
+    },
+
+    MessageReactionAdded {
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
+    MessageReactionRemoved {
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
 }
 
-impl actix::Message for OutgoingMessage {
-    type Result = ();
-}
 
 impl Actor for WsSession {
     type Context = ws::WebsocketContext<Self>;

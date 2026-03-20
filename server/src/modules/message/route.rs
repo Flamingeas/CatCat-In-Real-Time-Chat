@@ -1,4 +1,5 @@
 use actix::Addr;
+use serde_json::json;
 use actix_web::{web, HttpResponse, Responder};
 use mongodb::Database;
 use sqlx::Error;
@@ -8,6 +9,7 @@ use validator::Validate;
 use utoipa::{ToSchema, IntoParams}; // <-- NOUVEAUX IMPORTS
 
 use crate::models::message::{CreateMessage, MessageResponse, UpdateMessage};
+use crate::models::message_reactions::ReactionPayload;
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::websocket::server::{ClientMessage, WsServer};
 use super::service::{MessageService, ServiceError};
@@ -296,8 +298,11 @@ fn handle_service_error(error: ServiceError) -> HttpResponse {
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/channels")
+            .route("/{id}/reactions", web::post().to(add_reaction))
+            .route("/{id}/reactions", web::delete().to(remove_reaction))
             .route("/{channel_id}/messages", web::post().to(send_message))
             .route("/{channel_id}/messages", web::get().to(get_messages)),
+
     );
 
     cfg.service(
@@ -305,6 +310,65 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{id}", web::put().to(update_message))
             .route("/{id}", web::delete().to(delete_message)),
     );
+}
+
+#[utoipa::path(
+    post,
+    path = "/api/messages/{id}/reactions",
+    tag = "Message Reactions",
+    params(
+        ("id" = Uuid, Path, description = "ID du message")
+    ),
+    request_body = ReactionPayload,
+    responses(
+        (status = 200, description = "Réaction ajoutée"),
+        (status = 404, description = "Message non trouvé"),
+        (status = 401, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
+pub async fn add_reaction(
+    user: AuthenticatedUser,
+    service: web::Data<MessageService>,
+    ws: web::Data<Addr<WsServer>>,
+    path: web::Path<Uuid>,
+    payload: web::Json<ReactionPayload>,
+) -> impl Responder {
+    let message_id = path.into_inner();
+    
+    match service.add_reaction(message_id, user.user_id, payload.channel_id, payload.emoji.clone(), ws).await {
+        Ok(_) => HttpResponse::Ok().json(json!({ "status": "success" })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
+#[utoipa::path(
+    delete,
+    path = "/api/messages/{id}/reactions",
+    tag = "Message Reactions",
+    params(
+        ("id" = Uuid, Path, description = "ID du message"),
+        ("emoji" = String, Query, description = "L'emoji à retirer")
+    ),
+    responses(
+        (status = 200, description = "Réaction retirée"),
+        (status = 401, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
+pub async fn remove_reaction(
+    user: AuthenticatedUser,
+    service: web::Data<MessageService>,
+    ws: web::Data<Addr<WsServer>>,
+    path: web::Path<Uuid>,
+    query: web::Query<ReactionPayload>, // On réutilise le payload pour l'emoji
+) -> impl Responder {
+    let message_id = path.into_inner();
+    
+    match service.remove_reaction(message_id, user.user_id, query.channel_id, query.emoji.clone(), ws).await {
+        Ok(_) => HttpResponse::Ok().json(json!({ "status": "success" })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
 }
 
 #[cfg(test)]

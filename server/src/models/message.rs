@@ -4,6 +4,8 @@ use chrono::{DateTime, Utc};
 use validator::Validate;
 use utoipa::ToSchema;
 
+use crate::models::message_reactions::Reaction;
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
@@ -17,6 +19,7 @@ pub struct Message {
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
     pub deleted_at: Option<DateTime<Utc>>,
+    pub reactions: Vec<Reaction>,
 }
 
 #[derive(Debug, serde::Deserialize, validator::Validate)]
@@ -103,6 +106,7 @@ impl Message {
             created_at: Utc::now(),
             updated_at: None,
             deleted_at: None,
+            reactions: Vec::new(),
         }
     }
     pub fn to_response(&self) -> MessageResponse {

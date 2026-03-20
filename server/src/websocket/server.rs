@@ -69,7 +69,19 @@ pub enum ServerEvent {
     MemberRoleUpdated { server_id: Uuid, user_id: Uuid, username: String, role: String },
     MemberKicked { server_id: Uuid, user_id: Uuid, username: String },
     MemberBanned { server_id: Uuid, user_id: Uuid, username: String },
-    MemberUnbanned { server_id: Uuid, user_id: Uuid, username: String }
+    MemberUnbanned { server_id: Uuid, user_id: Uuid, username: String },
+    MessageReactionAdded {
+        message_id: uuid::Uuid,
+        channel_id: Uuid,
+        user_id: uuid::Uuid,
+        emoji: String,
+    },
+    MessageReactionRemoved {
+        message_id: uuid::Uuid,
+        channel_id: Uuid,
+        user_id: uuid::Uuid,
+        emoji: String,
+    },
 }
 
 pub struct WsServer {
@@ -475,6 +487,28 @@ impl Handler<ServerEvent> for WsServer {
                         server_id,
                         user_id,
                         username,
+                    },
+                );
+            }
+            ServerEvent::MessageReactionAdded { message_id, channel_id, user_id, emoji } => {
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageReactionAdded {
+                        message_id,
+                        channel_id,
+                        user_id,
+                        emoji,
+                    },
+                );
+            }
+            ServerEvent::MessageReactionRemoved { message_id, channel_id, user_id, emoji } => {
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageReactionRemoved {
+                        message_id,
+                        channel_id,
+                        user_id,
+                        emoji,
                     },
                 );
             }

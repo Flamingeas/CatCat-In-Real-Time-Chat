@@ -169,6 +169,61 @@ impl<'a> MessageRepository<'a> {
 
         self.collection().count_documents(filter).await
     }
+
+    pub async fn add_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    ) -> Result<(), mongodb::error::Error> {
+        let collection = self.db.collection::<Message>("messages");
+
+        // 1. On essaie d'ajouter l'utilisateur à une réaction existante
+        // On cherche le message ET l'emoji précis. S'il existe, on $addToSet (ajoute si absent) l'user_id
+        let filter = doc! { "message_id": message_id.to_string(), "reactions.emoji": &emoji };
+        let update = doc! { "$addToSet": { "reactions.$.users": user_id.to_string() } };
+        
+        let result = collection.update_one(filter, update).await?;
+
+        // 2. Si aucune ligne n'a été modifiée (result.modified_count == 0), 
+        // cela veut dire que l'emoji n'existe pas encore sur ce message.
+        if result.modified_count == 0 {
+            let filter_new = doc! { "message_id": message_id.to_string() };
+            let update_new = doc! { 
+                "$push": { 
+                    "reactions": { 
+                        "emoji": emoji, 
+                        "users": [user_id.to_string()] 
+                    } 
+                } 
+            };
+            collection.update_one(filter_new, update_new).await?;
+        }
+
+        Ok(())
+    }
+
+    pub async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    ) -> Result<(), mongodb::error::Error> {
+        let collection = self.db.collection::<Message>("messages");
+
+        // On retire l'utilisateur du tableau users de l'emoji correspondant
+        let filter = doc! { "message_id": message_id.to_string(), "reactions.emoji": &emoji };
+        let update = doc! { "$pull": { "reactions.$.users": user_id.to_string() } };
+        
+        collection.update_one(filter, update).await?;
+
+        // Bonus : On nettoie les réactions vides (sans utilisateurs)
+        let cleanup_filter = doc! { "message_id": message_id.to_string() };
+        let cleanup_update = doc! { "$pull": { "reactions": { "users": { "$size": 0 } } } };
+        collection.update_one(cleanup_filter, cleanup_update).await?;
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]

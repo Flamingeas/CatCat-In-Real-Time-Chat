@@ -68,6 +68,8 @@ impl Modify for SecurityAddon {
         crate::modules::message::route::get_messages,
         crate::modules::message::route::update_message,
         crate::modules::message::route::delete_message,
+        crate::modules::message::route::add_reaction,
+        crate::modules::message::route::remove_reaction,
 
         // Serveurs :
         crate::modules::server::route::create_server,
@@ -93,6 +95,8 @@ impl Modify for SecurityAddon {
             crate::modules::message::route::SendMessageRequest,
             crate::modules::message::route::UpdateMessageRequest,
             crate::models::message::MessageResponse,
+            crate::models::message_reactions::ReactionPayload,
+            crate::models::message_reactions::Reaction,
             crate::models::server::CreateServer,
             crate::models::server::UpdateServer,
             crate::models::server::ServerResponse,

@@ -1,13 +1,16 @@
 use std::sync::Arc;
-
+use mongodb::bson::doc;
 use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use mongodb::Database;
 use sqlx::PgPool;
 use uuid::Uuid;
-
+use actix_web::web;
+use actix::Addr;
+use crate::websocket::server::ServerEvent;
 use crate::models::message::{CreateMessage, Message, MessageResponse, UpdateMessage};
 use super::repository::MessageRepository;
+use crate::WsServer;
 
 #[async_trait]
 pub trait MessageRepositoryTrait: Send + Sync {
@@ -31,6 +34,9 @@ pub trait MessageRepositoryTrait: Send + Sync {
     async fn update(&self, message_id: Uuid, data: &UpdateMessage) -> Result<Message, String>;
 
     async fn delete(&self, message_id: Uuid) -> Result<(), String>;
+
+    async fn add_reaction(&self, message_id: Uuid, user_id: Uuid, emoji: String) -> Result<(), mongodb::error::Error>;
+    async fn remove_reaction(&self, message_id: Uuid, user_id: Uuid, emoji: String) -> Result<(), mongodb::error::Error>;
 }
 
 #[async_trait]
@@ -115,6 +121,74 @@ impl MessageRepositoryTrait for MongoMessageRepository {
             .delete(message_id)
             .await
             .map_err(|e| e.to_string())
+    }
+
+    async fn add_reaction(
+        &self,
+        message_id: uuid::Uuid,
+        user_id: uuid::Uuid,
+        emoji: String,
+    ) -> Result<(), mongodb::error::Error> {
+        let collection = self.db.collection::<Message>("messages");
+
+        // 1. On tente d'ajouter l'user_id à une réaction existante pour cet emoji
+        // $addToSet garantit que l'utilisateur n'est ajouté qu'une seule fois
+        let filter = doc! { 
+            "message_id": message_id.to_string(), 
+            "reactions.emoji": &emoji 
+        };
+        let update = doc! { 
+            "$addToSet": { "reactions.$.users": user_id.to_string() } 
+        };
+        
+        let result = collection.update_one(filter, update).await?;
+
+        // 2. Si modified_count == 0, l'emoji n'existait pas encore sur ce message
+        // On doit donc créer l'entrée dans le tableau reactions avec $push
+        if result.modified_count == 0 {
+            let filter_new = doc! { "message_id": message_id.to_string() };
+            let update_new = doc! { 
+                "$push": { 
+                    "reactions": { 
+                        "emoji": emoji, 
+                        "users": [user_id.to_string()] 
+                    } 
+                } 
+            };
+            collection.update_one(filter_new, update_new).await?;
+        }
+
+        Ok(())
+    }
+
+    async fn remove_reaction(
+        &self,
+        message_id: uuid::Uuid,
+        user_id: uuid::Uuid,
+        emoji: String,
+    ) -> Result<(), mongodb::error::Error> {
+        let collection = self.db.collection::<Message>("messages");
+
+        // 1. On retire l'utilisateur du tableau 'users' de l'emoji concerné
+        let filter = doc! { 
+            "message_id": message_id.to_string(), 
+            "reactions.emoji": &emoji 
+        };
+        let update = doc! { 
+            "$pull": { "reactions.$.users": user_id.to_string() } 
+        };
+        
+        collection.update_one(filter, update).await?;
+
+        // 2. Optionnel : On supprime la réaction si le tableau 'users' devient vide
+        // Cela évite de garder des emojis avec 0 réactions dans la base
+        let cleanup_filter = doc! { "message_id": message_id.to_string() };
+        let cleanup_update = doc! { 
+            "$pull": { "reactions": { "users": { "$size": 0 } } } 
+        };
+        collection.update_one(cleanup_filter, cleanup_update).await?;
+
+        Ok(())
     }
 }
 
@@ -353,6 +427,56 @@ impl MessageService {
             .map_err(ServiceError::Internal)?;
 
         Ok((message.server_id, message.channel_id, message.message_id))
+    }
+    pub async fn add_reaction(
+        &self,
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+        ws: web::Data<Addr<WsServer>>, // Pour le temps réel
+    ) -> Result<(), String> {
+        // 1. On enregistre en base de données
+        self.repository
+            .add_reaction(message_id, user_id, emoji.clone())
+            .await
+            .map_err(|e| e.to_string())?;
+
+        // 2. On prévient tout le monde via WebSocket
+        // Note : On envoie l'événement au serveur/salon concerné
+        ws.do_send(ServerEvent::MessageReactionAdded {
+            message_id,
+            channel_id,
+            user_id,
+            emoji,
+        });
+
+        Ok(())
+    }
+
+    pub async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+        ws: web::Data<Addr<WsServer>>,
+    ) -> Result<(), String> {
+        // 1. On retire de la base de données
+        self.repository
+            .remove_reaction(message_id, user_id, emoji.clone())
+            .await
+            .map_err(|e| e.to_string())?;
+
+        // 2. On prévient via WebSocket
+        ws.do_send(ServerEvent::MessageReactionRemoved {
+            message_id,
+            channel_id,
+            user_id,
+            emoji,
+        });
+
+        Ok(())
     }
 }
 

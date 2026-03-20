@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        INSERT INTO server_bans (server_id, user_id, banned_by, reason, expires_at)\n        VALUES ($1, $2, $3, $4, $5)\n        ON CONFLICT (server_id, user_id)\n        DO UPDATE SET\n            banned_by = EXCLUDED.banned_by,\n            reason = EXCLUDED.reason,\n            expires_at = EXCLUDED.expires_at,\n            created_at = NOW()\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Uuid",
+        "Uuid",
+        "Text",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "efa886f60ba5c2bcaf64762b5b4bc2818e3851f7cf77b782e8a0cb46e7821014"
+}
