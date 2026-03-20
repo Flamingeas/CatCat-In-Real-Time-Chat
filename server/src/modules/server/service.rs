@@ -279,6 +279,35 @@ impl ServerService {
             })
     }
 
+    pub async fn ban_temporary_member (
+        &self,
+        requester_id: Uuid,
+        server_id: Uuid,
+        target_user_id: Uuid,
+    ) -> Result<(), String> {
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
+
+        if server.owner_id != requester_id {
+            return Err("Forbidden".into());
+        }
+
+        if target_user_id == server.owner_id {
+            return Err("Cannot ban owner".into());
+        }
+
+        self.repo
+            .ban_member(server_id, target_user_id, requester_id, None, None)
+            .await
+            .map_err(|e| {
+                log::error!("ban_member error: {:?}", e);
+                "Unable to ban member".to_string()
+            })
+    }
+
     pub async fn unban_member(
         &self,
         requester_id: Uuid,

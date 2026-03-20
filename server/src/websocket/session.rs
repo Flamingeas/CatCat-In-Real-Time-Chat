@@ -204,6 +204,11 @@ pub enum OutgoingMessage {
         user_id: Uuid,
         username: String,
     },
+    ServerMemberBannedTemporary {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
     ServerMemberUnbanned {
         server_id: Uuid,
         user_id: Uuid,
