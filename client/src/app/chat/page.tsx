@@ -78,6 +78,7 @@ type WsEvent =
     | { type: "message_deleted"; message_id: string; channel_id: string; server_id: string }
     | { type: "server_member_banned"; server_id: string; user_id: string; username: string }
     | { type: "server_member_unbanned"; server_id: string; user_id: string; username: string }
+    | { type: "message_updated"; message_id: string; channel_id: string; content: string; updated_at: string }
     | { type: string; [k: string]: any };
 
 
@@ -256,6 +257,8 @@ export default function ChatPage() {
 
     const [messageText, setMessageText] = useState("");
     const [isSending, setIsSending] = useState(false);
+    const [editingMessageId, setEditingMessageId] = useState<string | null>(null);
+    const [editingContent, setEditingContent] = useState("");
 
     const [hasMoreMessages, setHasMoreMessages] = useState(true);
     const [loadingMore, setLoadingMore] = useState(false);
@@ -557,6 +560,33 @@ export default function ChatPage() {
             pushToast("Envoi refusé", "warn");
         } finally {
             setIsSending(false);
+        }
+    }
+
+    async function editMessage(messageId: string, newContent: string) {
+        if (!newContent.trim()) {
+            alert("Le message ne peut pas être vide");
+            return;
+        }
+        try {
+            await api(`/api/messages/${messageId}`, {
+                method: "PUT",
+                body: JSON.stringify({ content: newContent }),
+            });
+            setMessages((prev) =>
+                prev.map((m) =>
+                    m.message_id === messageId
+                        ? { ...m, content: newContent, is_edited: true }
+                        : m
+                )
+            );
+            setEditingMessageId(null);
+            setEditingContent("");
+
+            pushToast("Message modifié", "success");
+        } catch (err: any) {
+            pushToast("Édition refusée", "warn");
+            console.error("Edit error:", err);
         }
     }
 
@@ -979,6 +1009,26 @@ export default function ChatPage() {
                         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
                     }, 0);
 
+                    return;
+                }
+
+                if (msg.type === "message_updated") {
+                    const currentChannel = selectedChannelIdRef.current;
+                    if (!currentChannel) return;
+                    if (String(msg.channel_id) !== String(currentChannel)) return;
+
+                    setMessages((prev) =>
+                        prev.map((m) =>
+                            String(m.message_id) === String(msg.message_id)
+                                ? {
+                                    ...m,
+                                    content: String(msg.content ?? ""),
+                                    updated_at: String(msg.updated_at ?? new Date().toISOString()),
+                                    is_edited: true,
+                                }
+                                : m
+                        )
+                    );
                     return;
                 }
 
@@ -1624,6 +1674,8 @@ export default function ChatPage() {
                                             const isMe = me && String(me.id) === String(m.user_id);
                                             const time = formatTimeFR(m.created_at);
                                             const canDeleteThis = !m.is_deleted && (isMe || canModerateMessages);
+                                            const canEditThis = isMe && !m.is_deleted;
+                                            const isEditing = editingMessageId === m.message_id;
 
                                             return (
                                                 <div key={m.message_id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
@@ -1657,22 +1709,64 @@ export default function ChatPage() {
                                                             </div>
                                                         )}
 
-                                                        <div
-                                                            className={[
-                                                                "px-4 py-3 rounded-2xl border border-[#ffffff]/10 shadow-sm",
-                                                                "whitespace-pre-wrap break-words text-sm leading-relaxed",
-                                                                isMe ? "bg-[#2563EB] text-white rounded-br-md" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-md",
-                                                            ].join(" ")}
-                                                        >
-                                                            {m.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : m.content}
-                                                        </div>
+                                                        {isEditing ? (
+                                                            <div className="w-full">
+                                                                <textarea
+                                                                    value={editingContent}
+                                                                    onChange={(e) => setEditingContent(e.target.value)}
+                                                                    className="w-full px-4 py-3 rounded-2xl border border-[#EB5E28] bg-[#1E1211] text-[#DCCBC4] focus:outline-none resize-none"
+                                                                    rows={3}
+                                                                    autoFocus
+                                                                />
+                                                                <div className="flex gap-2 mt-2">
+                                                                    <button
+                                                                        onClick={() => editMessage(m.message_id, editingContent)}
+                                                                        className="px-3 py-1 rounded-xl bg-[#EB5E28] text-white text-xs font-bold hover:bg-white hover:text-[#1E1211] transition-colors"
+                                                                    >
+                                                                        Sauvegarder
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setEditingMessageId(null);
+                                                                            setEditingContent("");
+                                                                        }}
+                                                                        className="px-3 py-1 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] text-xs hover:bg-[#1E1211] transition-colors"
+                                                                    >
+                                                                        Annuler
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            <div
+                                                                className={[
+                                                                    "px-4 py-3 rounded-2xl border border-[#ffffff]/10 shadow-sm",
+                                                                    "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                                                                    isMe ? "bg-[#2563EB] text-white rounded-br-md" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-md",
+                                                                ].join(" ")}
+                                                            >
+                                                                {m.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : m.content}
+                                                            </div>
+                                                        )}
 
                                                         <div className={`flex items-center gap-2 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
                                                             {isMe && <span className="text-[10px] text-white/70">moi</span>}
                                                             {time && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>{time}</span>}
                                                             {m.is_edited && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>• édité</span>}
 
-                                                            {(isMe || canModerateMessages) && canDeleteThis && (
+                                                            {canEditThis && !isEditing ? (
+                                                                <button
+                                                                    onClick={() => {
+                                                                        setEditingMessageId(m.message_id);
+                                                                        setEditingContent(m.content);
+                                                                    }}
+                                                                    className="text-[10px] text-white/70 hover:text-[#EB5E28] cursor-pointer"
+                                                                    title="Éditer"
+                                                                >
+                                                                    ✏️ Éditer
+                                                                </button>
+                                                            ) : null}
+
+                                                            {(isMe || canModerateMessages) && canDeleteThis ? (
                                                                 <button
                                                                     onClick={() => {
                                                                         if (!window.confirm("Supprimer ce message ?")) return;
@@ -1683,7 +1777,7 @@ export default function ChatPage() {
                                                                 >
                                                                     🗑 Supprimer
                                                                 </button>
-                                                            )}
+                                                            ) : null}
                                                         </div>
                                                     </div>
                                                 </div>
