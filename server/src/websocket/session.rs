@@ -161,8 +161,22 @@ pub enum OutgoingMessage {
 
     Error { message: String },
     Ok { message: String },
-
+    ChannelCreated {
+        server_id: Uuid,
+        channel_id: Uuid,
+        name: String,
+        created_at: String,
+    },
+    ChannelDeleted {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
+    ChannelUpdated {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
     ServerDeleted { server_id: Uuid },
+    ServerUpdated { server_id: Uuid },
     ServerMemberJoined {
         server_id: Uuid,
         user_id: Uuid,

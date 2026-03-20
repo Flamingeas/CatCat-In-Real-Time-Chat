@@ -3,8 +3,9 @@ use serde::Deserialize;
 use sqlx::PgPool;
 use validator::Validate;
 use uuid::Uuid;
+use utoipa::IntoParams;
 
-use crate::models::user::UpdateUser;
+use crate::models::user::{UpdateUser, UserResponse, UserPublicResponse};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::modules::user::repository::UserRepository;
 
@@ -15,6 +16,18 @@ fn user_service(pool: &web::Data<PgPool>) -> UserService {
     UserService::new(repo)
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/users/me", // <-- CORRIGÉ ICI
+    tag = "Users",
+    security(
+        ("jwt" = [])
+    ),
+    responses(
+        (status = 200, description = "Profil récupéré avec succès", body = UserResponse),
+        (status = 401, description = "Non authentifié")
+    )
+)]
 pub async fn get_me(pool: web::Data<PgPool>, user: AuthenticatedUser) -> impl Responder {
     log::debug!("GET /me - User ID: {}", user.user_id);
 
@@ -25,6 +38,21 @@ pub async fn get_me(pool: web::Data<PgPool>, user: AuthenticatedUser) -> impl Re
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/users/{id}", // <-- CORRIGÉ ICI
+    tag = "Users",
+    security(
+        ("jwt" = [])
+    ),
+    params(
+        ("id" = Uuid, Path, description = "ID de l'utilisateur")
+    ),
+    responses(
+        (status = 200, description = "Profil public récupéré avec succès", body = UserPublicResponse),
+        (status = 404, description = "Utilisateur introuvable")
+    )
+)]
 pub async fn get_user(pool: web::Data<PgPool>, path: web::Path<Uuid>) -> impl Responder {
     let user_id = path.into_inner();
     log::debug!("GET /users/{}", user_id);
@@ -36,6 +64,21 @@ pub async fn get_user(pool: web::Data<PgPool>, path: web::Path<Uuid>) -> impl Re
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/users", // <-- CORRIGÉ ICI
+    tag = "Users",
+    security(
+        ("jwt" = [])
+    ),
+    params(
+        PaginationQuery
+    ),
+    responses(
+        (status = 200, description = "Liste des utilisateurs récupérée", body = [UserPublicResponse]),
+        (status = 401, description = "Non authentifié")
+    )
+)]
 pub async fn list_users(pool: web::Data<PgPool>, query: web::Query<PaginationQuery>) -> impl Responder {
     log::debug!("GET /users - page: {}, per_page: {}", query.page, query.per_page);
 
@@ -46,6 +89,20 @@ pub async fn list_users(pool: web::Data<PgPool>, query: web::Query<PaginationQue
     }
 }
 
+#[utoipa::path(
+    put,
+    path = "/api/users/me", // <-- CORRIGÉ ICI
+    tag = "Users",
+    security(
+        ("jwt" = [])
+    ),
+    request_body = UpdateUser,
+    responses(
+        (status = 200, description = "Profil mis à jour avec succès", body = UserResponse),
+        (status = 400, description = "Erreur de validation des données"),
+        (status = 401, description = "Non authentifié")
+    )
+)]
 pub async fn update_me(
     pool: web::Data<PgPool>,
     user: AuthenticatedUser,
@@ -67,6 +124,18 @@ pub async fn update_me(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/users/me", // <-- CORRIGÉ ICI
+    tag = "Users",
+    security(
+        ("jwt" = [])
+    ),
+    responses(
+        (status = 204, description = "Compte supprimé avec succès"),
+        (status = 401, description = "Non authentifié")
+    )
+)]
 pub async fn delete_me(pool: web::Data<PgPool>, user: AuthenticatedUser) -> impl Responder {
     log::debug!("DELETE /me - User ID: {}", user.user_id);
 
@@ -77,7 +146,7 @@ pub async fn delete_me(pool: web::Data<PgPool>, user: AuthenticatedUser) -> impl
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, IntoParams)]
 pub struct PaginationQuery {
     #[serde(default = "default_page")]
     pub page: i64,

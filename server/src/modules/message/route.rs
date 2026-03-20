@@ -797,7 +797,7 @@ mod tests {
 
         let req = test::TestRequest::delete()
             .uri(&format!("/messages/{}", uuid_str()))
-            .to_request();
+            .to_request
         let resp = test::call_service(&app, req).await;
         assert_ne!(resp.status(), StatusCode::NOT_FOUND);
     }

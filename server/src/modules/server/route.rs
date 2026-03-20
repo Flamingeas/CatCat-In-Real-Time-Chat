@@ -73,6 +73,7 @@ pub async fn list_servers(user: AuthenticatedUser, service: web::Data<ServerServ
 pub async fn update_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
+    ws: web::Data<Addr<WsServer>>,
     path: web::Path<uuid::Uuid>,
     payload: web::Json<UpdateServer>,
 ) -> impl Responder {
@@ -83,7 +84,12 @@ pub async fn update_server(
     let server_id = path.into_inner();
 
     match service.update_server(user.user_id, server_id, payload.into_inner()).await {
-        Ok(server) => HttpResponse::Ok().json(ServerResponse::from(server)),
+        Ok(server) => {
+            ws.do_send(ServerEvent::ServerUpdated {
+                server_id,
+            });
+            HttpResponse::Ok().json(ServerResponse::from(server))
+        },
         Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
         Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
     }

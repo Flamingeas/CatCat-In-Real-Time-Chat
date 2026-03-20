@@ -4,7 +4,9 @@ use actix_web::{web, HttpResponse, Responder};
 use serde_json::json;
 use uuid::Uuid;
 use validator::Validate;
+use actix::Addr;
 
+use crate::websocket::server::{ClientMessage, WsServer};
 use crate::models::channel::{ChannelResponse, CreateChannel, UpdateChannel};
 use crate::modules::auth::AuthenticatedUser;
 use crate::modules::channel::service::ChannelServiceTrait;
@@ -28,6 +30,7 @@ use crate::modules::channel::service::ChannelServiceTrait;
 pub async fn create_channel(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
+    ws: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
     payload: web::Json<CreateChannel>,
 ) -> impl Responder {
@@ -38,7 +41,16 @@ pub async fn create_channel(
     let server_id = path.into_inner();
 
     match service.create_channel(server_id, &payload.name, user.user_id).await {
-        Ok(channel) => HttpResponse::Created().json(ChannelResponse::from(channel)),
+        Ok(channel) => {
+            ws.do_send(ClientMessage::ChannelCreated {
+                server_id,
+                channel_id: channel.id,
+                name: channel.name.clone(),
+                created_at: channel.created_at.to_rfc3339(),
+            });
+
+            HttpResponse::Created().json(ChannelResponse::from(channel))
+        }
         Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
     }
 }
@@ -95,6 +107,7 @@ pub async fn channel_list(
 pub async fn channel_update(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
+    ws: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
     payload: web::Json<UpdateChannel>,
 ) -> impl Responder {
@@ -108,7 +121,13 @@ pub async fn channel_update(
         .update_channel(channel_id, payload.into_inner(), user.user_id)
         .await
     {
-        Ok(channel) => HttpResponse::Ok().json(ChannelResponse::from(channel)),
+        Ok(channel) => {
+            ws.do_send(ClientMessage::ChannelUpdated {
+                server_id: channel.server_id,
+                channel_id: channel.id,
+            });
+            HttpResponse::Ok().json(ChannelResponse::from(channel))
+        },
         Err(e) if e == "Forbidden" => {
             HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
         }
@@ -134,14 +153,22 @@ pub async fn channel_update(
 pub async fn channel_delete(
     user: AuthenticatedUser,
     service: web::Data<Arc<dyn ChannelServiceTrait>>,
+    ws: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
 ) -> impl Responder {
     let channel_id = path.into_inner();
 
     match service.delete_channel(channel_id, user.user_id).await {
-        Ok(_) => HttpResponse::Ok().json(json!({
-            "message": "Channel supprimé avec succès"
-        })),
+        Ok(channel) => {
+            ws.do_send(ClientMessage::ChannelDeleted {
+                server_id: channel.server_id,
+                channel_id: channel.id,
+            });
+
+            HttpResponse::Ok().json(json!({
+                "message": "Channel supprimé avec succès"
+            }))
+        }
         Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
     }
 }
@@ -215,9 +242,9 @@ mod tests {
 
         async fn delete_channel(
             &self,
-            _channel_id: Uuid,
-            _user_id: Uuid,
-        ) -> Result<(), String> {
+            channel_id: Uuid,
+            user_id: Uuid,
+        ) -> Result<Channel, String> {
             self.delete_result.clone().unwrap()
         }
     }

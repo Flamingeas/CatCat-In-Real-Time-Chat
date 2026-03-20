@@ -3,7 +3,7 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use chrono::{DateTime, Utc};
 use validator::Validate;
-use utoipa::ToSchema;
+use utoipa::ToSchema; // N'oubliez pas cet import s'il n'y est plus !
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone, ToSchema)]
 pub struct User {
@@ -25,7 +25,8 @@ pub struct CreateUser {
     pub password: String,
 }
 
-#[derive(Debug, Deserialize, Validate)]
+// Ajout de ToSchema ici
+#[derive(Debug, Deserialize, Validate, ToSchema)] 
 pub struct UpdateUser {
     #[validate(length(min = 3, max = 50))]
     pub username: Option<String>,
@@ -35,7 +36,8 @@ pub struct UpdateUser {
     pub password: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+// Ajout de ToSchema ici
+#[derive(Debug, Serialize, ToSchema)]
 pub struct UserResponse {
     pub id: Uuid,
     pub username: String,
@@ -44,7 +46,8 @@ pub struct UserResponse {
     pub updated_at: DateTime<Utc>,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+// Ajout de ToSchema ici
+#[derive(Debug, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct UserPublicResponse {
     pub id: Uuid,
     pub username: String,
