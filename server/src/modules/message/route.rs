@@ -191,7 +191,6 @@ fn ok_messages_response(messages: Vec<MessageResponse>) -> HttpResponse {
 fn no_content_response() -> HttpResponse {
     HttpResponse::NoContent().finish()
 }
-
 fn build_new_message_event(message: &MessageResponse) -> ClientMessage {
     ClientMessage::BroadcastNewMessage {
         server_id: message.server_id,
@@ -797,7 +796,7 @@ mod tests {
 
         let req = test::TestRequest::delete()
             .uri(&format!("/messages/{}", uuid_str()))
-            .to_request
+            .to_request();
         let resp = test::call_service(&app, req).await;
         assert_ne!(resp.status(), StatusCode::NOT_FOUND);
     }
