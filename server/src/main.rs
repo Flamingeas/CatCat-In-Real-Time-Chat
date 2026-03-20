@@ -84,7 +84,6 @@ impl Modify for SecurityAddon {
         crate::modules::server::route::ban_member,
         crate::modules::server::route::ban_list,
         crate::modules::server::route::unban_member,
-        crate::modules::server::route::delete_server,
     ),
     components(
         schemas(

@@ -344,93 +344,6 @@ pub async fn kick_member(
 }
 
 #[utoipa::path(
-    post,
-    path = "/api/servers/{id}/bans/{user_id}",
-    tag = "Server Bans",
-    params(MemberPath),
-    responses(
-        (status = 200, description = "Membre banni"),
-        (status = 403, description = "Non autorisé")
-    ),
-    security(("jwt" = []))
-)]
-pub async fn ban_member(
-    user: AuthenticatedUser,
-    service: web::Data<ServerService>,
-    ws: web::Data<Addr<WsServer>>,
-    path: web::Path<MemberPath>,
-) -> impl Responder {
-    let server_id = path.id;
-    let target_user_id = path.user_id;
-
-    match service.ban_member(user.user_id, server_id, target_user_id).await {
-        Ok(_) => {
-            let username = service.get_username(target_user_id).await.unwrap_or_else(|_| "unknown".to_string());
-            ws.do_send(ServerEvent::MemberBanned { server_id, user_id: target_user_id, username });
-            HttpResponse::Ok().json(json!({ "message": "Member banned" }))
-        }
-        Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
-    }
-}
-
-#[utoipa::path(
-    get,
-    path = "/api/servers/{id}/bans",
-    tag = "Server Bans",
-    params(("id" = Uuid, Path, description = "L'ID du serveur")),
-    responses(
-        (status = 200, description = "Liste des membres bannis"),
-        (status = 403, description = "Non autorisé")
-    ),
-    security(("jwt" = []))
-)]
-pub async fn ban_list(
-    user: AuthenticatedUser,
-    service: web::Data<ServerService>,
-    path: web::Path<uuid::Uuid>,
-) -> impl Responder {
-    let server_id = path.into_inner();
-
-    match service.list_bans(user.user_id, server_id).await {
-        Ok(bans) => HttpResponse::Ok().json(bans),
-        Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
-    }
-}
-
-#[utoipa::path(
-    delete,
-    path = "/api/servers/{id}/bans/{user_id}",
-    tag = "Server Bans",
-    params(MemberPath),
-    responses(
-        (status = 200, description = "Membre débanni"),
-        (status = 403, description = "Non autorisé")
-    ),
-    security(("jwt" = []))
-)]
-pub async fn unban_member(
-    user: AuthenticatedUser,
-    service: web::Data<ServerService>,
-    ws: web::Data<Addr<WsServer>>,
-    path: web::Path<MemberPath>,
-) -> impl Responder {
-    let server_id = path.id;
-    let target_user_id = path.user_id;
-
-    match service.unban_member(user.user_id, server_id, target_user_id).await {
-        Ok(_) => {
-            let username = service.get_username(target_user_id).await.unwrap_or_else(|_| "unknown".to_string());
-            ws.do_send(ServerEvent::MemberUnbanned { server_id, user_id: target_user_id, username });
-            HttpResponse::Ok().json(json!({ "message": "Member unbanned" }))
-        }
-        Err(e) if e == "Forbidden" => HttpResponse::Forbidden().json(json!({ "error": "Forbidden" })),
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
-    }
-}
-
-#[utoipa::path(
     delete,
     path = "/api/servers/{id}",
     tag = "Servers",
@@ -471,6 +384,17 @@ pub async fn ban_member(
     }
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/servers/{id}/bans",
+    tag = "Server Bans",
+    params(("id" = Uuid, Path, description = "L'ID du serveur")),
+    responses(
+        (status = 200, description = "Liste des membres bannis"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn ban_list(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -487,6 +411,17 @@ pub async fn ban_list(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/servers/{id}/bans/{user_id}",
+    tag = "Server Bans",
+    params(MemberPath),
+    responses(
+        (status = 200, description = "Membre débanni"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn unban_member(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
