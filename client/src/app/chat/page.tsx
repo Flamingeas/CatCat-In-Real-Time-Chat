@@ -20,7 +20,7 @@ import {
 import { api } from "@/lib/api";
 import logoImage from "../images/logo_catcat.svg";
 import { MemberActionsMenu } from "@/features/chat/components/member-actions-menu";
-import { banMember } from "@/features/chat/services/bans.service";
+import { banMember, banTemporaryMember } from "@/features/chat/services/bans.service";
 import BanList from "@/features/chat/components/ban-list";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
@@ -78,6 +78,8 @@ type WsEvent =
     | { type: "message_deleted"; message_id: string; channel_id: string; server_id: string }
     | { type: "server_member_banned"; server_id: string; user_id: string; username: string }
     | { type: "server_member_unbanned"; server_id: string; user_id: string; username: string }
+    | { type: "server_member_temporary_banned"; server_id: string; user_id: string; username: string; until?: string }
+    | { type: "server_member_temporary_ban_lifted"; server_id: string; user_id: string; username: string }
     | { type: string; [k: string]: any };
 
 
@@ -268,6 +270,9 @@ export default function ChatPage() {
     const [typingUsers, setTypingUsers] = useState<Record<string, { username: string; channelId: string }>>({});
     const lastTypingSentAtRef = useRef<number>(0);
 
+    const [temporarilyRestrictedServers, setTemporarilyRestrictedServers] = useState<Record<string, boolean>>({});
+    const isTemporarilyRestricted = !!(selectedServerId && temporarilyRestrictedServers[selectedServerId]);
+
     useEffect(() => {
         selectedChannelIdRef.current = selectedChannelId;
     }, [selectedChannelId]);
@@ -353,6 +358,24 @@ export default function ChatPage() {
         removeOnline(idStr);
     }
 
+    function hideContent(serverId: string, user_id: string) {
+        const currentSid = selectedServerIdRef.current;
+        if (!currentSid || String(serverId) !== String(currentSid)) return;
+
+        const isMe = String(myIdRef.current ?? "") === String(user_id);
+        if (!isMe) return;
+
+        setTemporarilyRestrictedServers((prev) => ({
+            ...prev,
+            [String(serverId)]: true,
+        }));
+
+        setChannels([]);
+        setSelectedChannelId(null);
+        setMessages([]);
+        setTypingUsers({});
+    }
+
     function upsertMember(serverId: string, user_id: string, username: string) {
         const currentSid = selectedServerIdRef.current;
         if (!currentSid || String(serverId) !== String(currentSid)) return;
@@ -376,6 +399,18 @@ export default function ChatPage() {
             removeMember(serverId, userId)
 
             pushToast("Membre banni définitivement", "warn")
+        } catch (e) {
+            pushToast("Action refusée", "warn")
+        }
+    }
+
+    async function handleBanTemporaryMember(serverId: string, userId: string) {
+        try {
+            await banTemporaryMember(serverId, userId)
+
+            hideContent(serverId, userId)
+
+            pushToast("Membre banni temporairement", "warn")
         } catch (e) {
             pushToast("Action refusée", "warn")
         }
@@ -1049,6 +1084,63 @@ export default function ChatPage() {
 
                     return;
                 }
+                if (msg.type === "server_member_temporary_banned") {
+                    const sid = String(msg.server_id ?? "");
+                    const uid = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "quelqu’un");
+
+                    if (!sid || !uid) return;
+
+                    const isMe = String(myIdRef.current ?? "") === uid;
+
+                    if (isMe) {
+                        setTemporarilyRestrictedServers((prev) => ({
+                            ...prev,
+                            [sid]: true,
+                        }));
+
+                        if (String(selectedServerIdRef.current ?? "") === sid) {
+                            setChannels([]);
+                            setSelectedChannelId(null);
+                            setMessages([]);
+                            setTypingUsers({});
+                        }
+
+                        pushToast("Tu es temporairement suspendu de ce serveur", "warn");
+                    } else {
+                        pushToast(`${username} a été suspendu temporairement`, "warn");
+                    }
+
+                    return;
+                }
+                if (msg.type === "server_member_temporary_ban_lifted") {
+                    const sid = String(msg.server_id ?? "");
+                    const uid = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "quelqu’un");
+
+                    if (!sid || !uid) return;
+
+                    const isMe = String(myIdRef.current ?? "") === uid;
+
+                    if (isMe) {
+                        setTemporarilyRestrictedServers((prev) => {
+                            const copy = { ...prev };
+                            delete copy[sid];
+                            return copy;
+                        });
+
+                        if (String(selectedServerIdRef.current ?? "") === sid) {
+                            reloadMembers(sid);
+                            reloadChannels(sid);
+                        }
+
+                        pushToast("Ta suspension temporaire est terminée", "success");
+                    } else {
+                        pushToast(`${username} peut à nouveau accéder au serveur`, "success");
+                    }
+
+                    return;
+                }
             } catch {}
         };
 
@@ -1090,6 +1182,14 @@ export default function ChatPage() {
             return;
         }
 
+        if (temporarilyRestrictedServers[selectedServerId]) {
+            setMembers([]);
+            setChannels([]);
+            setSelectedChannelId(null);
+            setMessages([]);
+            return;
+        }
+
         setIsLeaveOpen(false);
         setLeaveError(null);
         setOpenMenuFor(null);
@@ -1103,7 +1203,7 @@ export default function ChatPage() {
         return () => {
             wsSend({ type: "leave_server", server_id: selectedServerId });
         };
-    }, [selectedServerId]);
+    }, [selectedServerId, temporarilyRestrictedServers]);
 
     useEffect(() => {
         if (!me?.id) return;
@@ -1800,14 +1900,15 @@ export default function ChatPage() {
                                                     </button>
                                                     {openMenuFor === String(m.user_id) && (
                                                         <MemberActionsMenu
-                                                        username={m.username}
-                                                        userId={String(m.user_id)}
-                                                        serverId={selectedServerId}
-                                                        role={m.role}
-                                                        onKick={handleKickMember}
-                                                        onBan={handleBanMember}
-                                                        onSetRole={setMemberRole}
-                                                        onTransferOwner={transferOwner}
+                                                            username={m.username}
+                                                            userId={String(m.user_id)}
+                                                            serverId={selectedServerId}
+                                                            role={m.role}
+                                                            onKick={handleKickMember}
+                                                            onBan={handleBanMember}
+                                                            onBanTemporary={handleBanTemporaryMember}
+                                                            onSetRole={setMemberRole}
+                                                            onTransferOwner={transferOwner}
                                                         />
                                                     )}
                                                 </div>

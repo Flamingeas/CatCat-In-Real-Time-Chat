@@ -26,3 +26,12 @@ export async function unbanMember(serverId: string, userId: string): Promise<voi
     method: "DELETE",
   });
 }
+
+export async function banTemporaryMember(
+  serverId: string,
+  userId: string
+): Promise<void> {
+  await api<void>(`/api/servers/${serverId}/bans-temporary/${userId}`, {
+    method: "POST",
+  });
+}

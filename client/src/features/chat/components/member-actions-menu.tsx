@@ -7,6 +7,7 @@ type Props = {
   role?: MemberRole
   onKick: (serverId: string, userId: string) => void
   onBan: (serverId: string, userId: string) => void
+  onBanTemporary: (serverId: string, userId: string) => void
   onSetRole: (serverId: string, userId: string, role: MemberRole) => void
   onTransferOwner: (serverId: string, userId: string) => void
 }
@@ -18,6 +19,7 @@ export function MemberActionsMenu({
   role,
   onKick,
   onBan,
+  onBanTemporary,
   onSetRole,
   onTransferOwner,
 }: Props) {
@@ -57,7 +59,15 @@ export function MemberActionsMenu({
       >
         Expulser
       </button>
-
+      <button
+          onClick={() => {
+            if (!window.confirm(`Bannir définitivement ${username} ?`)) return
+            onBan(serverId, userId)
+          }}
+          className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-[#0F0908] cursor-pointer"
+      >
+        Bannir temporairement
+      </button>
       <button
         onClick={() => {
           if (!window.confirm(`Bannir définitivement ${username} ?`)) return

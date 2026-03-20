@@ -381,6 +381,37 @@ pub async fn ban_member(
     }
 }
 
+pub async fn ban_temporary_member(
+    user: AuthenticatedUser,
+    service: web::Data<ServerService>,
+    ws: web::Data<Addr<WsServer>>,
+    path: web::Path<MemberPath>,
+) -> impl Responder {
+    let server_id = path.id;
+    let target_user_id = path.user_id;
+
+    match service.ban_temporary_member(user.user_id, server_id, target_user_id).await {
+        Ok(_) => {
+            let username = service
+                .get_username(target_user_id)
+                .await
+                .unwrap_or_else(|_| "unknown".to_string());
+
+            ws.do_send(ServerEvent::MemberBannedTemporary {
+                server_id,
+                user_id: target_user_id,
+                username,
+            });
+
+            HttpResponse::Ok().json(json!({ "message": "Member banned temporary" }))
+        }
+        Err(e) if e == "Forbidden" => {
+            HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
+        }
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+    }
+}
+
 pub async fn ban_list(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
@@ -457,6 +488,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         .route("/{id}", web::put().to(update_server))
         .route("/{id}", web::delete().to(delete_server))
         .route("/{id}/bans/{user_id}", web::post().to(ban_member))
+        .route("/{id}/bans-temporary/{user_id}", web::post().to(ban_temporary_member))
         .route("/{id}/bans", web::get().to(ban_list))
         .route("/{id}/bans/{user_id}", web::delete().to(unban_member));
 }
