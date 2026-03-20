@@ -1,8 +1,49 @@
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
-use validator::Validate;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
+use uuid::Uuid;
+use validator::Validate;
+
+mod chrono_as_bson_datetime {
+    use chrono::{DateTime, Utc};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        bson::DateTime::from_chrono(*value).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bdt = bson::DateTime::deserialize(deserializer)?;
+        Ok(bdt.to_chrono())
+    }
+}
+mod opt_chrono_as_bson_datetime {
+    use chrono::{DateTime, Utc};
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(value: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match value {
+            Some(dt) => bson::DateTime::from_chrono(*dt).serialize(serializer),
+            None => serializer.serialize_none(),
+        }
+    }
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt = Option::<bson::DateTime>::deserialize(deserializer)?;
+        Ok(opt.map(|bdt| bdt.to_chrono()))
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
@@ -14,8 +55,19 @@ pub struct Message {
     pub username: String,
     pub channel_id: Uuid,
     pub server_id: Uuid,
+    #[serde(with = "chrono_as_bson_datetime")]
     pub created_at: DateTime<Utc>,
+    #[serde(
+        default,
+        with = "opt_chrono_as_bson_datetime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub updated_at: Option<DateTime<Utc>>,
+    #[serde(
+        default,
+        with = "opt_chrono_as_bson_datetime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
@@ -40,7 +92,10 @@ pub struct MessageResponse {
     pub username: String,
     pub channel_id: Uuid,
     pub server_id: Uuid,
+
     pub created_at: DateTime<Utc>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<DateTime<Utc>>,
     pub is_edited: bool,
     pub is_deleted: bool,
@@ -124,6 +179,9 @@ impl Message {
     }
     pub fn is_deleted(&self) -> bool {
         self.deleted_at.is_some()
+    }
+    pub fn is_edited(&self) -> bool {
+        self.updated_at > Option::from(self.created_at)
     }
     pub fn update_content(&mut self, new_content: String) {
         self.content = new_content;

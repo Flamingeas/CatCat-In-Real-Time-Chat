@@ -1,10 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc};
 
 use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::models::channel::{Channel, UpdateChannel};
-use crate::modules::channel::repository::{ChannelRepository, ChannelRepositoryTrait};
+use crate::modules::channel::repository::{ChannelRepositoryTrait};
 
 #[async_trait]
 pub trait ChannelServiceTrait: Send + Sync {
@@ -148,6 +148,7 @@ impl ChannelServiceTrait for ChannelService {
 
 #[cfg(test)]
 mod tests {
+    use std::sync::Mutex;
     use super::*;
     use chrono::Utc;
 

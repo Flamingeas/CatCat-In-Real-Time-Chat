@@ -106,6 +106,7 @@ pub enum IncomingMessage {
     StatusChange { status: UserStatus, server_id: Option<Uuid> },
 
     Ping { t: Option<i64> },
+
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -139,6 +140,14 @@ pub enum OutgoingMessage {
         username: String,
         content: String,
         created_at: String,
+    },
+    MessageUpdated {
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        username: String,
+        content: String,
+        updated_at: String,
     },
     MessageDeleted {
         server_id: Uuid,
