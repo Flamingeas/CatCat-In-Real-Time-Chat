@@ -12,7 +12,7 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
-bcrypt = "0.18.0"  # Pour hasher les mots de passe
+bcrypt = "0.18.0"
 validator = { version = "0.20.0", features = ["derive"] }
 dotenv = "0.15"
 uuid = { version = "1.6", features = ["serde", "v4"] }
@@ -37,3 +37,5 @@ actix-test = "0.1.5"
 dotenvy = "0.15"
 utoipa = { version = "4", features = ["actix_extras", "uuid", "chrono"] }
 utoipa-swagger-ui = { version = "6", features = ["actix-web"] }
+sessions = "0.7.0"
+bson = { version = "3.1.0", features = ["chrono-0_4", "uuid-1", "serde"] }

@@ -5,12 +5,13 @@ use sqlx::Error;
 use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
-use utoipa::{ToSchema, IntoParams}; // <-- NOUVEAUX IMPORTS
+use utoipa::{ToSchema, IntoParams};
 
 use crate::models::message::{CreateMessage, MessageResponse, UpdateMessage};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::websocket::server::{ClientMessage, WsServer};
 use super::service::{MessageService, ServiceError};
+use crate::websocket::session::OutgoingMessage;
 
 #[utoipa::path(
     post,
@@ -82,12 +83,21 @@ pub async fn update_message(
     pg_pool: web::Data<PgPool>,
     mongo_db: web::Data<Database>,
     user: AuthenticatedUser,
+    ws_server: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
     data: web::Json<UpdateMessageRequest>,
 ) -> impl Responder {
+    log::info!("update_message route called");
+    log::info!("User: {}", user.user_id);
+    log::info!("Message ID: {}", path);
+    log::info!("Data: {:?}", data);
+
     let message_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-    update_message_with_service(&service, user.user_id, message_id, &data).await
+
+    log::info!("Calling update_message_with_service");
+
+    update_message_with_service(&service, ws_server.get_ref(), user.user_id, message_id, &data).await
 }
 
 #[utoipa::path(
@@ -181,7 +191,6 @@ fn ok_messages_response(messages: Vec<MessageResponse>) -> HttpResponse {
 fn no_content_response() -> HttpResponse {
     HttpResponse::NoContent().finish()
 }
-
 fn build_new_message_event(message: &MessageResponse) -> ClientMessage {
     ClientMessage::BroadcastNewMessage {
         server_id: message.server_id,
@@ -190,7 +199,8 @@ fn build_new_message_event(message: &MessageResponse) -> ClientMessage {
         user_id: message.user_id,
         username: message.username.clone(),
         content: message.content.clone(),
-        created_at: message.created_at.to_rfc3339(),
+        created_at: message.created_at
+            .to_rfc3339(),
     }
 }
 
@@ -245,21 +255,49 @@ async fn get_messages_with_service(
     }
 }
 
+fn build_updated_message_event(message: &MessageResponse) -> ClientMessage {
+    ClientMessage::BroadcastMessageUpdated {
+        server_id: message.server_id,
+        channel_id: message.channel_id,
+        message_id: message.message_id,
+        content: message.content.clone(),
+        updated_at: message.updated_at.unwrap_or(message.created_at).to_rfc3339().parse().unwrap(),
+    }
+}
 async fn update_message_with_service(
     service: &MessageService,
+    ws_server: &Addr<WsServer>,
     user_id: Uuid,
     message_id: Uuid,
     data: &UpdateMessageRequest,
 ) -> HttpResponse {
+    log::info!("update_message_with_service START");
+    log::info!("user_id: {}", user_id);
+    log::info!("message_id: {}", message_id);
+    log::info!("data.content: {}", data.content);
+
+    log::info!("About to validate");
+
     if let Err(error_message) = validate_update_message_request(data) {
+        log::error!("Validation failed: {} !!", error_message);
         return bad_request_response(error_message);
     }
+    log::info!("Validation passed");
+    log::info!("About to build payload");
 
     let payload = build_update_message_payload(data);
+    log::info!("Payload built");
+    log::info!("About to call service.update_message");
 
     match service.update_message(user_id, message_id, payload).await {
-        Ok(message) => ok_message_response(message),
-        Err(e) => handle_service_error(e),
+        Ok(message) => {
+            log::info!("Service returned success");
+            ok_message_response(message)
+        }
+        Err(e) => {
+            log::error!("Service error: {:?}", e);
+            handle_service_error(e)
+        }
     }
 }
 

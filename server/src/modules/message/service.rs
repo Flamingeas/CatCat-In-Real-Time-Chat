@@ -296,6 +296,18 @@ impl MessageService {
             ));
         }
 
+        const EDIT_TIME_LIMIT_MINUTES: i64 = 5;
+
+        let elapsed = Utc::now()
+            .signed_duration_since(message.created_at)
+            .num_minutes();
+
+        if elapsed > EDIT_TIME_LIMIT_MINUTES {
+            return Err(ServiceError::Forbidden(
+                format!("Messages can only be edited within {} minutes", EDIT_TIME_LIMIT_MINUTES)
+            ));
+        }
+
         if message.is_deleted() {
             return Err(ServiceError::Forbidden(
                 "Cannot edit a deleted message".to_string(),
