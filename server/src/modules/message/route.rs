@@ -292,6 +292,7 @@ async fn update_message_with_service(
     match service.update_message(user_id, message_id, payload).await {
         Ok(message) => {
             log::info!("Service returned success");
+            ws_server.do_send(build_updated_message_event(&message));
             ok_message_response(message)
         }
         Err(e) => {
