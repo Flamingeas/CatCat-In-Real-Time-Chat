@@ -7,7 +7,16 @@ import localFont from "next/font/local";
 import { Nunito } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-
+import {
+    getServerMembers,
+    kickMember,
+    setMemberRole as setMemberRoleRequest,
+    transferOwner as transferOwnerRequest,
+    leaveServer as leaveServerRequest,
+    joinServerByCode,
+    type Member,
+    type MemberRole,
+} from "@/features/chat/services/members.service";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 const WS_URL = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws") as string;
 
@@ -109,7 +118,9 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
 
     const [isChannelCreateOpen, setIsChannelCreateOpen] = useState(false);
     const [channelEditError, setChannelEditError] = useState<string | null>(null);
+    const [channelName, setChannelName] = useState("");
     const [channelEditName, setChannelEditName] = useState("");
+    const [toasts, setToasts] = useState<Toast[]>([]);
 
     const [isChannelEditOpen, setIsChannelEditOpen] = useState(false);
     const [isChannelSaving, setIsChannelSaving] = useState(false);
@@ -122,6 +133,15 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
     const [isSavingSettings, setIsSavingSettings] = useState(false);
     const [me, setMe] = useState<{ id: string; username: string } | null>(null);
     const [members, setMembers] = useState<Member[]>([]);
+
+    const [channelCreateError, setChannelCreateError] = useState<string | null>(null);
+    const [isChannelCreating, setIsChannelCreating] = useState(false);
+    const [leaveError, setLeaveError] = useState<string | null>(null);
+    const [isLeaving, setIsLeaving] = useState(false);
+
+    const [isLeaveOpen, setIsLeaveOpen] = useState(false);
+    const seenPresenceRef = useRef<Record<string, boolean>>({});
+    const [onlineUserIds, setOnlineUserIds] = useState<Set<string>>(new Set());
 
     function wsSend(obj: any) {
         const ws = wsRef.current;
@@ -137,10 +157,15 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
         const found = members.find((m) => String(m.user_id) === String(me.id));
         return (found?.role ?? "member") as MemberRole;
     }, [me, members, selectedServerId, selectedServer?.owner_id]);
-    console.log(selectedChannelId)
     const isOwner = myRole === "owner";
 
     const canEditChannel = myRole === "owner" || myRole === "admin";
+
+    function pushToast(text: string, kind: Toast["kind"] = "info") {
+        const id = `${Date.now()}_${Math.random()}`;
+        setToasts((prev) => [...prev, { id, text, kind }]);
+        window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 2500);
+    }
 
     function openServerSettings() {
         if (!selectedServer || !isOwner) return;
@@ -191,6 +216,35 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
         }
     }
 
+    async function createChannel() {
+        if (!selectedServerId) return;
+
+        setChannelCreateError(null);
+        const name = channelName.trim();
+
+        if (name.length < 3) return setChannelCreateError("Le nom doit faire au moins 3 caractères.");
+        if (name.length > 50) return setChannelCreateError("Le nom doit faire maximum 50 caractères.");
+
+        try {
+            setIsChannelCreating(true);
+            const created = await api<Channel>(`/api/servers/${selectedServerId}/channels`, {
+                method: "POST",
+                body: JSON.stringify({ name }),
+            });
+
+            setIsChannelCreateOpen(false);
+            setChannelName("");
+
+            await reloadChannels(selectedServerId);
+            onSelectChannel(String(created.id));
+            pushToast(`Salon #${created.name} créé`, "success");
+        } catch (e: any) {
+            setChannelCreateError(e?.message ?? "Impossible de créer le salon.");
+        } finally {
+            setIsChannelCreating(false);
+        }
+    }
+
     async function deleteServer() {
         if (!selectedServer || !isOwner) return;
 
@@ -201,7 +255,6 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
 
         try {
             setIsSavingSettings(true);
-            console.log("test delete")
             await api<void>(`/api/servers/${selectedServer.id}`, { method: "DELETE" });
 
             wsSend({ type: "leave_server", server_id: selectedServer.id });
@@ -231,10 +284,7 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
             setMe(null);
         }
     }, []);
-            console.log(me);
-            console.log(canEditChannel)
 
-    console.log()
     async function refreshServers(selectId?: string) {
         const list = await api<Server[]>("/api/servers");
         setServers(list);
@@ -268,6 +318,42 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
             console.error(e);
         }
     }
+
+    async function reloadMembers(serverId: string) {
+        try {
+            const m = await getServerMembers(serverId);
+            setMembers(m.map((x) => ({ ...x, role: (x.role ?? "member") as MemberRole })));
+        } catch (e: any) {
+            const msg = String(e?.message ?? "");
+            if (msg.startsWith("403")) pushToast("Accès refusé aux membres (403)", "warn");
+            if (msg.startsWith("404")) pushToast("Serveur introuvable (404)", "warn");
+            setMembers([]);
+        }
+    }
+
+    useEffect(() => {
+        if (!selectedServerId) {
+            setMembers([]);
+            setChannels([]);
+            onSelectChannel(null);
+            setOnlineUserIds(new Set());
+            return;
+        }
+
+        setIsLeaveOpen(false);
+        setLeaveError(null);
+        //setOpenMenuFor(null);
+
+        seenPresenceRef.current[String(selectedServerId)] = false;
+        wsSend({ type: "join_server", server_id: selectedServerId });
+
+        reloadMembers(selectedServerId);
+        reloadChannels(selectedServerId);
+
+        return () => {
+            wsSend({ type: "leave_server", server_id: selectedServerId });
+        };
+    }, [selectedServerId]);
 
     function openEditChannel() {
         if (!canEditChannel) return;
@@ -312,6 +398,44 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
             setIsChannelSaving(false);
         }
     }
+
+    async function leaveServer() {
+        if (!selectedServerId) return;
+        if (isOwner) return;
+
+        setLeaveError(null);
+        try {
+            setIsLeaving(true);
+
+            await leaveServerRequest(selectedServerId);
+            wsSend({ type: "leave_server", server_id: selectedServerId });
+
+            setMembers([]);
+            setChannels([]);
+            onSelectChannel(null);
+            setOnlineUserIds(new Set());
+            setIsLeaveOpen(false);
+
+            const list = await api<Server[]>("/api/servers");
+            setServers(list);
+
+            const nextId = list.length ? list[0].id : null;
+            setSelectedServerId(nextId);
+
+            if (nextId) {
+                wsSend({ type: "join_server", server_id: nextId });
+                await reloadMembers(nextId);
+                await reloadChannels(nextId);
+            }
+
+            pushToast("Tu as quitté le serveur", "warn");
+        } catch (e: any) {
+            setLeaveError(e?.message ?? "Impossible de quitter le serveur.");
+        } finally {
+            setIsLeaving(false);
+        }
+    }
+
     return(
         <div>
             <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
@@ -365,8 +489,8 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
                     ) : (
                         <div className="flex flex-col gap-1">
                             {channels.map((c) => {
+
                                 const active = String(c.id) === String(selectedChannelId);
-                                console.log(active);
                                 return (
                                     <div
                                         key={c.id}
@@ -554,6 +678,48 @@ export default function ChannelBar({selectedServerId, servers, canCreateChannel,
                         <div className="mt-4 text-xs text-[#DCCBC4]/40">
                             Endpoint attendu: <span className="text-[#DCCBC4]/70">PUT /api/channels/:id</span> avec{" "}
                             <span className="text-[#DCCBC4]/70">{`{ name }`}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isLeaveOpen && selectedServer && !isOwner && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/70" onClick={() => !isLeaving && setIsLeaveOpen(false)} />
+                    <div className="relative w-full max-w-md rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">Quitter le serveur</h3>
+                                <div className="text-xs text-[#DCCBC4]/50 mt-1">Serveur: {selectedServer.name}</div>
+                            </div>
+                            <button onClick={() => !isLeaving && setIsLeaveOpen(false)} className="text-[#DCCBC4]/60 hover:text-white cursor-pointer">
+                                ✕
+                            </button>
+                        </div>
+
+                        <div className="rounded-2xl border border-red-500/20 bg-[#0a0605] p-4">
+                            <div className="text-sm text-[#DCCBC4]/70">
+                                Tu vas quitter ce serveur. Tu pourras le rejoindre de nouveau uniquement avec un code d’invitation.
+                            </div>
+
+                            {leaveError && <div className="mt-3 text-sm text-red-400">{leaveError}</div>}
+
+                            <div className="mt-5 flex justify-end gap-2">
+                                <button
+                                    onClick={() => setIsLeaveOpen(false)}
+                                    disabled={isLeaving}
+                                    className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    onClick={leaveServer}
+                                    disabled={isLeaving}
+                                    className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold hover:bg-red-400 disabled:opacity-50 cursor-pointer"
+                                >
+                                    {isLeaving ? "Quitte..." : "Quitter"}
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
