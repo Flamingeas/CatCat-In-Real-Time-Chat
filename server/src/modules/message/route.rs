@@ -46,7 +46,7 @@ pub async fn send_message(
     tag = "Messages",
     params(
         ("channel_id" = Uuid, Path, description = "L'ID du salon"),
-        GetMessagesQueryParams // <-- On passe les paramètres de recherche ici !
+        GetMessagesQueryParams
     ),
     responses(
         (status = 200, description = "Historique des messages récupéré", body = [MessageResponse])
