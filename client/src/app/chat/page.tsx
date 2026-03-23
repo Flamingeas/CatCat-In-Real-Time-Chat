@@ -730,6 +730,8 @@ export default function ChatPage() {
             ws.send(JSON.stringify({ type: "auth", token }));
             const sid = selectedServerIdRef.current;
             if (sid) ws.send(JSON.stringify({ type: "join_server", server_id: sid }));
+            const cid = selectedChannelIdRef.current;
+            if (cid) ws.send(JSON.stringify({ type: "join_channel", channel_id: cid }));
         };
 
         ws.onmessage = (e) => {
