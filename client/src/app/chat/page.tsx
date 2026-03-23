@@ -672,6 +672,20 @@ export default function ChatPage() {
             router.replace("/");
             return;
         }
+        try {
+            const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+            if (!payload.exp || payload.exp < Math.floor(Date.now() / 1000)) {
+                localStorage.removeItem("access_token");
+                localStorage.removeItem("user");
+                router.replace("/");
+                return;
+            }
+        } catch {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("user");
+            router.replace("/");
+            return;
+        }
         setHasCheckedAuth(true);
     }, [router]);
 
@@ -751,6 +765,15 @@ export default function ChatPage() {
                         else if (typeof item === "string") ids.push(String(item));
                     }
                     setOnlineUserIds(new Set(ids));
+                    return;
+                }
+
+                if (msg.type === "error") {
+                    if ((msg as any).message === "invalid_or_expired_token") {
+                        localStorage.removeItem("access_token");
+                        localStorage.removeItem("user");
+                        router.replace("/");
+                    }
                     return;
                 }
 
