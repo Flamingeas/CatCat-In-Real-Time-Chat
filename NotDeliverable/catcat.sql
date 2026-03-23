@@ -204,11 +204,42 @@ CREATE TABLE public.users (
 ALTER TABLE public.users OWNER TO postgres;
 
 --
+-- Name: conversations; Type: TABLE; Schema: public; Owner: postgres
+--
+
+CREATE TABLE public.conversations (
+    id uuid DEFAULT public.gen_random_uuid() NOT NULL,
+    user1_id uuid NOT NULL,
+    user2_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT conversations_user_order CHECK (user1_id < user2_id)
+);
+
+
+ALTER TABLE public.conversations OWNER TO postgres;
+
+--
 -- Name: databases databases_pkey; Type: CONSTRAINT; Schema: _sqlx_test; Owner: postgres
 --
 
 ALTER TABLE ONLY _sqlx_test.databases
     ADD CONSTRAINT databases_pkey PRIMARY KEY (db_name);
+
+
+--
+-- Name: conversations conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: conversations conversations_user1_id_user2_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_user1_id_user2_id_key UNIQUE (user1_id, user2_id);
 
 
 --
@@ -283,6 +314,20 @@ CREATE INDEX databases_created_at ON _sqlx_test.databases USING btree (created_a
 
 
 --
+-- Name: idx_conversations_user1; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_conversations_user1 ON public.conversations USING btree (user1_id);
+
+
+--
+-- Name: idx_conversations_user2; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX idx_conversations_user2 ON public.conversations USING btree (user2_id);
+
+
+--
 -- Name: idx_channels_server_id; Type: INDEX; Schema: public; Owner: postgres
 --
 
@@ -329,6 +374,22 @@ CREATE TRIGGER trg_servers_updated_at BEFORE UPDATE ON public.servers FOR EACH R
 --
 
 CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+
+--
+-- Name: conversations conversations_user1_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_user1_id_fkey FOREIGN KEY (user1_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: conversations conversations_user2_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_user2_id_fkey FOREIGN KEY (user2_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
