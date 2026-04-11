@@ -6,19 +6,91 @@ use utoipa::ToSchema;
 
 use crate::models::message_reactions::Reaction;
 
+mod chrono_as_bson_datetime {
+    use chrono::{DateTime, Utc};
+    use serde::{Deserializer, Serializer, Serialize, Deserialize};
+    use std::time::SystemTime;
+
+    pub fn serialize<S>(value: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        // Conversion via SystemTime
+        let st: SystemTime = (*value).into();
+        mongodb::bson::DateTime::from_system_time(st).serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<DateTime<Utc>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let bdt = mongodb::bson::DateTime::deserialize(deserializer)?;
+        // Conversion vers chrono via SystemTime
+        let st = bdt.to_system_time();
+        Ok(DateTime::<Utc>::from(st))
+    }
+}
+
+mod opt_chrono_as_bson_datetime {
+    use chrono::{DateTime, Utc};
+    use serde::{Deserializer, Serializer, Serialize, Deserialize};
+    use std::time::SystemTime;
+
+    pub fn serialize<S>(value: &Option<DateTime<Utc>>, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match value {
+            Some(dt) => {
+                let st: SystemTime = (*dt).into();
+                mongodb::bson::DateTime::from_system_time(st).serialize(serializer)
+            },
+            None => serializer.serialize_none(),
+        }
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let opt = Option::<mongodb::bson::DateTime>::deserialize(deserializer)?;
+        Ok(opt.map(|bdt| {
+            let st = bdt.to_system_time();
+            DateTime::<Utc>::from(st)
+        }))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<mongodb::bson::oid::ObjectId>,
+    
     pub message_id: Uuid,
     pub content: String,
     pub user_id: Uuid,
     pub username: String,
     pub channel_id: Uuid,
     pub server_id: Uuid,
+
+    #[serde(with = "chrono_as_bson_datetime")]
     pub created_at: DateTime<Utc>,
+
+    #[serde(
+        default,
+        with = "opt_chrono_as_bson_datetime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub updated_at: Option<DateTime<Utc>>,
+
+    #[serde(
+        default,
+        with = "opt_chrono_as_bson_datetime",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub deleted_at: Option<DateTime<Utc>>,
+
+    #[serde(default)] 
     pub reactions: Vec<Reaction>,
 }
 
@@ -47,6 +119,7 @@ pub struct MessageResponse {
     pub updated_at: Option<DateTime<Utc>>,
     pub is_edited: bool,
     pub is_deleted: bool,
+    pub reactions: Vec<Reaction>,
 }
 
 impl From<Message> for MessageResponse {
@@ -64,6 +137,7 @@ impl From<Message> for MessageResponse {
             updated_at: message.updated_at,
             is_edited,
             is_deleted,
+            reactions: message.reactions,
         }
     }
 }
@@ -121,6 +195,7 @@ impl Message {
             updated_at: self.updated_at,
             is_edited: self.updated_at.is_some(),
             is_deleted: self.deleted_at.is_some(),
+            reactions: self.reactions.clone(),
         }
     }
     pub fn mark_as_deleted(&mut self) {

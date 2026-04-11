@@ -6,7 +6,7 @@ use sqlx::Error;
 use sqlx::PgPool;
 use uuid::Uuid;
 use validator::Validate;
-use utoipa::{ToSchema, IntoParams}; // <-- NOUVEAUX IMPORTS
+use utoipa::{ToSchema, IntoParams};
 
 use crate::models::message::{CreateMessage, MessageResponse, UpdateMessage};
 use crate::models::message_reactions::ReactionPayload;
@@ -47,7 +47,7 @@ pub async fn send_message(
     tag = "Messages",
     params(
         ("channel_id" = Uuid, Path, description = "L'ID du salon"),
-        GetMessagesQueryParams // <-- On passe les paramètres de recherche ici !
+        GetMessagesQueryParams
     ),
     responses(
         (status = 200, description = "Historique des messages récupéré", body = [MessageResponse])
@@ -117,21 +117,21 @@ pub async fn delete_message(
     delete_message_with_service(&service, ws_server.get_ref(), user.user_id, message_id).await
 }
 
-#[derive(Debug, serde::Deserialize, Validate, ToSchema)] // <-- Ajout ToSchema
+#[derive(Debug, serde::Deserialize, Validate, ToSchema)]
 pub struct SendMessageRequest {
     #[validate(length(min = 1, max = 2000))]
     #[schema(example = "Salut tout le monde !")]
     pub content: String,
 }
 
-#[derive(Debug, serde::Deserialize, Validate, ToSchema)] // <-- Ajout ToSchema
+#[derive(Debug, serde::Deserialize, Validate, ToSchema)]
 pub struct UpdateMessageRequest {
     #[validate(length(min = 1, max = 2000))]
     #[schema(example = "J'ai corrigé ma faute de frappe")]
     pub content: String,
 }
 
-#[derive(Debug, serde::Deserialize, IntoParams)] // <-- Ajout de IntoParams pour les query
+#[derive(Debug, serde::Deserialize, IntoParams)]
 pub struct GetMessagesQueryParams {
     pub limit: Option<i64>,
     pub before: Option<chrono::DateTime<chrono::Utc>>,
@@ -302,15 +302,20 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{id}/reactions", web::delete().to(remove_reaction))
             .route("/{channel_id}/messages", web::post().to(send_message))
             .route("/{channel_id}/messages", web::get().to(get_messages)),
-
     );
 
     cfg.service(
         web::scope("/messages")
+            .route("/{id}/reactions", web::post().to(add_reaction))
+            .route("/{id}/reactions", web::delete().to(remove_reaction))
             .route("/{id}", web::put().to(update_message))
             .route("/{id}", web::delete().to(delete_message)),
     );
 }
+
+// ---------------------------------------------------------
+// ROUTES RÉACTIONS CORRIGÉES
+// ---------------------------------------------------------
 
 #[utoipa::path(
     post,
@@ -328,17 +333,26 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     security(("jwt" = []))
 )]
 pub async fn add_reaction(
-    user: AuthenticatedUser,
-    service: web::Data<MessageService>,
+    authenticated_user: AuthenticatedUser,
+    mongo_db: web::Data<Database>,
+    pg_pool: web::Data<PgPool>,
     ws: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
     payload: web::Json<ReactionPayload>,
 ) -> impl Responder {
-    let message_id = path.into_inner();
+    let msg_id = path.into_inner();
     
-    match service.add_reaction(message_id, user.user_id, payload.channel_id, payload.emoji.clone(), ws).await {
+    let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
+    
+    match service.add_reaction(
+        msg_id, 
+        authenticated_user.user_id, 
+        payload.channel_id, 
+        payload.emoji.clone(), 
+        ws
+    ).await {
         Ok(_) => HttpResponse::Ok().json(json!({ "status": "success" })),
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e.to_string() })),
     }
 }
 
@@ -348,28 +362,45 @@ pub async fn add_reaction(
     tag = "Message Reactions",
     params(
         ("id" = Uuid, Path, description = "ID du message"),
+        ("channel_id" = Uuid, Query, description = "ID du channel"),
         ("emoji" = String, Query, description = "L'emoji à retirer")
     ),
     responses(
         (status = 200, description = "Réaction retirée"),
+        (status = 400, description = "Mauvaise requête"),
         (status = 401, description = "Non autorisé")
     ),
     security(("jwt" = []))
 )]
 pub async fn remove_reaction(
-    user: AuthenticatedUser,
-    service: web::Data<MessageService>,
+    authenticated_user: AuthenticatedUser,
+    mongo_db: web::Data<Database>,
+    pg_pool: web::Data<PgPool>,
     ws: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
-    query: web::Query<ReactionPayload>, // On réutilise le payload pour l'emoji
+    query: web::Query<ReactionPayload>,
 ) -> impl Responder {
-    let message_id = path.into_inner();
+    let msg_id = path.into_inner();
     
-    match service.remove_reaction(message_id, user.user_id, query.channel_id, query.emoji.clone(), ws).await {
+    let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
+    
+    match service.remove_reaction(
+        msg_id, 
+        authenticated_user.user_id, 
+        query.channel_id, 
+        query.emoji.clone(), 
+        ws
+    ).await {
         Ok(_) => HttpResponse::Ok().json(json!({ "status": "success" })),
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e.to_string() })),
     }
 }
+
+// ==========================================
+// TOUS TES TESTS PRÉCÉDENTS VONT ICI EN DESSOUS
+// #[cfg(test)]
+// mod tests { ... }
+// ==========================================
 
 #[cfg(test)]
 mod tests {

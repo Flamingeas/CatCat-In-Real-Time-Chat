@@ -7,6 +7,7 @@ import localFont from "next/font/local";
 import { Nunito } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import EmojiPicker, { Theme } from 'emoji-picker-react';
 import {
   getServerMembers,
   kickMember,
@@ -44,6 +45,11 @@ type Channel = {
     updated_at?: string;
 };
 
+type Reaction = {
+    emoji: string;
+    users: string[];
+};
+
 type Message = {
     message_id: string;
     content: string;
@@ -55,6 +61,7 @@ type Message = {
     updated_at?: string | null;
     is_edited: boolean;
     is_deleted: boolean;
+    reactions?: Reaction[];
 };
 
 type WsEvent =
@@ -78,7 +85,9 @@ type WsEvent =
     | { type: "message_deleted"; message_id: string; channel_id: string; server_id: string }
     | { type: "server_member_banned"; server_id: string; user_id: string; username: string }
     | { type: "server_member_unbanned"; server_id: string; user_id: string; username: string }
-    | { type: string; [k: string]: any };
+    | { type: string; [k: string]: any }
+    | { type: "message_reaction_added"; message_id: string; channel_id: string; user_id: string; emoji: string }
+    | { type: "message_reaction_removed"; message_id: string; channel_id: string; user_id: string; emoji: string };
 
 
 function getInitials(username?: string) {
@@ -225,6 +234,8 @@ export default function ChatPage() {
 
     const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement | null>(null);
+
+    const [activePickerId, setActivePickerId] = useState<string | null>(null);
 
     const router = useRouter();
     const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
@@ -1049,6 +1060,36 @@ export default function ChatPage() {
 
                     return;
                 }
+                if (msg.type === "message_reaction_added") {
+                    setMessages((prev) => prev.map(m => {
+                        if (m.message_id !== msg.message_id) return m;
+                        const reactions = m.reactions || [];
+                        const existing = reactions.find(r => r.emoji === msg.emoji);
+                        
+                        if (existing) {
+                            if (existing.users.includes(msg.user_id)) return m;
+                            return {
+                                ...m,
+                                reactions: reactions.map(r => r.emoji === msg.emoji 
+                                    ? { ...r, users: [...r.users, msg.user_id] } : r)
+                            };
+                        }
+                        return { ...m, reactions: [...reactions, { emoji: msg.emoji, users: [msg.user_id] }] };
+                    }));
+                    return;
+                }
+
+                if (msg.type === "message_reaction_removed") {
+                    setMessages((prev) => prev.map(m => {
+                        if (m.message_id !== msg.message_id) return m;
+                        const reactions = (m.reactions || [])
+                            .map(r => r.emoji === msg.emoji 
+                                ? { ...r, users: r.users.filter(uid => uid !== msg.user_id) } : r)
+                            .filter(r => r.users.length > 0);
+                        return { ...m, reactions };
+                    }));
+                    return;
+                }
             } catch {}
         };
 
@@ -1333,6 +1374,53 @@ export default function ChatPage() {
             setLeaveError(e?.message ?? "Impossible de quitter le serveur.");
         } finally {
             setIsLeaving(false);
+        }
+    }
+
+    async function toggleReaction(messageId: string, emoji: string, hasReacted: boolean) {
+        if (!selectedChannelId || !me) return;
+        
+        // ⚡️ 1. MISE À JOUR OPTIMISTE : On modifie l'écran instantanément !
+        setMessages((prev) => prev.map(m => {
+            if (m.message_id !== messageId) return m;
+            
+            const reactions = m.reactions || [];
+            const existing = reactions.find(r => r.emoji === emoji);
+            
+            if (hasReacted) {
+                // On retire notre ID de la liste
+                const newReactions = reactions
+                    .map(r => r.emoji === emoji ? { ...r, users: r.users.filter(uid => String(uid) !== String(me.id)) } : r)
+                    .filter(r => r.users.length > 0); // On supprime l'emoji si le compteur tombe à 0
+                return { ...m, reactions: newReactions };
+            } else {
+                // On ajoute notre ID à la liste
+                if (existing) {
+                    return {
+                        ...m,
+                        reactions: reactions.map(r => r.emoji === emoji ? { ...r, users: [...r.users, String(me.id)] } : r)
+                    };
+                } else {
+                    return { ...m, reactions: [...reactions, { emoji, users: [String(me.id)] }] };
+                }
+            }
+        }));
+
+        // 🌍 2. APPEL API : On prévient le serveur en arrière-plan
+        try {
+            if (hasReacted) {
+                await api(`/api/messages/${messageId}/reactions`, {
+                    method: "DELETE",
+                    body: JSON.stringify({ emoji, channel_id: selectedChannelId })
+                });
+            } else {
+                await api(`/api/messages/${messageId}/reactions`, {
+                    method: "POST",
+                    body: JSON.stringify({ emoji, channel_id: selectedChannelId })
+                });
+            }
+        } catch (e) {
+            pushToast("Erreur de synchronisation de la réaction", "warn");
         }
     }
 
@@ -1635,28 +1723,17 @@ export default function ChatPage() {
                                                         </div>
                                                     )}
 
-                                                    <div className={`min-w-0 max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col`}>
+                                                    <div className={`min-w-0 max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col group`}>
+    
+                                                        {/* 1. Header (Nom d'utilisateur) - Uniquement pour les autres */}
                                                         {!isMe && (
-                                                            <div className="flex items-center gap-2 mb-1 px-1 min-w-0">
-                                                                <span className="text-xs font-bold text-[#EB5E28] truncate">@{m.username}</span>
+                                                            <div className="flex items-center gap-2 mb-1 px-1">
+                                                                <span className="text-xs font-bold text-[#EB5E28]">@{m.username}</span>
                                                                 {time && <span className="text-[10px] text-[#DCCBC4]/40">{time}</span>}
-                                                                {m.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">• édité</span>}
-
-                                                                {canDeleteThis && (
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            if (!window.confirm("Supprimer ce message ?")) return;
-                                                                            deleteMyMessage(String(m.message_id));
-                                                                        }}
-                                                                        className="ml-auto text-[10px] text-[#DCCBC4]/60 hover:text-red-200 cursor-pointer"
-                                                                        title="Supprimer"
-                                                                    >
-                                                                        🗑 Supprimer
-                                                                    </button>
-                                                                )}
                                                             </div>
                                                         )}
 
+                                                        {/* 2. Bulle de message */}
                                                         <div
                                                             className={[
                                                                 "px-4 py-3 rounded-2xl border border-[#ffffff]/10 shadow-sm",
@@ -1667,23 +1744,59 @@ export default function ChatPage() {
                                                             {m.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : m.content}
                                                         </div>
 
+                                                        {/* 3. Les Réactions (juste sous la bulle) */}
+                                                        {m.reactions && m.reactions.length > 0 && (
+                                                            <div className={`flex flex-wrap gap-1 mt-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                                                                {m.reactions.map((r) => {
+                                                                    const hasReacted = me ? r.users.includes(me.id) : false;
+                                                                    return (
+                                                                        <button
+                                                                            key={r.emoji}
+                                                                            onClick={() => toggleReaction(m.message_id, r.emoji, hasReacted)}
+                                                                            className={`flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[11px] transition-all cursor-pointer
+                                                                                ${hasReacted 
+                                                                                    ? "bg-[#EB5E28]/20 border-[#EB5E28] text-[#EB5E28]" 
+                                                                                    : "bg-[#0F0908] border-[#ffffff]/10 text-[#DCCBC4]/70 hover:border-[#ffffff]/30"}`}
+                                                                        >
+                                                                            <span>{r.emoji}</span>
+                                                                            <span className="font-bold">{r.users.length}</span>
+                                                                        </button>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+
+                                                        {/* 4. Footer (Moi, édité, Supprimer, Réagir) */}
                                                         <div className={`flex items-center gap-2 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
                                                             {isMe && <span className="text-[10px] text-white/70">moi</span>}
-                                                            {time && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>{time}</span>}
-                                                            {m.is_edited && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>• édité</span>}
+                                                            {isMe && time && <span className="text-[10px] text-white/40">{time}</span>}
+                                                            {m.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">• édité</span>}
+                                                            
+                                                            {/* Actions rapides au survol du message */}
+                                                            {/* Actions rapides au survol du message */}
+                                                            {/* On force l'opacité à 100% si le menu est ouvert pour éviter qu'il disparaisse quand on bouge la souris */}
+                                                            <div className={`flex items-center gap-2 transition-opacity ${activePickerId === m.message_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
+                                                                
+                                                                {/* BOUTON + 😀 */}
+                                                                <div className="relative">
+                                                                    <button 
+                                                                        onClick={() => setActivePickerId(prev => prev === m.message_id ? null : m.message_id)}
+                                                                        className="text-[10px] px-1 text-[#DCCBC4]/40 hover:text-white cursor-pointer"
+                                                                        title="Ajouter une réaction"
+                                                                    >
+                                                                        + 😀
+                                                                    </button>
+                                                                </div>
 
-                                                            {(isMe || canModerateMessages) && canDeleteThis && (
-                                                                <button
-                                                                    onClick={() => {
-                                                                        if (!window.confirm("Supprimer ce message ?")) return;
-                                                                        deleteMyMessage(String(m.message_id));
-                                                                    }}
-                                                                    className="text-[10px] text-white/70 hover:text-red-200 cursor-pointer"
-                                                                    title="Supprimer"
-                                                                >
-                                                                    🗑 Supprimer
-                                                                </button>
-                                                            )}
+                                                                {canDeleteThis && (
+                                                                    <button
+                                                                        onClick={() => deleteMyMessage(m.message_id)}
+                                                                        className="text-[10px] text-[#DCCBC4]/40 hover:text-red-300 cursor-pointer"
+                                                                    >
+                                                                        🗑
+                                                                    </button>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1730,6 +1843,27 @@ export default function ChatPage() {
                         </button>
                     </div>
                 </div>
+                {activePickerId && (
+            <div className="absolute bottom-24 right-8 z-[9999] shadow-2xl rounded-xl overflow-hidden border border-[#ffffff]/10">
+                <EmojiPicker 
+                    theme={Theme.DARK} 
+                    onEmojiClick={(emojiData) => {
+                        // 1. On retrouve le message concerné
+                        const msg = messages.find(m => m.message_id === activePickerId);
+                        if (!msg) return;
+                        
+                        // 2. On vérifie si on a déjà mis cet emoji
+                        const hasReacted = msg.reactions?.find(r => r.emoji === emojiData.emoji)?.users.includes(me?.id || "");
+                        
+                        // 3. On déclenche la fonction
+                        toggleReaction(activePickerId, emojiData.emoji, !!hasReacted);
+                        
+                        // 4. On ferme le menu
+                        setActivePickerId(null);
+                    }}
+                />
+            </div>
+        )}
             </div>
 
             <div className="w-72 bg-[#0a0605] rounded-[20px] hidden xl:flex flex-col h-full shadow-lg overflow-hidden">

@@ -129,36 +129,10 @@ impl MessageRepositoryTrait for MongoMessageRepository {
         user_id: uuid::Uuid,
         emoji: String,
     ) -> Result<(), mongodb::error::Error> {
-        let collection = self.db.collection::<Message>("messages");
-
-        // 1. On tente d'ajouter l'user_id à une réaction existante pour cet emoji
-        // $addToSet garantit que l'utilisateur n'est ajouté qu'une seule fois
-        let filter = doc! { 
-            "message_id": message_id.to_string(), 
-            "reactions.emoji": &emoji 
-        };
-        let update = doc! { 
-            "$addToSet": { "reactions.$.users": user_id.to_string() } 
-        };
-        
-        let result = collection.update_one(filter, update).await?;
-
-        // 2. Si modified_count == 0, l'emoji n'existait pas encore sur ce message
-        // On doit donc créer l'entrée dans le tableau reactions avec $push
-        if result.modified_count == 0 {
-            let filter_new = doc! { "message_id": message_id.to_string() };
-            let update_new = doc! { 
-                "$push": { 
-                    "reactions": { 
-                        "emoji": emoji, 
-                        "users": [user_id.to_string()] 
-                    } 
-                } 
-            };
-            collection.update_one(filter_new, update_new).await?;
-        }
-
-        Ok(())
+        // On délègue au vrai repository qu'on a réparé tout à l'heure !
+        MessageRepository::new(&self.db)
+            .add_reaction(message_id, user_id, emoji)
+            .await
     }
 
     async fn remove_reaction(
@@ -167,28 +141,10 @@ impl MessageRepositoryTrait for MongoMessageRepository {
         user_id: uuid::Uuid,
         emoji: String,
     ) -> Result<(), mongodb::error::Error> {
-        let collection = self.db.collection::<Message>("messages");
-
-        // 1. On retire l'utilisateur du tableau 'users' de l'emoji concerné
-        let filter = doc! { 
-            "message_id": message_id.to_string(), 
-            "reactions.emoji": &emoji 
-        };
-        let update = doc! { 
-            "$pull": { "reactions.$.users": user_id.to_string() } 
-        };
-        
-        collection.update_one(filter, update).await?;
-
-        // 2. Optionnel : On supprime la réaction si le tableau 'users' devient vide
-        // Cela évite de garder des emojis avec 0 réactions dans la base
-        let cleanup_filter = doc! { "message_id": message_id.to_string() };
-        let cleanup_update = doc! { 
-            "$pull": { "reactions": { "users": { "$size": 0 } } } 
-        };
-        collection.update_one(cleanup_filter, cleanup_update).await?;
-
-        Ok(())
+        // On délègue au vrai repository !
+        MessageRepository::new(&self.db)
+            .remove_reaction(message_id, user_id, emoji)
+            .await
     }
 }
 

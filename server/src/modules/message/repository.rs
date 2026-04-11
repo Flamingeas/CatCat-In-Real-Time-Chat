@@ -67,6 +67,7 @@ impl<'a> MessageRepository<'a> {
         use mongodb::bson::DateTime as BsonDateTime;
         use mongodb::options::FindOptions;
 
+        // 1. On prépare le filtre de base
         let mut filter = doc! {
             "channel_id": uuid_bin0(channel_id),
             "$or": [
@@ -75,15 +76,19 @@ impl<'a> MessageRepository<'a> {
             ]
         };
 
+        // 2. Si on a une date "before", on l'ajoute au filtre
         if let Some(before_dt) = before {
             let before_bson = BsonDateTime::from_millis(before_dt.timestamp_millis());
             filter.insert("created_at", doc! { "$lt": before_bson });
         }
 
+        // 3. On configure le tri (du plus récent au plus ancien) et la limite
         let options = FindOptions::builder()
             .sort(doc! { "created_at": -1 })
             .limit(limit)
             .build();
+
+        println!("Démarrage de la requête GET pour le salon: {}", channel_id);
 
         let mut cursor = self
             .collection()
@@ -92,11 +97,15 @@ impl<'a> MessageRepository<'a> {
             .await?;
 
         let mut messages = Vec::new();
+
+        // 4. On parcourt les résultats
         while let Some(message) = cursor.try_next().await? {
             messages.push(message);
         }
 
+        // On remet dans l'ordre chronologique (ancien -> récent) pour le chat
         messages.reverse();
+        
         Ok(messages)
     }
 
@@ -176,30 +185,35 @@ impl<'a> MessageRepository<'a> {
         user_id: Uuid,
         emoji: String,
     ) -> Result<(), mongodb::error::Error> {
-        let collection = self.db.collection::<Message>("messages");
+        let collection = self.collection();
+        
+        let mid_bin = uuid_bin0(message_id);
+        // ⚠️ LE FIX EST ICI : On stocke le user_id en String dans le tableau !
+        let uid_str = user_id.to_string(); 
 
-        // 1. On essaie d'ajouter l'utilisateur à une réaction existante
-        // On cherche le message ET l'emoji précis. S'il existe, on $addToSet (ajoute si absent) l'user_id
-        let filter = doc! { "message_id": message_id.to_string(), "reactions.emoji": &emoji };
-        let update = doc! { "$addToSet": { "reactions.$.users": user_id.to_string() } };
+        let filter = doc! { 
+            "message_id": &mid_bin, 
+            "reactions.emoji": &emoji 
+        };
+        let update = doc! { 
+            "$addToSet": { "reactions.$.users": &uid_str } 
+        };
         
         let result = collection.update_one(filter, update).await?;
 
-        // 2. Si aucune ligne n'a été modifiée (result.modified_count == 0), 
-        // cela veut dire que l'emoji n'existe pas encore sur ce message.
-        if result.modified_count == 0 {
-            let filter_new = doc! { "message_id": message_id.to_string() };
+        // Si l'emoji n'existait pas encore
+        if result.matched_count == 0 {
+            let filter_new = doc! { "message_id": &mid_bin };
             let update_new = doc! { 
                 "$push": { 
                     "reactions": { 
                         "emoji": emoji, 
-                        "users": [user_id.to_string()] 
+                        "users": [uid_str] // En String ici aussi
                     } 
                 } 
             };
             collection.update_one(filter_new, update_new).await?;
         }
-
         Ok(())
     }
 
@@ -209,17 +223,26 @@ impl<'a> MessageRepository<'a> {
         user_id: Uuid,
         emoji: String,
     ) -> Result<(), mongodb::error::Error> {
-        let collection = self.db.collection::<Message>("messages");
+        let collection = self.collection();
+        
+        let mid_bin = uuid_bin0(message_id);
+        let uid_str = user_id.to_string(); // String !
 
-        // On retire l'utilisateur du tableau users de l'emoji correspondant
-        let filter = doc! { "message_id": message_id.to_string(), "reactions.emoji": &emoji };
-        let update = doc! { "$pull": { "reactions.$.users": user_id.to_string() } };
+        let filter = doc! { 
+            "message_id": &mid_bin, 
+            "reactions.emoji": &emoji 
+        };
+        let update = doc! { 
+            "$pull": { "reactions.$.users": &uid_str } 
+        };
         
         collection.update_one(filter, update).await?;
 
-        // Bonus : On nettoie les réactions vides (sans utilisateurs)
-        let cleanup_filter = doc! { "message_id": message_id.to_string() };
-        let cleanup_update = doc! { "$pull": { "reactions": { "users": { "$size": 0 } } } };
+        // Nettoyage : retirer l'objet emoji si plus personne n'y réagit
+        let cleanup_filter = doc! { "message_id": &mid_bin };
+        let cleanup_update = doc! { 
+            "$pull": { "reactions": { "users": { "$size": 0 } } } 
+        };
         collection.update_one(cleanup_filter, cleanup_update).await?;
 
         Ok(())
