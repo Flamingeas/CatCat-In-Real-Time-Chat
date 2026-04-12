@@ -8,6 +8,8 @@ import { Nunito } from "next/font/google";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import EmojiPicker, { Theme } from 'emoji-picker-react';
+import { Grid } from '@giphy/react-components';
+import { GiphyFetch } from '@giphy/js-fetch-api';
 import {
   getServerMembers,
   kickMember,
@@ -28,6 +30,8 @@ const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
 
 const WS_URL = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws") as string;
+
+const gf = new GiphyFetch('ENOkgZEpFQKApnReETozPZEGXXeJUQ4l');
 
 type Server = {
     id: string;
@@ -278,6 +282,15 @@ export default function ChatPage() {
     const typingTimeoutsRef = useRef<Map<string, number>>(new Map());
     const [typingUsers, setTypingUsers] = useState<Record<string, { username: string; channelId: string }>>({});
     const lastTypingSentAtRef = useRef<number>(0);
+
+    const [showGifPicker, setShowGifPicker] = useState(false);const [gifSearch, setGifSearch] = useState("");
+
+    const fetchDynamicGifs = async (offset: number) => {
+        if (gifSearch.trim() !== "") {
+            return await gf.search(gifSearch, { offset, limit: 21 });
+        }
+        return await gf.trending({ offset, limit: 21 });
+    };
 
     useEffect(() => {
         selectedChannelIdRef.current = selectedChannelId;
@@ -566,6 +579,33 @@ export default function ChatPage() {
             }, 0);
         } catch (e: any) {
             pushToast("Envoi refusé", "warn");
+        } finally {
+            setIsSending(false);
+        }
+    }
+
+    async function sendGifMessage(gifUrl: string) {
+        if (!selectedChannelId) return;
+
+        try {
+            setIsSending(true);
+            const created = await api<Message>(`/api/channels/${String(selectedChannelId)}/messages`, {
+                method: "POST",
+                body: JSON.stringify({ content: gifUrl }), // On envoie l'URL comme contenu
+            });
+
+            setMessages((prev) => {
+                if (prev.some((m) => String(m.message_id) === String(created.message_id))) return prev;
+                const next = [...prev, created];
+                next.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+                return next;
+            });
+
+            setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, 0);
+        } catch (e: any) {
+            pushToast("Envoi du GIF refusé", "warn");
         } finally {
             setIsSending(false);
         }
@@ -1741,7 +1781,19 @@ export default function ChatPage() {
                                                                 isMe ? "bg-[#2563EB] text-white rounded-br-md" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-md",
                                                             ].join(" ")}
                                                         >
-                                                            {m.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : m.content}
+                                                            {m.is_deleted ? (
+                                                                <span className="text-white/60 italic">message supprimé</span>
+                                                            ) : (
+                                                                m.content.includes("giphy.com/media") ? (
+                                                                    <img 
+                                                                        src={m.content} 
+                                                                        alt="GIF" 
+                                                                        className="rounded-lg max-w-[250px] object-cover" 
+                                                                    />
+                                                                ) : (
+                                                                    m.content
+                                                                )
+                                                            )}
                                                         </div>
 
                                                         {/* 3. Les Réactions (juste sous la bulle) */}
@@ -1813,7 +1865,75 @@ export default function ChatPage() {
 
                 <div className="p-6 pt-2 border-t border-[#ffffff]/5">
                     {typingLabel && <div className="px-6 pb-2 text-xs text-[#DCCBC4]/50 font-[family-name:var(--font-nunito)]">{typingLabel}</div>}
-                    <div className="bg-[#1E1211] rounded-full flex items-center px-6 py-3 border border-[#ffffff]/5">
+                    
+                    <div className="relative bg-[#1E1211] rounded-full flex items-center px-6 py-3 border border-[#ffffff]/5">
+                        
+                        <button 
+                            onClick={() => setShowGifPicker(!showGifPicker)}
+                            className="mr-3 text-[#DCCBC4]/50 hover:text-[#EB5E28] font-bold text-sm transition-colors"
+                        >
+                            GIF
+                        </button>
+
+                        {showGifPicker && (
+                            <div className="absolute bottom-full left-0 mb-4 z-[9999] bg-[#0F0908] rounded-xl border border-[#ffffff]/10 shadow-2xl w-[320px] flex flex-col overflow-hidden">
+                                
+                                {/* 1. La barre de recherche */}
+                                <div className="p-2 border-b border-[#ffffff]/5">
+                                    <input
+                                        type="text"
+                                        placeholder="Rechercher un GIF..."
+                                        value={gifSearch}
+                                        onChange={(e) => setGifSearch(e.target.value)}
+                                        className="w-full bg-[#1E1211] text-sm text-[#DCCBC4] rounded-lg px-3 py-2 border border-[#ffffff]/5 focus:outline-none focus:border-[#EB5E28] transition-colors"
+                                    />
+                                </div>
+
+                                {/* 2. Les catégories rapides */}
+                                <div 
+                                    className="flex gap-2 p-2 overflow-x-auto [&::-webkit-scrollbar]:hidden" 
+                                    style={{ scrollbarWidth: 'none' }}
+                                >
+                                    {['Tendances', 'Réactions', 'Mèmes', 'Anime', 'Fail'].map(cat => (
+                                        <button
+                                            key={cat}
+                                            onClick={() => setGifSearch(cat === 'Tendances' ? '' : cat)}
+                                            className={`text-[11px] font-bold px-3 py-1.5 rounded-full whitespace-nowrap transition-colors border border-[#ffffff]/5 ${
+                                                (cat === 'Tendances' && gifSearch === '') || gifSearch === cat
+                                                    ? 'bg-[#EB5E28] text-[#1E1211]' 
+                                                    : 'bg-[#1E1211] hover:bg-[#ffffff]/10 text-[#DCCBC4]/70 hover:text-white'
+                                            }`}
+                                        >
+                                            {cat}
+                                        </button>
+                                    ))}
+                                </div>
+
+                                {/* 3. La grille de GIFs (Scrollbar cachée) */}
+                                <div 
+                                    className="h-[280px] overflow-y-auto p-2 [&::-webkit-scrollbar]:hidden"
+                                    style={{ scrollbarWidth: 'none' }}
+                                >
+                                    {/* @ts-ignore - Ignore le conflit de types Giphy/React */}
+                                    <Grid 
+                                        key={gifSearch} // ⚠️ TRÈS IMPORTANT : Force le rafraîchissement quand on cherche
+                                        width={300} 
+                                        columns={3} // 3 colonnes !
+                                        gutter={4} // Espace entre les GIFs
+                                        borderRadius={6} // Coins arrondis sur les images !
+                                        fetchGifs={fetchDynamicGifs} 
+                                        noResultsMessage={<div className="text-center text-sm text-[#DCCBC4]/50 mt-4">Aucun GIF trouvé 😿</div>}
+                                        onGifClick={(gif: any, e: any) => {
+                                            e.preventDefault();
+                                            setShowGifPicker(false);
+                                            setGifSearch(""); // On réinitialise la recherche
+                                            sendGifMessage(gif.images.original.url);
+                                        }} 
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        
                         <input
                             type="text"
                             value={messageText}
@@ -1826,6 +1946,7 @@ export default function ChatPage() {
                             placeholder={selectedServerId && selectedChannel ? `Message dans #${selectedChannel.name}…` : "Choisis un salon pour commencer…"}
                             className="flex-1 bg-transparent text-[#DCCBC4] placeholder-[#DCCBC4]/30 focus:outline-none font-[family-name:var(--font-nunito)]"
                         />
+                        
                         <button
                             onClick={sendMessage}
                             disabled={!selectedServerId || !selectedChannelId || isSending || !messageText.trim()}
