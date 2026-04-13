@@ -69,6 +69,14 @@ impl Modify for SecurityAddon {
         crate::modules::message::route::update_message,
         crate::modules::message::route::delete_message,
 
+        // Messages directs
+        crate::modules::direct_message::route::start_conversation,
+        crate::modules::direct_message::route::list_conversations,
+        crate::modules::direct_message::route::get_messages,
+        crate::modules::direct_message::route::send_message,
+        crate::modules::direct_message::route::update_message,
+        crate::modules::direct_message::route::delete_message,
+
         // Serveurs :
         crate::modules::server::route::create_server,
         crate::modules::server::route::list_servers,
@@ -109,6 +117,12 @@ impl Modify for SecurityAddon {
             crate::models::server::Server,
             crate::modules::server::route::TransferOwnerPayload,
 
+            // messages directs
+            crate::modules::direct_message::route::StartConversationRequest,
+            crate::modules::direct_message::route::SendDirectMessageRequest,
+            crate::modules::direct_message::route::UpdateDirectMessageRequest,
+            crate::models::direct_message::ConversationResponse,
+            crate::models::direct_message::DirectMessageResponse,
         )
     ),
     tags(
@@ -117,6 +131,7 @@ impl Modify for SecurityAddon {
         (name = "Messages", description = "Envoi et historique des messages (MongoDB)"),
         (name = "Servers", description = "Gestion des serveurs"),
         (name = "Server Members", description = "Gestion des rôles et des utilisateurs"),
+        (name = "Direct Messages", description = "Messages privés entre utilisateurs"),
     ),
     modifiers(&SecurityAddon),
 )]
@@ -210,7 +225,8 @@ async fn main() -> std::io::Result<()> {
                             .configure(modules::channel::route::config_in_servers_scope),
                     )
                     .configure(modules::channel::route::config_root)
-                    .configure(modules::message::route::config),
+                    .configure(modules::message::route::config)
+                    .configure(modules::direct_message::route::config),
             )
     })
         .bind(env_config.server_address())?
