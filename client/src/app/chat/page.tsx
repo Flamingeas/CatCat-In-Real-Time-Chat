@@ -22,6 +22,7 @@ import logoImage from "../images/logo_catcat.svg";
 import { MemberActionsMenu } from "@/features/chat/components/member-actions-menu";
 import { banMember } from "@/features/chat/services/bans.service";
 import BanList from "@/features/chat/components/ban-list";
+import {type ConversationItem, type DmMessage, getConversations, startConversation as startDmConversation } from "@/features/direct-message/services/dm.service";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
@@ -79,6 +80,9 @@ type WsEvent =
     | { type: "server_member_banned"; server_id: string; user_id: string; username: string }
     | { type: "server_member_unbanned"; server_id: string; user_id: string; username: string }
     | { type: "message_updated"; message_id: string; channel_id: string; content: string; updated_at: string }
+    | { type: "new_direct_message"; conversation_id: string; message_id: string; sender_id: string; sender_username: string; content: string; created_at: string }
+    | { type: "direct_message_updated"; conversation_id: string; message_id: string; content: string; updated_at: string }
+    | { type: "direct_message_deleted"; conversation_id: string; message_id: string }
     | { type: string; [k: string]: any };
 
 
@@ -236,6 +240,23 @@ export default function ChatPage() {
     const channelCreatedLabel = useMemo(() => formatDateTimeFR(selectedChannel?.created_at), [selectedChannel?.created_at]);
     const channelUpdatedLabel = useMemo(() => formatDateTimeFR(selectedChannel?.updated_at), [selectedChannel?.updated_at]);
     const [showBans, setShowBans] = useState(false);
+
+    //DM
+    const [view, setView] = useState<"servers" | "dm">("servers");
+    const [conversations, setConversations] = useState<ConversationItem[]>([]);
+    const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+    const [dmMessages, setDmMessages] = useState<DmMessage[]>([]);
+    const [dmMessagesLoading, setDmMessagesLoading] = useState(false);
+    const [dmMessageText, setDmMessageText] = useState("");
+    const [isSendingDm, setIsSendingDm] = useState(false);
+    const [editingDmMessageId, setEditingDmMessageId] = useState<string | null>(null);
+    const [editingDmContent, setEditingDmContent] = useState("");
+    const [dmHasMore, setDmHasMore] = useState(true);
+    const [dmLoadingMore, setDmLoadingMore] = useState(false);
+    const [isNewDmOpen, setIsNewDmOpen] = useState(false);
+    const [newDmUsername, setNewDmUsername] = useState("");
+    const [newDmError, setNewDmError] = useState<string | null>(null);
+    const [isStartingDm, setIsStartingDm] = useState(false);
 
     const myRole: MemberRole = useMemo(() => {
         if (!me || !selectedServerId) return "member";
@@ -638,6 +659,144 @@ export default function ChatPage() {
         });
     }
 
+    //dm server
+    async function loadConversations() {
+        try {
+            const list = await getConversations();
+            setConversations(list);
+        } catch (e) {
+            console.error("Failed to load conversations:", e);
+        }
+    }
+    async function loadDmMessages(convId: string, opts?: { before?: string; append?: boolean }) {
+        const before = opts?.before ? encodeURIComponent(opts.before) : null;
+        const url = before
+            ? `/api/dm/conversations/${convId}/messages?limit=50&before=${before}`
+            : `/api/dm/conversations/${convId}/messages?limit=50`;
+        const list = await api<DmMessage[]>(url);
+        setDmMessages((prev) => {
+            if (opts?.append) {
+                const map = new Map<string, DmMessage>();
+                for (const m of prev) map.set(m.message_id, m);
+                for (const m of list) map.set(m.message_id, m);
+                return Array.from(map.values()).sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+            }
+            return list.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+        });
+        setDmHasMore(list.length >= 50);
+    }
+    async function sendDmMessage() {
+        if (!selectedConvId) return;
+        const content = dmMessageText.trim();
+        if (!content) return;
+        try {
+            setIsSendingDm(true);
+            const created = await api<DmMessage>(`/api/dm/conversations/${selectedConvId}/messages`, {
+                method: "POST",
+                body: JSON.stringify({ content }),
+            });
+            setDmMessages((prev) => {
+                if (prev.some((m) => m.message_id === created.message_id)) return prev;
+                return [...prev, created].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+            });
+            setDmMessageText("");
+            window.setTimeout(() => {
+                dmMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, 0);
+        } catch {
+            pushToast("Envoi refusé", "warn");
+        } finally {
+            setIsSendingDm(false);
+        }
+    }
+
+    async function editDmMessage(messageId: string, newContent: string) {
+        if (!newContent.trim()) return;
+        try {
+            await api(`/api/dm/messages/${messageId}`, {
+                method: "PUT",
+                body: JSON.stringify({ content: newContent }),
+            });
+            setDmMessages((prev) =>
+                prev.map((m) => m.message_id === messageId ? { ...m, content: newContent, is_edited: true } : m)
+            );
+            setEditingDmMessageId(null);
+            setEditingDmContent("");
+            pushToast("Message modifié", "success");
+        } catch {
+            pushToast("Édition refusée", "warn");
+        }
+    }
+
+    async function deleteDmMessage(messageId: string) {
+        try {
+            await api<void>(`/api/dm/messages/${messageId}`, { method: "DELETE" });
+            setDmMessages((prev) =>
+                prev.map((m) => m.message_id === messageId ? { ...m, is_deleted: true, content: "" } : m)
+            );
+            pushToast("Message supprimé", "warn");
+        } catch {
+            pushToast("Suppression refusée", "warn");
+        }
+    }
+
+    async function loadMoreDmMessages() {
+        if (!selectedConvId || dmLoadingMore || !dmHasMore || dmMessages.length === 0) return;
+        try {
+            setDmLoadingMore(true);
+            const oldest = dmMessages[0];
+            await loadDmMessages(selectedConvId, { before: oldest.created_at, append: true });
+        } catch {
+            pushToast("Impossible de charger plus", "warn");
+        } finally {
+            setDmLoadingMore(false);
+        }
+    }
+    async function startNewDm() {
+        const username = newDmUsername.trim();
+        if (!username) return;
+        setNewDmError(null);
+        try {
+            setIsStartingDm(true);
+            const users = await api<{ id: string; username: string }[]>("/api/users");
+            const found = users.find((u) => u.username.toLowerCase() === username.toLowerCase());
+            if (!found) {
+                setNewDmError("Utilisateur introuvable.");
+                return;
+            }
+            const conv = await startDmConversation(found.id);
+            setIsNewDmOpen(false);
+            setNewDmUsername("");
+            setConversations((prev) => {
+                if (prev.some((c) => c.id === conv.id)) return prev;
+                return [conv, ...prev];
+            });
+            setSelectedConvId(conv.id);
+        } catch (e: any) {
+            setNewDmError(e?.message ?? "Impossible de démarrer la conversation.");
+        } finally {
+            setIsStartingDm(false);
+        }
+    }
+    function onDmMessageKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+        if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            if (!isSendingDm) sendDmMessage();
+        }
+    }
+    async function startDmWithMember(userId: string) {
+        try {
+            const conv = await startDmConversation(userId);
+            setConversations((prev) => {
+                if (prev.some((c) => c.id === conv.id)) return prev;
+                return [conv, ...prev];
+            });
+            setView("dm");
+            setSelectedConvId(conv.id);
+        } catch (e: any) {
+            pushToast("Impossible de démarrer la conversation.", "warn");
+        }
+    }
     const typingLabel = useMemo(() => {
         if (!selectedChannelId) return null;
         const list = Object.values(typingUsers)
