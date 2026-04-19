@@ -54,10 +54,6 @@ impl<'a> DirectMessageRepository<'a> {
         use mongodb::options::FindOptions;
         let mut filter = doc! {
             "conversation_id": uuid_bin(conversation_id),
-            "$or": [
-                { "deleted_at": { "$exists": false } },
-                { "deleted_at": null }
-            ]
         };
         if let Some(before_dt) = before {
             let before_bson = BsonDateTime::from_millis(before_dt.timestamp_millis());
