@@ -1739,6 +1739,48 @@ export default function ChatPage() {
             </div>
 
             <div className="w-60 bg-[#150d0c] rounded-[20px] flex flex-col hidden md:flex h-full shadow-lg overflow-hidden">
+                {view === "dm" ? (
+                    <>
+                        <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
+                            <span className="mr-2 text-[#EB5E28]">✉</span>
+                            Messages directs
+                            <button
+                                onClick={() => { setIsNewDmOpen(true); setNewDmUsername(""); setNewDmError(null); }}
+                                title="Nouveau message direct"
+                                className="ml-auto w-8 h-8 rounded-xl border border-[#ffffff]/10 hover:bg-[#1E1211] text-[#EB5E28] flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                                +
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto px-2 py-3">
+                            {conversations.length === 0 ? (
+                                <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Aucune conversation.</div>
+                            ) : (
+                                <div className="flex flex-col gap-1">
+                                    {conversations.map((c) => {
+                                        const active = c.id === selectedConvId;
+                                        return (
+                                            <button
+                                                key={c.id}
+                                                onClick={() => setSelectedConvId(c.id)}
+                                                className={[
+                                                    "flex items-center gap-3 px-3 py-2 rounded-xl transition-colors font-[family-name:var(--font-nunito)] w-full text-left",
+                                                    active ? "bg-[#1E1211] text-white" : "hover:bg-[#1E1211] text-[#DCCBC4]/80",
+                                                ].join(" ")}
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4] shrink-0">
+                                                    {getInitials(c.other_username)}
+                                                </div>
+                                                <span className="truncate text-sm">@{c.other_username}</span>
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                    </>
+                ) : (
+                <>
                 <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
                     <span className="mr-2 text-[#EB5E28]">&gt;</span>
                     {selectedServer ? selectedServer.name : "Aucun serveur"}
@@ -1835,9 +1877,186 @@ export default function ChatPage() {
                         )}
                     </div>
                 </div>
+                </>
+                )}
             </div>
 
             <div className="flex-1 flex flex-col bg-[#0F0908] rounded-[20px] relative h-full shadow-lg overflow-hidden">
+                {view === "dm" ? (
+                    <>
+                        <div className="h-auto py-4 px-6 flex items-center border-b border-[#ffffff]/5">
+                            {selectedConvId && conversations.find((c) => c.id === selectedConvId) ? (
+                                <>
+                                    <div className="w-9 h-9 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4] mr-3 shrink-0">
+                                        {getInitials(conversations.find((c) => c.id === selectedConvId)!.other_username)}
+                                    </div>
+                                    <h2 className="font-[family-name:var(--font-nunito)] font-bold text-xl text-white">
+                                        @{conversations.find((c) => c.id === selectedConvId)!.other_username}
+                                    </h2>
+                                </>
+                            ) : (
+                                <h2 className="font-[family-name:var(--font-nunito)] font-bold text-xl text-white">Messages directs</h2>
+                            )}
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 font-[family-name:var(--font-nunito)]">
+                            {!selectedConvId ? (
+                                <div className="h-full flex items-center justify-center">
+                                    <div className="max-w-xl w-full rounded-2xl border border-[#ffffff]/10 bg-[#0a0605] p-6 shadow-lg">
+                                        <div className="text-white font-bold text-lg mb-2">Sélectionne une conversation</div>
+                                        <div className="text-sm text-[#DCCBC4]/60">
+                                            Choisis une conversation à gauche ou démarre-en une nouvelle avec le bouton <span className="text-[#EB5E28] font-bold">+</span>.
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="h-full flex flex-col">
+                                    <div className="flex-1 overflow-y-auto pr-2">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="text-xs text-[#DCCBC4]/50">{dmMessagesLoading ? "Chargement..." : `${dmMessages.length} message(s)`}</div>
+                                            {dmHasMore && dmMessages.length > 0 && (
+                                                <button
+                                                    onClick={loadMoreDmMessages}
+                                                    disabled={dmLoadingMore}
+                                                    className="text-xs px-3 py-1 rounded-full border border-[#ffffff]/10 hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
+                                                >
+                                                    {dmLoadingMore ? "Chargement..." : "Charger plus"}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {dmMessagesLoading ? (
+                                            <div className="text-sm text-[#DCCBC4]/50">Chargement des messages...</div>
+                                        ) : dmMessages.length === 0 ? (
+                                            <div className="text-sm text-[#DCCBC4]/50">Aucun message pour l'instant.</div>
+                                        ) : (
+                                            <div className="flex flex-col gap-3">
+                                                {dmMessages.map((m) => {
+                                                    const isMe = me && String(me.id) === String(m.sender_id);
+                                                    const time = formatTimeFR(m.created_at);
+                                                    const isEditing = editingDmMessageId === m.message_id;
+
+                                                    return (
+                                                        <div key={m.message_id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
+                                                            {!isMe && (
+                                                                <div className="mr-3 mt-1 shrink-0">
+                                                                    <div className="w-9 h-9 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4]">
+                                                                        {getInitials(m.sender_username)}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            <div className={`min-w-0 max-w-[75%] ${isMe ? "items-end" : "items-start"} flex flex-col`}>
+                                                                {!isMe && (
+                                                                    <div className="flex items-center gap-2 mb-1 px-1 min-w-0">
+                                                                        <span className="text-xs font-bold text-[#EB5E28] truncate">@{m.sender_username}</span>
+                                                                        {time && <span className="text-[10px] text-[#DCCBC4]/40">{time}</span>}
+                                                                        {m.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">• édité</span>}
+                                                                    </div>
+                                                                )}
+
+                                                                {isEditing ? (
+                                                                    <div className="w-full">
+                                                                        <textarea
+                                                                            value={editingDmContent}
+                                                                            onChange={(e) => setEditingDmContent(e.target.value)}
+                                                                            className="w-full px-4 py-3 rounded-2xl border border-[#EB5E28] bg-[#1E1211] text-[#DCCBC4] focus:outline-none resize-none"
+                                                                            rows={3}
+                                                                            autoFocus
+                                                                        />
+                                                                        <div className="flex gap-2 mt-2">
+                                                                            <button
+                                                                                onClick={() => editDmMessage(m.message_id, editingDmContent)}
+                                                                                className="px-3 py-1 rounded-xl bg-[#EB5E28] text-white text-xs font-bold hover:bg-white hover:text-[#1E1211] transition-colors"
+                                                                            >
+                                                                                Sauvegarder
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => { setEditingDmMessageId(null); setEditingDmContent(""); }}
+                                                                                className="px-3 py-1 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] text-xs hover:bg-[#1E1211] transition-colors"
+                                                                            >
+                                                                                Annuler
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ) : (
+                                                                    <div
+                                                                        className={[
+                                                                            "px-4 py-3 rounded-2xl border border-[#ffffff]/10 shadow-sm",
+                                                                            "whitespace-pre-wrap break-words text-sm leading-relaxed",
+                                                                            isMe ? "bg-[#2563EB] text-white rounded-br-md" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-md",
+                                                                        ].join(" ")}
+                                                                    >
+                                                                        {m.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : m.content}
+                                                                    </div>
+                                                                )}
+
+                                                                <div className={`flex items-center gap-2 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                                                                    {time && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>{time}</span>}
+                                                                    {m.is_edited && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>• édité</span>}
+
+                                                                    {isMe && !m.is_deleted && !isEditing && (
+                                                                        <button
+                                                                            onClick={() => { setEditingDmMessageId(m.message_id); setEditingDmContent(m.content); }}
+                                                                            className="text-[10px] text-white/70 hover:text-[#EB5E28] cursor-pointer"
+                                                                            title="Éditer"
+                                                                        >
+                                                                            ✏️ Éditer
+                                                                        </button>
+                                                                    )}
+                                                                    {isMe && !m.is_deleted && (
+                                                                        <button
+                                                                            onClick={() => { if (!window.confirm("Supprimer ce message ?")) return; deleteDmMessage(m.message_id); }}
+                                                                            className="text-[10px] text-white/70 hover:text-red-200 cursor-pointer"
+                                                                            title="Supprimer"
+                                                                        >
+                                                                            🗑 Supprimer
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                        <div ref={dmMessagesEndRef} />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-6 pt-2 border-t border-[#ffffff]/5">
+                            <div className="bg-[#1E1211] rounded-full flex items-center px-6 py-3 border border-[#ffffff]/5">
+                                <input
+                                    type="text"
+                                    value={dmMessageText}
+                                    onChange={(e) => setDmMessageText(e.target.value)}
+                                    onKeyDown={onDmMessageKeyDown}
+                                    disabled={!selectedConvId || isSendingDm}
+                                    placeholder={selectedConvId ? "Envoyer un message…" : "Sélectionne une conversation…"}
+                                    className="flex-1 bg-transparent text-[#DCCBC4] placeholder-[#DCCBC4]/30 focus:outline-none font-[family-name:var(--font-nunito)]"
+                                />
+                                <button
+                                    onClick={sendDmMessage}
+                                    disabled={!selectedConvId || isSendingDm || !dmMessageText.trim()}
+                                    className={[
+                                        "ml-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
+                                        selectedConvId && dmMessageText.trim()
+                                            ? "bg-[#EB5E28] text-[#1E1211] hover:bg-white cursor-pointer"
+                                            : "bg-[#2A1A18] text-[#DCCBC4]/30 cursor-not-allowed",
+                                    ].join(" ")}
+                                    title="Envoyer"
+                                >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                    </>
+                ) : (
+                <>
                 <div className="h-auto py-4 px-6 flex flex-col gap-3 border-b border-[#ffffff]/5">
                     <div className="flex justify-between items-center">
                         <div className="flex flex-col">
@@ -2108,8 +2327,11 @@ export default function ChatPage() {
                         </button>
                     </div>
                 </div>
+                </>
+                )}
             </div>
 
+            {view !== "dm" && (
             <div className="w-72 bg-[#0a0605] rounded-[20px] hidden xl:flex flex-col h-full shadow-lg overflow-hidden">
                 <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
                     Membres
@@ -2138,7 +2360,7 @@ export default function ChatPage() {
                                     String(typingUsers[String(m.user_id)]?.channelId) === String(selectedChannelId);
                                     
                                     return (
-                                        <div key={m.user_id} className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#1E1211] transition-colors">
+                                        <div key={m.user_id} className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#1E1211] transition-colors">
                                             <div className="relative">
                                                 <div className="w-9 h-9 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4]">
                                                     {getInitials(m.username)}
@@ -2166,6 +2388,18 @@ export default function ChatPage() {
                                                 </div>
                                                 <span className="text-xs text-[#DCCBC4]/50">{isTyping ? "Écrit…" : online ? "En ligne" : "Hors ligne"}</span>
                                             </div>
+
+                                            {!isMe && (
+                                                <button
+                                                    onClick={() => startDmWithMember(String(m.user_id))}
+                                                    title={`Envoyer un message à @${m.username}`}
+                                                    className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-xl border border-[#ffffff]/10 text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
+                                                >
+                                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                                                    </svg>
+                                                </button>
+                                            )}
 
                                             {canManageThis && (
                                                 <div className="relative">
@@ -2210,6 +2444,7 @@ export default function ChatPage() {
                     )}
                 </div>
             </div>
+            )}
             {showBans && myRole != "member" && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
                     <div className="bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-6 w-[420px]">
