@@ -287,6 +287,8 @@ export default function ChatPage() {
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
     const messagesBoxRef = useRef<HTMLDivElement | null>(null);
     const selectedChannelIdRef = useRef<string | null>(null);
+    const selectedConvIdRef = useRef<string | null>(null);
+    const dmMessagesEndRef = useRef<HTMLDivElement | null>(null);
 
     const typingTimeoutsRef = useRef<Map<string, number>>(new Map());
     const [typingUsers, setTypingUsers] = useState<Record<string, { username: string; channelId: string }>>({});
@@ -295,6 +297,9 @@ export default function ChatPage() {
     useEffect(() => {
         selectedChannelIdRef.current = selectedChannelId;
     }, [selectedChannelId]);
+    useEffect(() => {
+        selectedConvIdRef.current = selectedConvId;
+    }, [selectedConvId]);
 
     function pushToast(text: string, kind: Toast["kind"] = "info") {
         const id = `${Date.now()}_${Math.random()}`;
@@ -1281,6 +1286,68 @@ export default function ChatPage() {
 
                     return;
                 }
+
+                if (msg.type === "new_direct_message") {
+                    const convId = String(msg.conversation_id ?? "");
+                    const currentConv = selectedConvIdRef.current;
+
+                    if (currentConv && convId === String(currentConv)) {
+                        const newMsg: DmMessage = {
+                            message_id: String(msg.message_id ?? ""),
+                            conversation_id: convId,
+                            sender_id: String(msg.sender_id ?? ""),
+                            sender_username: String(msg.sender_username ?? ""),
+                            recipient_id: "",
+                            content: String(msg.content ?? ""),
+                            created_at: String(msg.created_at ?? ""),
+                            updated_at: null,
+                            is_edited: false,
+                            is_deleted: false,
+                        };
+                        setDmMessages((prev) => {
+                            if (prev.some((m) => m.message_id === newMsg.message_id)) return prev;
+                            return [...prev, newMsg].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+                        });
+                        setTimeout(() => {
+                            dmMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+                        }, 0);
+                    } else {
+                        const senderName = String(msg.sender_username ?? "quelqu’un");
+                        if (myIdRef.current && String(msg.sender_id) !== String(myIdRef.current)) {
+                            pushToast(`Nouveau message de ${senderName}`, "info");
+                        }
+                    }
+                    return;
+                }
+
+                if (msg.type === "direct_message_updated") {
+                    const convId = String(msg.conversation_id ?? "");
+                    const currentConv = selectedConvIdRef.current;
+                    if (currentConv && convId === String(currentConv)) {
+                        setDmMessages((prev) =>
+                            prev.map((m) =>
+                                m.message_id === String(msg.message_id)
+                                    ? { ...m, content: String(msg.content ?? ""), is_edited: true, updated_at: String(msg.updated_at ?? "") }
+                                    : m
+                            )
+                        );
+                    }
+                    return;
+                }
+                if (msg.type === "direct_message_deleted") {
+                    const convId = String(msg.conversation_id ?? "");
+                    const currentConv = selectedConvIdRef.current;
+                    if (currentConv && convId === String(currentConv)) {
+                        setDmMessages((prev) =>
+                            prev.map((m) =>
+                                m.message_id === String(msg.message_id)
+                                    ? { ...m, is_deleted: true, content: "" }
+                                    : m
+                            )
+                        );
+                    }
+                    return;
+                }
             } catch {}
         };
 
@@ -1352,6 +1419,29 @@ export default function ChatPage() {
             typingTimeoutsRef.current.clear();
         };
     }, [selectedChannelId, me?.id]);
+
+    useEffect(() => {
+        if (view === "dm") {
+            loadConversations();
+        }
+    }, [view]);
+
+    useEffect(() => {
+        if (!selectedConvId || view !== "dm") {
+            setDmMessages([]);
+            setDmHasMore(true);
+            return;
+        }
+        setDmMessagesLoading(true);
+        loadDmMessages(selectedConvId)
+            .then(() => {
+                window.setTimeout(() => {
+                    dmMessagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+                }, 0);
+            })
+            .catch(() => {})
+            .finally(() => setDmMessagesLoading(false));
+    }, [selectedConvId, view]);
 
     async function createServer() {
         setCreateError(null);
@@ -1596,6 +1686,18 @@ export default function ChatPage() {
                         <Image src={logoImage} alt="Logo CatCat" />
                     </div>
                 </Link>
+                <button
+                    onClick={() => setView((v) => (v === "dm" ? "servers" : "dm"))}
+                    title="Messages directs"
+                    className={[
+                        "w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
+                        view === "dm" ? "bg-[#EB5E28] text-white" : "bg-[#2A1A18] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white",
+                    ].join(" ")}
+                >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                </button>
                 <div className="w-8 h-[2px] bg-[#ffffff]/10 rounded-full" />
                 <div className="flex flex-col items-center gap-3 w-full px-2">
                     {servers.map((s) => {
