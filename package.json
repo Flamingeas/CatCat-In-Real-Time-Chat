@@ -2,6 +2,7 @@
   "dependencies": {
     "@giphy/js-fetch-api": "^5.7.0",
     "@giphy/react-components": "^10.1.1",
-    "emoji-picker-react": "^4.18.0"
+    "emoji-picker-react": "^4.18.0",
+    "lucide-react": "^1.8.0"
   }
 }
