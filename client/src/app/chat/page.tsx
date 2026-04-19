@@ -1744,13 +1744,6 @@ export default function ChatPage() {
                         <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
                             <span className="mr-2 text-[#EB5E28]">✉</span>
                             Messages directs
-                            <button
-                                onClick={() => { setIsNewDmOpen(true); setNewDmUsername(""); setNewDmError(null); }}
-                                title="Nouveau message direct"
-                                className="ml-auto w-8 h-8 rounded-xl border border-[#ffffff]/10 hover:bg-[#1E1211] text-[#EB5E28] flex items-center justify-center transition-colors cursor-pointer"
-                            >
-                                +
-                            </button>
                         </div>
                         <div className="flex-1 overflow-y-auto px-2 py-3">
                             {conversations.length === 0 ? (
