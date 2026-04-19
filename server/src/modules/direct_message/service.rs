@@ -203,7 +203,16 @@ impl<'a> DirectMessageService<'a> {
                 "Cannot edit a deleted message".to_string(),
             ));
         }
-        
+
+        const EDIT_TIME_LIMIT_MINUTES: i64 = 5;
+        let elapsed = Utc::now()
+            .signed_duration_since(dm.created_at)
+            .num_seconds();
+        if elapsed >= EDIT_TIME_LIMIT_MINUTES * 60 {
+            return Err(ServiceError::Forbidden(
+                format!("Messages can only be edited within {} minutes", EDIT_TIME_LIMIT_MINUTES)
+            ));
+        }
         let recipient_id = dm.recipient_id;
         let updated = repo
             .update(message_id, content)
