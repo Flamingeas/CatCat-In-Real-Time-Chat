@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import emailjs from '@emailjs/browser';
+import { UserSettingsModal } from "@/components/chat/UserSettingsModal";
 import localFont from "next/font/local";
 import { Nunito } from "next/font/google";
 import { useRouter } from "next/navigation";
@@ -20,15 +22,19 @@ import BanList from "@/features/chat/components/ban-list";
 import { ServerSidebar } from "@/components/chat/ServerSidebar";
 import { ChannelSidebar } from "@/components/chat/ChannelSidebar";
 import { MessageArea } from "@/components/chat/MessageArea";
-import { MemberArea } from "@/components/chat/MemberArea"; // <-- Nouvel import
+import { MemberArea } from "@/components/chat/MemberArea"; 
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws";
 
-
 export default function ChatPage() {
+    // --- NOUVEAU : Initialisation EmailJS ---
+    useEffect(() => {
+        emailjs.init("A22AlDWX2y_yw9yXz"); // Remplace par ta clé publique EmailJS
+    }, []);
+
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [isMemberAreaOpen, setIsMemberAreaOpen] = useState(true);
     const [initials, setInitials] = useState("??");
@@ -125,6 +131,40 @@ export default function ChatPage() {
     const typingTimeoutsRef = useRef(new Map());
     const [typingUsers, setTypingUsers] = useState({});
     const lastTypingSentAtRef = useRef(0);
+
+    const [isUserSettingsOpen, setIsUserSettingsOpen] = useState(false);
+
+    const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+
+    async function handleLogout() {
+        try {
+            await fetch(`${API_BASE}/auth/logout`, { method: "POST" });
+        } catch (e) {
+            console.error("Erreur deconnexion API", e);
+        } finally {
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("user");
+            wsRef.current?.close(); 
+            router.push("/");
+        }
+    }
+
+    // --- NOUVEAU : Fonction utilitaire d'envoi d'email ---
+    const sendNotificationEmail = (username, email, type = "welcome") => {
+        const templateParams = {
+            to_name: username,
+            user_email: email,
+            message_type: type === "welcome" ? "Bienvenue sur CatCat !" : "Tes paramètres ont bien été mis à jour.",
+        };
+
+        emailjs.send('service_zeojaxu', 'template_mwuys08', templateParams)
+            .then(() => {
+                pushToast("Un email t'a été envoyé !", "info");
+            })
+            .catch((err) => {
+                console.error("Erreur EmailJS:", err);
+            });
+    };
 
     useEffect(() => { selectedChannelIdRef.current = selectedChannelId; }, [selectedChannelId]);
     useEffect(() => { myIdRef.current = me?.id ?? null; }, [me?.id]);
@@ -518,6 +558,8 @@ export default function ChatPage() {
                 onOpenCreate={() => setIsCreateOpen(true)} 
                 onOpenJoin={() => setIsJoinOpen(true)} 
                 initials={initials} 
+                onOpenUserSettings={() => setIsUserSettingsOpen(true)}
+                onLogout={handleLogout}
             />
 
             {isSidebarOpen && (
@@ -534,7 +576,7 @@ export default function ChatPage() {
                     canEditChannel={canEditChannel} 
                     onOpenEditChannel={() => { setChannelEditName(selectedChannel?.name ?? ""); setIsChannelEditOpen(true); }} 
                     onDeleteChannel={deleteChannel} 
-                    onCloseSidebar={() => setIsSidebarOpen(false)} // <-- NOUVELLE PROP
+                    onCloseSidebar={() => setIsSidebarOpen(false)}
                 />
             )}
 
@@ -607,6 +649,15 @@ export default function ChatPage() {
             {isInviteOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsInviteOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Code d'invitation</h3> <div className="flex gap-2"> <input readOnly value={selectedServer?.invitation_code || ""} className="flex-1 bg-[#1E1211] p-3 rounded-xl" /> <button onClick={() => { navigator.clipboard.writeText(selectedServer?.invitation_code); setInviteCopied(true); setTimeout(() => setInviteCopied(false), 1200); }} className="px-4 py-2 bg-[#EB5E28] text-black font-bold rounded-xl">{inviteCopied ? "Copié!" : "Copier"}</button> </div> </div> </div> )}
 
             {showBans && ( <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"> <div className="bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-6 w-[420px]"> <div className="flex justify-between items-center mb-4"> <h2 className="text-lg font-semibold">Utilisateurs bannis</h2> <button onClick={() => setShowBans(false)} className="text-[#DCCBC4]/60 hover:text-white cursor-pointer"> ✕ </button> </div> <BanList serverId={selectedServerId} /> </div> </div> )}
+
+            {/* --- NOUVEAU : On passe la prop onSendEmail --- */}
+            {isUserSettingsOpen && ( 
+                <UserSettingsModal 
+                    onClose={() => setIsUserSettingsOpen(false)} 
+                    me={me} 
+                    onSendEmail={sendNotificationEmail}
+                /> 
+            )}
         </div>
     );
 }
