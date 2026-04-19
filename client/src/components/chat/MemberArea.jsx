@@ -26,7 +26,7 @@ export function MemberArea({
     onCloseMemberArea // <-- NOUVELLE PROP ICI
 }) {
     return (
-        <div className="w-72 bg-[#0a0605] rounded-[20px] hidden xl:flex flex-col h-full shadow-lg overflow-hidden">
+        <div className="flex w-full h-full bg-[#0F0908] rounded-[20px] flex-col overflow-hidden shrink-0 relative">
             <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
                 {/* NOUVEAU BOUTON POUR FERMER LE VOLET MEMBRES */}
                 <button 

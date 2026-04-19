@@ -23,3 +23,22 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+:root {
+  /* Récupère la taille de l'encoche envoyée par iOS */
+  --sat: env(safe-area-inset-top);
+}
+
+body {
+  /* On ajoute un padding en haut égal à la taille de l'encoche */
+  padding-top: var(--sat);
+  background-color: #0a0605;
+  min-height: 100vh;
+  /* Optionnel : fixe le problème de la barre de scroll qui dépasse */
+  box-sizing: border-box;
+}
+
+/* Si tu as une navbar fixe, elle doit aussi prendre le padding */
+nav, .fixed-header {
+  padding-top: var(--sat);
+}

@@ -23,7 +23,7 @@ export function ChannelSidebar({
     onCloseSidebar
 }) {
     return (
-        <div className="w-60 bg-[#150d0c] rounded-[20px] flex flex-col hidden md:flex h-full shadow-lg overflow-hidden">
+        <div className="flex w-full h-full bg-[#0F0908] rounded-[20px] flex-col overflow-hidden shrink-0">
             <div className="min-h-[72px] py-3 flex items-center px-4 font-[family-name:var(--font-nunito)] border-b border-[#ffffff]/5">
                 <div className="flex flex-col flex-1 min-w-0">
                     <div className="font-bold text-[#FFF8F0] flex items-center">

@@ -18,7 +18,6 @@ import {
 import { banMember } from "@/features/chat/services/bans.service";
 import BanList from "@/features/chat/components/ban-list";
 
-// Nos composants découpés
 import { ServerSidebar } from "@/components/chat/ServerSidebar";
 import { ChannelSidebar } from "@/components/chat/ChannelSidebar";
 import { MessageArea } from "@/components/chat/MessageArea";
@@ -30,13 +29,69 @@ const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: [
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws";
 
 export default function ChatPage() {
-    // --- NOUVEAU : Initialisation EmailJS ---
     useEffect(() => {
-        emailjs.init("A22AlDWX2y_yw9yXz"); // Remplace par ta clé publique EmailJS
+        emailjs.init("A22AlDWX2y_yw9yXz");
     }, []);
 
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-    const [isMemberAreaOpen, setIsMemberAreaOpen] = useState(true);
+    const [isMemberAreaOpen, setIsMemberAreaOpen] = useState(false); 
+    const [isMobile, setIsMobile] = useState(false);
+
+    // --- GESTION DU SWIPE MOBILE ---
+    const [touchStartX, setTouchStartX] = useState(null);
+    const [touchEndX, setTouchEndX] = useState(null);
+    const [touchStartY, setTouchStartY] = useState(null);
+    const [touchEndY, setTouchEndY] = useState(null);
+    const minSwipeDistance = 60; // Distance minimum pour déclencher le swipe
+
+    const onTouchStart = (e) => {
+        setTouchEndX(null);
+        setTouchEndY(null);
+        setTouchStartX(e.targetTouches[0].clientX);
+        setTouchStartY(e.targetTouches[0].clientY);
+    };
+
+    const onTouchMove = (e) => {
+        setTouchEndX(e.targetTouches[0].clientX);
+        setTouchEndY(e.targetTouches[0].clientY);
+    };
+
+    const onTouchEnd = () => {
+        if (!touchStartX || !touchEndX || !touchStartY || !touchEndY) return;
+        
+        const distanceX = touchStartX - touchEndX;
+        const distanceY = touchStartY - touchEndY;
+        
+        // Si l'utilisateur scroll verticalement, on ignore le swipe
+        if (Math.abs(distanceY) > Math.abs(distanceX)) return;
+
+        const isLeftSwipe = distanceX > minSwipeDistance;  // ⬅️ Vers la gauche
+        const isRightSwipe = distanceX < -minSwipeDistance; // ➡️ Vers la droite
+
+        if (isMobile) {
+            if (isLeftSwipe) {
+                if (isSidebarOpen) {
+                    setIsSidebarOpen(false); // Ferme les salons
+                } else if (!isSidebarOpen && !isMemberAreaOpen) {
+                    setIsMemberAreaOpen(true); // Ouvre les membres
+                }
+            } else if (isRightSwipe) {
+                if (isMemberAreaOpen) {
+                    setIsMemberAreaOpen(false); // Ferme les membres
+                } else if (!isSidebarOpen && !isMemberAreaOpen) {
+                    setIsSidebarOpen(true); // Ouvre les salons
+                }
+            }
+        }
+    };
+
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        checkMobile();
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
+
     const [initials, setInitials] = useState("??");
     const [me, setMe] = useState(null);
 
@@ -149,7 +204,6 @@ export default function ChatPage() {
         }
     }
 
-    // --- NOUVEAU : Fonction utilitaire d'envoi d'email ---
     const sendNotificationEmail = (username, email, type = "welcome") => {
         const templateParams = {
             to_name: username,
@@ -253,10 +307,13 @@ export default function ChatPage() {
         try {
             const list = await api(`/api/servers/${serverId}/channels`);
             setChannels(list);
-            setSelectedChannelId((prev) => {
-                if (prev && list.some((c) => String(c.id) === String(prev))) return prev;
-                return list.length ? String(list[0].id) : null;
-            });
+            
+            if (!isMobile) {
+                setSelectedChannelId((prev) => {
+                    if (prev && list.some((c) => String(c.id) === String(prev))) return prev;
+                    return list.length ? String(list[0].id) : null;
+                });
+            }
         } catch (e) { setChannels([]); setSelectedChannelId(null); }
     }
 
@@ -490,9 +547,11 @@ export default function ChatPage() {
     useEffect(() => {
         if (me?.id && selectedChannelId) {
             wsSend({ type: "join_channel", channel_id: String(selectedChannelId) });
+            if (isMobile) setIsSidebarOpen(false);
+            
             return () => { wsSend({ type: "leave_channel", channel_id: String(selectedChannelId) }); setTypingUsers({}); };
         }
-    }, [selectedChannelId, me?.id]);
+    }, [selectedChannelId, me?.id, isMobile]);
 
     async function createServer() {
         if (serverName.trim().length < 3) return setCreateError("Min 3 char.");
@@ -541,8 +600,17 @@ export default function ChatPage() {
 
     if (!hasCheckedAuth) return null;
 
+    const showSidebarMobile = !selectedChannelId || isSidebarOpen;
+    const showMessageAreaMobile = selectedChannelId && !isSidebarOpen && !isMemberAreaOpen;
+    const showMemberAreaMobile = isMemberAreaOpen;
+
     return (
-        <div className={`flex h-screen bg-black text-[#DCCBC4] ${miskan.variable} ${nunito.variable} font-sans overflow-hidden p-[8px] gap-[8px]`}>
+        <div 
+            className={`flex h-[100dvh] bg-black text-[#DCCBC4] ${miskan.variable} ${nunito.variable} font-sans overflow-hidden p-2 gap-2 pt-[env(safe-area-inset-top)]`}
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+        >
             {toasts.length > 0 && (
                 <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2">
                     {toasts.map((t) => (
@@ -551,68 +619,97 @@ export default function ChatPage() {
                 </div>
             )}
 
-            <ServerSidebar 
-                servers={servers} 
-                selectedServerId={selectedServerId} 
-                onSelectServer={setSelectedServerId} 
-                onOpenCreate={() => setIsCreateOpen(true)} 
-                onOpenJoin={() => setIsJoinOpen(true)} 
-                initials={initials} 
-                onOpenUserSettings={() => setIsUserSettingsOpen(true)}
-                onLogout={handleLogout}
-            />
-
-            {isSidebarOpen && (
-                <ChannelSidebar 
-                    selectedServer={selectedServer} 
-                    isOwner={isOwner} 
-                    onOpenServerSettings={() => { setSettingsError(null); setSettingsName(selectedServer.name); setIsSettingsOpen(true); }} 
-                    onLeaveServer={() => setIsLeaveOpen(true)} 
-                    canCreateChannel={canCreateChannel} 
-                    onOpenCreateChannel={() => { setChannelName(""); setIsChannelCreateOpen(true); }} 
-                    channels={channels} 
-                    selectedChannelId={selectedChannelId} 
-                    onSelectChannel={setSelectedChannelId} 
-                    canEditChannel={canEditChannel} 
-                    onOpenEditChannel={() => { setChannelEditName(selectedChannel?.name ?? ""); setIsChannelEditOpen(true); }} 
-                    onDeleteChannel={deleteChannel} 
-                    onCloseSidebar={() => setIsSidebarOpen(false)}
+            <div className={`${(showMessageAreaMobile || showMemberAreaMobile) ? 'hidden md:block' : 'block'}`}>
+                <ServerSidebar 
+                    servers={servers} 
+                    selectedServerId={selectedServerId} 
+                    onSelectServer={(id) => {
+                        setSelectedServerId(id);
+                        if (isMobile) {
+                            setSelectedChannelId(null);
+                            setIsSidebarOpen(true);
+                            setIsMemberAreaOpen(false);
+                        }
+                    }} 
+                    onOpenCreate={() => setIsCreateOpen(true)} 
+                    onOpenJoin={() => setIsJoinOpen(true)} 
+                    initials={initials} 
+                    onOpenUserSettings={() => setIsUserSettingsOpen(true)}
+                    onLogout={handleLogout}
                 />
-            )}
+            </div>
 
-            <MessageArea 
-                me={me} 
-                selectedServerId={selectedServerId} 
-                selectedServer={selectedServer} 
-                selectedChannelId={selectedChannelId} 
-                selectedChannel={selectedChannel} 
-                messages={messages} 
-                messagesLoading={messagesLoading} 
-                messagesError={messagesError} 
-                hasMoreMessages={hasMoreMessages} 
-                loadingMore={loadingMore} 
-                onLoadMore={loadMoreMessages} 
-                messagesEndRef={messagesEndRef} 
-                messagesBoxRef={messagesBoxRef} 
-                messageText={messageText} 
-                setMessageText={setMessageText} 
-                isSending={isSending} 
-                onSendMessage={sendMessage} 
-                onSendGif={sendGifMessage} 
-                onSendTyping={sendTyping} 
-                typingLabel={typingLabel} 
-                canModerateMessages={canModerateMessages} 
-                onDeleteMessage={deleteMyMessage} 
-                onToggleReaction={toggleReaction} 
-                canInviteMember={canInviteMember} 
-                onOpenInvite={() => { setInviteCopied(false); setIsInviteOpen(true); }} 
-                isSidebarOpen={isSidebarOpen}
-                onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
-                isMemberAreaOpen={isMemberAreaOpen}
-                onToggleMemberArea={() => setIsMemberAreaOpen(!isMemberAreaOpen)}
-            />
+            <div className={`
+                h-full transition-all duration-300 ease-in-out overflow-hidden
+                ${isSidebarOpen 
+                    ? 'flex-1 md:flex-none md:w-60' 
+                    : 'hidden md:flex md:w-0'
+                }
+            `}>
+                {/* On ne rend le composant que s'il y a un serveur sélectionné */}
+                {selectedServerId && (
+                    <ChannelSidebar 
+                        selectedServer={selectedServer}
+                        isOwner={isOwner} 
+                        onOpenServerSettings={() => { setSettingsError(null); setSettingsName(selectedServer.name); setIsSettingsOpen(true); }} 
+                        onLeaveServer={() => setIsLeaveOpen(true)} 
+                        canCreateChannel={canCreateChannel} 
+                        onOpenCreateChannel={() => { setChannelName(""); setIsChannelCreateOpen(true); }} 
+                        channels={channels} 
+                        selectedChannelId={selectedChannelId} 
+                        onSelectChannel={setSelectedChannelId} 
+                        canEditChannel={canEditChannel} 
+                        onOpenEditChannel={() => { setChannelEditName(selectedChannel?.name ?? ""); setIsChannelEditOpen(true); }} 
+                        onDeleteChannel={deleteChannel} 
+                        onCloseSidebar={() => setIsSidebarOpen(false)}
+                    />
+                )}
+            </div>
 
-            {isMemberAreaOpen && (
+            <div className={`flex-1 h-full min-w-0 ${showMessageAreaMobile ? 'block' : 'hidden md:block'}`}>
+                <MessageArea 
+                    me={me} 
+                    selectedServerId={selectedServerId} 
+                    selectedServer={selectedServer} 
+                    selectedChannelId={selectedChannelId} 
+                    selectedChannel={selectedChannel} 
+                    messages={messages} 
+                    messagesLoading={messagesLoading} 
+                    messagesError={messagesError} 
+                    hasMoreMessages={hasMoreMessages} 
+                    loadingMore={loadingMore} 
+                    onLoadMore={loadMoreMessages} 
+                    messagesEndRef={messagesEndRef} 
+                    messagesBoxRef={messagesBoxRef} 
+                    messageText={messageText} 
+                    setMessageText={setMessageText} 
+                    isSending={isSending} 
+                    onSendMessage={sendMessage} 
+                    onSendGif={sendGifMessage} 
+                    onSendTyping={sendTyping} 
+                    typingLabel={typingLabel} 
+                    canModerateMessages={canModerateMessages} 
+                    onDeleteMessage={deleteMyMessage} 
+                    onToggleReaction={toggleReaction} 
+                    canInviteMember={canInviteMember} 
+                    onOpenInvite={() => { setInviteCopied(false); setIsInviteOpen(true); }} 
+                    isSidebarOpen={isSidebarOpen}
+                    onToggleSidebar={() => setIsSidebarOpen(!isSidebarOpen)}
+                    isMemberAreaOpen={isMemberAreaOpen}
+                    onToggleMemberArea={() => setIsMemberAreaOpen(!isMemberAreaOpen)}
+                />
+            </div>
+
+            {/* Member Area Container */}
+            <div className={`
+                /* Sur mobile : occupe tout l'écran ou rien */
+                /* Sur laptop : largeur fixe (w-60) ou largeur nulle (w-0) */
+                ${isMemberAreaOpen 
+                    ? 'flex-1 md:flex-none md:w-60' 
+                    : 'hidden md:flex md:w-0'
+                } 
+                h-full overflow-hidden transition-all duration-300 ease-in-out
+            `}>
                 <MemberArea 
                     members={members}
                     onlineUserIds={onlineUserIds}
@@ -632,25 +729,17 @@ export default function ChatPage() {
                     onShowBans={() => setShowBans(true)}
                     onCloseMemberArea={() => setIsMemberAreaOpen(false)}
                 />
-            )}
+            </div>
 
             {isCreateOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsCreateOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Créer un serveur</h3> <input value={serverName} onChange={(e) => setServerName(e.target.value)} className="w-full bg-[#1E1211] p-3 rounded-xl mb-4" /> <div className="flex justify-end gap-2"><button onClick={() => setIsCreateOpen(false)} className="px-4 py-2 text-white">Annuler</button><button onClick={createServer} className="px-4 py-2 bg-[#EB5E28] text-black font-bold rounded-xl">Créer</button></div> </div> </div> )}
-            
             {isJoinOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsJoinOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Rejoindre un serveur</h3> <input value={joinCode} onChange={(e) => setJoinCode(e.target.value)} className="w-full bg-[#1E1211] p-3 rounded-xl mb-4" /> <div className="flex justify-end gap-2"><button onClick={() => setIsJoinOpen(false)} className="px-4 py-2 text-white">Annuler</button><button onClick={joinServer} className="px-4 py-2 bg-[#EB5E28] text-black font-bold rounded-xl">Rejoindre</button></div> </div> </div> )}
-
             {isChannelCreateOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsChannelCreateOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Créer un salon</h3> <input value={channelName} onChange={(e) => setChannelName(e.target.value)} className="w-full bg-[#1E1211] p-3 rounded-xl mb-4" /> <div className="flex justify-end gap-2"><button onClick={() => setIsChannelCreateOpen(false)} className="px-4 py-2 text-white">Annuler</button><button onClick={createChannel} className="px-4 py-2 bg-[#EB5E28] text-black font-bold rounded-xl">Créer</button></div> </div> </div> )}
-
             {isChannelEditOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsChannelEditOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Renommer le salon</h3> <input value={channelEditName} onChange={(e) => setChannelEditName(e.target.value)} className="w-full bg-[#1E1211] p-3 rounded-xl mb-4" /> <div className="flex justify-end gap-2"><button onClick={() => setIsChannelEditOpen(false)} className="px-4 py-2 text-white">Annuler</button><button onClick={saveChannelEdit} className="px-4 py-2 bg-[#EB5E28] text-black font-bold rounded-xl">Sauvegarder</button></div> </div> </div> )}
-
             {isSettingsOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsSettingsOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Paramètres du serveur</h3> <input value={settingsName} onChange={(e) => setSettingsName(e.target.value)} className="w-full bg-[#1E1211] p-3 rounded-xl mb-4" /> <div className="flex justify-end gap-2 mb-6"><button onClick={() => setIsSettingsOpen(false)} className="px-4 py-2 text-white">Annuler</button><button onClick={saveServerSettings} className="px-4 py-2 bg-[#EB5E28] text-black font-bold rounded-xl">Sauvegarder</button></div> <div className="border border-red-500/30 p-4 rounded-xl"> <p className="text-red-400 text-sm mb-2">Tape DELETE pour supprimer ce serveur.</p> <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} className="w-full bg-[#1E1211] p-2 rounded border border-red-500/30 mb-2 text-white"/> <button onClick={deleteServer} className="px-4 py-2 bg-red-500 text-white rounded-xl font-bold w-full">Supprimer</button></div> </div> </div> )}
-
             {isLeaveOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsLeaveOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Quitter le serveur ?</h3> <div className="flex justify-end gap-2"><button onClick={() => setIsLeaveOpen(false)} className="px-4 py-2 text-white">Annuler</button><button onClick={leaveServer} className="px-4 py-2 bg-red-500 text-white font-bold rounded-xl">Quitter</button></div> </div> </div> )}
-
             {isInviteOpen && ( <div className="fixed inset-0 z-50 flex items-center justify-center p-4"> <div className="absolute inset-0 bg-black/70" onClick={() => setIsInviteOpen(false)} /> <div className="relative bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-5 w-full max-w-md"> <h3 className="text-lg font-bold mb-4">Code d'invitation</h3> <div className="flex gap-2"> <input readOnly value={selectedServer?.invitation_code || ""} className="flex-1 bg-[#1E1211] p-3 rounded-xl" /> <button onClick={() => { navigator.clipboard.writeText(selectedServer?.invitation_code); setInviteCopied(true); setTimeout(() => setInviteCopied(false), 1200); }} className="px-4 py-2 bg-[#EB5E28] text-black font-bold rounded-xl">{inviteCopied ? "Copié!" : "Copier"}</button> </div> </div> </div> )}
-
             {showBans && ( <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50"> <div className="bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl p-6 w-[420px]"> <div className="flex justify-between items-center mb-4"> <h2 className="text-lg font-semibold">Utilisateurs bannis</h2> <button onClick={() => setShowBans(false)} className="text-[#DCCBC4]/60 hover:text-white cursor-pointer"> ✕ </button> </div> <BanList serverId={selectedServerId} /> </div> </div> )}
 
-            {/* --- NOUVEAU : On passe la prop onSendEmail --- */}
             {isUserSettingsOpen && ( 
                 <UserSettingsModal 
                     onClose={() => setIsUserSettingsOpen(false)} 

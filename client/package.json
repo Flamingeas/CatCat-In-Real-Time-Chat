@@ -9,8 +9,12 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@emailjs/browser": "^4.4.1",
+    "@giphy/js-fetch-api": "^5.7.0",
+    "@giphy/react-components": "^10.1.1",
     "axios": "^1.13.4",
     "emoji-picker-react": "^4.18.0",
+    "lucide-react": "^1.8.0",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"
