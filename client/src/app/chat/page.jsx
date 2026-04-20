@@ -364,16 +364,37 @@ export default function ChatPage() {
         finally { setLoadingMore(false); }
     }
 
-    async function sendMessage() {
-        if (!selectedChannelId || !messageText.trim()) return;
+    async function sendMessage(replyToId = null) {
+        if (!selectedChannelId) return;
+        const content = messageText.trim();
+        if (!content) return;
+        
         try {
             setIsSending(true);
-            const created = await api(`/api/channels/${String(selectedChannelId)}/messages`, { method: "POST", body: JSON.stringify({ content: messageText.trim() }) });
-            setMessages((prev) => { if (prev.some((m) => String(m.message_id) === String(created.message_id))) return prev; return [...prev, created].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)); });
+            
+            // On prépare le payload avec le reply_to_message_id s'il existe
+            const payload = { content };
+            if (replyToId) {
+                payload.reply_to_message_id = replyToId;
+            }
+
+            const created = await api(`/api/channels/${String(selectedChannelId)}/messages`, {
+                method: "POST", 
+                body: JSON.stringify(payload),
+            });
+            
+            setMessages((prev) => {
+                if (prev.some((m) => String(m.message_id) === String(created.message_id))) return prev;
+                return [...prev, created].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            });
+            
             setMessageText("");
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
-        } catch (e) { pushToast("Envoi refusé", "warn"); } 
-        finally { setIsSending(false); }
+        } catch (e) { 
+            pushToast("Envoi refusé", "warn"); 
+        } finally { 
+            setIsSending(false); 
+        }
     }
 
     async function sendGifMessage(gifUrl) {
@@ -499,11 +520,21 @@ export default function ChatPage() {
                             typingTimeoutsRef.current.set(uid, setTimeout(() => { setTypingUsers((p) => { const c = {...p}; delete c[uid]; return c; }); }, 5000));
                         }
                     }
-                } else if (msg.type === "new_message") {
+} else if (msg.type === "new_message") {
                     if (String(msg.channel_id) === String(selectedChannelIdRef.current)) {
                         setMessages((prev) => {
                             if (prev.some((m) => String(m.message_id) === String(msg.message_id))) return prev;
-                            return [...prev, { ...msg, is_edited: false, is_deleted: false, message_id: String(msg.message_id) }].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
+                            
+                            // 👇 C'est ici qu'on force l'enregistrement de l'ID de réponse
+                            const newMessage = { 
+                                ...msg, 
+                                is_edited: false, 
+                                is_deleted: false, 
+                                message_id: String(msg.message_id),
+                                reply_to_message_id: msg.reply_to_message_id ? String(msg.reply_to_message_id) : null 
+                            };
+                            
+                            return [...prev, newMessage].sort((a,b) => new Date(a.created_at) - new Date(b.created_at));
                         });
                         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
                     }
@@ -522,8 +553,7 @@ export default function ChatPage() {
                         return { ...m, reactions: (m.reactions || []).map(r => r.emoji === msg.emoji ? { ...r, users: r.users.filter(u => u !== msg.user_id) } : r).filter(r => r.users.length > 0) };
                     }));
                 }
-            } catch {}
-        };
+            } catch {}        };
 
         ws.onerror = () => {}; 
         ws.onclose = () => { wsRef.current = null; setOnlineUserIds(new Set()); };
