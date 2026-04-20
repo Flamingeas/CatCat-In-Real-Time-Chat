@@ -1,0 +1,16 @@
+
+{
+  "nav": {
+    "login": "Sign in / Sign up",
+    "goToChat": "Go to chat",
+    "logout": "Log out"
+  },
+  "hero": {
+    "title": "The most",
+    "titleHighlight": "chill",
+    "titleEnd": "corner of the Internet.",
+    "description": "Far from the noise and hustle of classic social networks. CatCat is a space designed for genuine discussion, authentic sharing, and creativity. Take your time, connect with those who inspire you, and finally feel at home.",
+    "cta": "Sign in / Sign up",
+    "ctaAuthed": "Go to chat"
+  }
+}
