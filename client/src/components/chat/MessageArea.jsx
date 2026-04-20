@@ -9,6 +9,14 @@ import {
 
 const gf = new GiphyFetch('ENOkgZEpFQKApnReETozPZEGXXeJUQ4l');
 
+// 👇 NOUVEAU : La fonction super-robuste pour détecter images & GIFs
+function isGifMessage(content) {
+    if (!content) return false;
+    return content.includes("tenor.com") || 
+           content.includes("giphy.com") || 
+           content.match(/\.(gif|jpeg|jpg|png)$/i);
+}
+
 function getInitials(username) {
     if (!username || username.length < 1) return "??";
     return `${username[0].toUpperCase()}${username[username.length - 1].toUpperCase()}`;
@@ -157,7 +165,8 @@ export function MessageArea({
                                         const isMe = me && String(me.id) === String(m.user_id);
                                         const time = formatTimeFR(m.created_at);
                                         const canDeleteThis = !m.is_deleted && (isMe || canModerateMessages);
-                                        const canEditThis = isMe && !m.is_deleted && !m.content.includes("giphy.com/media");
+                                        // On empêche l'édition si c'est un GIF !
+                                        const canEditThis = isMe && !m.is_deleted && !isGifMessage(m.content);
                                         const isHovered = hoveredMessageId === m.message_id;
                                         const isEditing = editingMessageId === m.message_id;
                                         
@@ -215,15 +224,22 @@ export function MessageArea({
                                                                             <span className={`text-xs font-bold mb-0.5 ${isMe ? "text-[#1E1211]" : "text-[#EB5E28]"}`}>
                                                                                 {String(repliedMessage.user_id) === String(me?.id) ? "Vous" : repliedMessage.username}
                                                                             </span>
+                                                                            {/* 👇 MISE A JOUR ICI: On affiche "GIF" si la réponse pointe vers un GIF */}
                                                                             <span className={`text-xs truncate max-w-[200px] md:max-w-[300px] ${isMe ? "text-[#1E1211]/80" : "text-[#DCCBC4]/70"}`}>
-                                                                                {repliedMessage.content.includes("giphy.com") ? "GIF" : repliedMessage.content}
+                                                                                {isGifMessage(repliedMessage.content) ? "GIF" : repliedMessage.content}
                                                                             </span>
                                                                         </div>
                                                                     )}
 
-                                                                    {/* MESSAGE TEXTE OU GIF */}
+                                                                    {/* 👇 MISE A JOUR ICI: MESSAGE TEXTE OU GIF */}
                                                                     <div>
-                                                                        {m.is_deleted ? <span className="italic">Message supprimé</span> : m.content.includes("giphy.com/media") ? <img src={m.content} alt="GIF" className="rounded-lg max-w-[250px]" /> : m.content}
+                                                                        {m.is_deleted ? (
+                                                                            <span className="italic">Message supprimé</span>
+                                                                        ) : isGifMessage(m.content) ? (
+                                                                            <img src={m.content} alt="GIF" className="rounded-lg max-w-[250px] object-contain" />
+                                                                        ) : (
+                                                                            <span className="whitespace-pre-wrap break-words">{m.content}</span>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -233,23 +249,93 @@ export function MessageArea({
                                                                 <div className={`absolute top-full mt-1.5 ${isMe ? "right-0" : "left-0"} z-50 flex`}>
                                                                     <div className="bg-[#0F0908] border border-[#ffffff]/10 shadow-xl rounded-[14px] flex items-center overflow-hidden h-9">
                                                                         {showQuickReactions === m.message_id && (
-                                                                            <div className="flex items-center px-1 border-r border-[#ffffff]/10 bg-[#1E1211] h-full">
-                                                                                {QUICK_EMOJIS.map(emoji => (
-                                                                                    <button key={emoji} onClick={() => onToggleReaction(m.message_id, emoji, !!m.reactions?.find(r => r.emoji === emoji)?.users.includes(me?.id))} className="hover:scale-125 transition-transform px-1.5 cursor-pointer">{emoji}</button>
-                                                                                ))}
-                                                                                <button onClick={() => setActivePickerId(m.message_id)} className="p-1 mx-1 text-[#DCCBC4]/70 hover:text-white cursor-pointer"><SmilePlus className="w-4 h-4" /></button>
+                                                                            <div 
+                                                                                className="flex items-center px-1 border-r border-[#ffffff]/10 bg-[#1E1211] h-full"
+                                                                                onMouseLeave={() => setShowQuickReactions(null)}
+                                                                            >
+                                                                                {QUICK_EMOJIS.map(emoji => {
+                                                                                    // On vérifie si l'utilisateur actuel a déjà réagi avec cet emoji
+                                                                                    const reaction = m.reactions?.find(r => r.emoji === emoji);
+                                                                                    const hasReacted = reaction?.users?.includes(me?.id);
+
+                                                                                    return (
+                                                                                        <button 
+                                                                                            key={emoji} 
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation(); // Empeche le scroll vers la réponse
+                                                                                                onToggleReaction(m.message_id, emoji, !!hasReacted);
+                                                                                                setShowQuickReactions(null);
+                                                                                            }} 
+                                                                                            className="hover:scale-125 transition-transform px-1.5 cursor-pointer text-base"
+                                                                                        >
+                                                                                            {emoji}
+                                                                                        </button>
+                                                                                    );
+                                                                                })}
+                                                                                <button 
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        setActivePickerId(m.message_id);
+                                                                                    }} 
+                                                                                    className="p-1 mx-1 text-[#DCCBC4]/70 hover:text-white cursor-pointer"
+                                                                                >
+                                                                                    <SmilePlus className="w-4 h-4" />
+                                                                                </button>
                                                                             </div>
                                                                         )}
                                                                         
-                                                                        <button onMouseEnter={() => setShowQuickReactions(m.message_id)} className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-[#EB5E28] transition-colors cursor-pointer" title="Réagir"><Heart className="w-4 h-4" /></button>
+                                                                        <button 
+                                                                            onMouseEnter={() => setShowQuickReactions(m.message_id)}
+                                                                            onClick={(e) => e.stopPropagation()} // Évite les bugs de clic sur mobile
+                                                                            className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-[#EB5E28] transition-colors cursor-pointer" 
+                                                                            title="Réagir"
+                                                                        >
+                                                                            <Heart className={`w-4 h-4 ${m.reactions?.some(r => r.users.includes(me?.id)) ? "fill-[#EB5E28] text-[#EB5E28]" : ""}`} />
+                                                                        </button>
+
                                                                         <div className="w-[1px] h-4 bg-[#ffffff]/10" />
-                                                                        <button onClick={() => { setReplyingTo(m); setHoveredMessageId(null); }} className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-white transition-colors cursor-pointer" title="Répondre"><Reply className="w-4 h-4" /></button>
+                                                                        
+                                                                        <button 
+                                                                            onClick={(e) => { 
+                                                                                e.stopPropagation(); 
+                                                                                setReplyingTo(m); 
+                                                                                setHoveredMessageId(null); 
+                                                                            }} 
+                                                                            className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-white transition-colors cursor-pointer" 
+                                                                            title="Répondre"
+                                                                        >
+                                                                            <Reply className="w-4 h-4" />
+                                                                        </button>
 
                                                                         {canEditThis && <div className="w-[1px] h-4 bg-[#ffffff]/10" />}
-                                                                        {canEditThis && <button onClick={() => { setEditingMessageId(m.message_id); setEditingContent(m.content); setHoveredMessageId(null); }} className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-blue-400 cursor-pointer" title="Éditer"><Pencil className="w-4 h-4" /></button>}
+                                                                        {canEditThis && (
+                                                                            <button 
+                                                                                onClick={(e) => { 
+                                                                                    e.stopPropagation(); 
+                                                                                    setEditingMessageId(m.message_id); 
+                                                                                    setEditingContent(m.content); 
+                                                                                    setHoveredMessageId(null); 
+                                                                                }} 
+                                                                                className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-blue-400 cursor-pointer" 
+                                                                                title="Éditer"
+                                                                            >
+                                                                                <Pencil className="w-4 h-4" />
+                                                                            </button>
+                                                                        )}
                                                                         
                                                                         {canDeleteThis && <div className="w-[1px] h-4 bg-[#ffffff]/10" />}
-                                                                        {canDeleteThis && <button onClick={() => onDeleteMessage(m.message_id)} className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-red-400 cursor-pointer" title="Supprimer"><Trash2 className="w-4 h-4" /></button>}
+                                                                        {canDeleteThis && (
+                                                                            <button 
+                                                                                onClick={(e) => { 
+                                                                                    e.stopPropagation(); 
+                                                                                    onDeleteMessage(m.message_id); 
+                                                                                }} 
+                                                                                className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-red-400 cursor-pointer" 
+                                                                                title="Supprimer"
+                                                                            >
+                                                                                <Trash2 className="w-4 h-4" />
+                                                                            </button>
+                                                                        )}
                                                                     </div>
                                                                 </div>
                                                             )}
@@ -267,7 +353,7 @@ export function MessageArea({
                                                                             </button>
                                                                             {hasReacted && (
                                                                                 <button onClick={(e) => { e.stopPropagation(); onToggleReaction(m.message_id, r.emoji, true); }} className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover/pill:opacity-100 transition-opacity shadow-lg hover:bg-red-600 z-10 cursor-pointer">
-                                                                                    <X className="w-2.5 h-2.5" />
+                                                                                <X className="w-2.5 h-2.5" />
                                                                                 </button>
                                                                             )}
                                                                         </div>
@@ -302,8 +388,9 @@ export function MessageArea({
                             <div className="flex items-center gap-2 text-xs text-[#DCCBC4]/70 min-w-0">
                                 <Reply className="w-4 h-4 shrink-0" />
                                 <span className="shrink-0">Réponse à <span className="font-bold text-[#EB5E28]">@{replyingTo.username}</span></span>
+                                {/* 👇 MISE A JOUR ICI: On affiche "GIF" si on répond à un GIF */}
                                 <span className="truncate opacity-50 ml-2">
-                                    {replyingTo.content.includes("giphy.com") ? "GIF" : replyingTo.content}
+                                    {isGifMessage(replyingTo.content) ? "GIF" : replyingTo.content}
                                 </span>
                             </div>
                             <button onClick={() => setReplyingTo(null)} className="ml-2 text-[#DCCBC4]/50 hover:text-white cursor-pointer bg-[#0F0908] rounded-full p-0.5">

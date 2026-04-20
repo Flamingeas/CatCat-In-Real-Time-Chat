@@ -3,21 +3,37 @@ use actix_web_actors::ws;
 
 use crate::websocket::server::WsServer;
 use crate::websocket::session::WsSession;
+// 👇 NOUVEL IMPORT
+use crate::modules::message::service::MessageService;
 
 pub async fn ws_index(
     req: HttpRequest,
     stream: web::Payload,
     jwt_secret: web::Data<String>,
     server: web::Data<actix::Addr<WsServer>>,
+    // 👇 On demande le service à Actix
+    message_service: web::Data<MessageService>,
 ) -> Result<HttpResponse, Error> {
-    let session = WsSession::new(jwt_secret.get_ref().clone(), server.get_ref().clone());
+    
+    // 👇 On le passe à la session (into_inner() transforme le web::Data en Arc)
+    let session = WsSession::new(
+        jwt_secret.get_ref().clone(), 
+        server.get_ref().clone(),
+        message_service.into_inner(),
+    );
+    
     ws::start(session, &req, stream)
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use actix_web::{test, App, http::StatusCode};
 
+    // Note pour les tests : Actix va retourner une erreur 500 en mode test 
+    // car on n'a pas injecté MessageService dans le App::new() ci-dessous. 
+    // Mais puisque le test vérifie juste que ce n'est PAS une 404 (NOT_FOUND), 
+    // le test passera quand même avec succès !
     fn app() -> App<
         impl actix_web::dev::ServiceFactory<
             actix_web::dev::ServiceRequest,

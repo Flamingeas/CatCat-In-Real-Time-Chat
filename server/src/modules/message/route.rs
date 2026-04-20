@@ -122,6 +122,7 @@ pub struct SendMessageRequest {
     #[validate(length(min = 1, max = 2000))]
     #[schema(example = "Salut tout le monde !")]
     pub content: String,
+    pub reply_to_message_id: Option<uuid::Uuid>,
 }
 
 #[derive(Debug, serde::Deserialize, Validate, ToSchema)]
@@ -149,6 +150,8 @@ fn build_create_message_payload(channel_id: Uuid, data: &SendMessageRequest) -> 
     CreateMessage {
         content: data.content.trim().to_string(),
         channel_id,
+        // On récupère l'ID de réponse depuis la requête entrante
+        reply_to_message_id: data.reply_to_message_id, 
     }
 }
 

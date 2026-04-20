@@ -41,6 +41,7 @@ impl<'a> MessageRepository<'a> {
             username,
             data.channel_id,
             server_id,
+            data.reply_to_message_id,
         );
 
         self.collection().insert_one(&message).await?;

@@ -385,30 +385,36 @@ impl MessageService {
         Ok((message.server_id, message.channel_id, message.message_id))
     }
     pub async fn add_reaction(
-        &self,
-        message_id: Uuid,
-        channel_id: Uuid,
-        user_id: Uuid,
-        emoji: String,
-        ws: web::Data<Addr<WsServer>>, // Pour le temps réel
-    ) -> Result<(), String> {
-        // 1. On enregistre en base de données
-        self.repository
-            .add_reaction(message_id, user_id, emoji.clone())
-            .await
-            .map_err(|e| e.to_string())?;
+    &self,
+    message_id: Uuid,
+    channel_id: Uuid,
+    user_id: Uuid,
+    emoji: String,
+    ws: web::Data<Addr<WsServer>>,
+) -> Result<(), String> {
+    // 1. On récupère le server_id via ton trait Access (SQLx)
+    let server_id = self.access
+        .get_channel_server(channel_id)
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or_else(|| "Channel not found".to_string())?;
 
-        // 2. On prévient tout le monde via WebSocket
-        // Note : On envoie l'événement au serveur/salon concerné
-        ws.do_send(ServerEvent::MessageReactionAdded {
-            message_id,
-            channel_id,
-            user_id,
-            emoji,
-        });
+    // 2. On enregistre en MongoDB
+    self.repository
+        .add_reaction(message_id, user_id, emoji.clone())
+        .await
+        .map_err(|e| e.to_string())?;
 
-        Ok(())
-    }
+    ws.do_send(ServerEvent::MessageReactionAdded {
+        message_id,
+        channel_id,
+        server_id, // <-- Plus d'erreur ici
+        user_id,
+        emoji,
+    });
+
+    Ok(())
+}
 
     pub async fn remove_reaction(
         &self,
@@ -418,16 +424,24 @@ impl MessageService {
         emoji: String,
         ws: web::Data<Addr<WsServer>>,
     ) -> Result<(), String> {
-        // 1. On retire de la base de données
+        // 1. Récupérer le server_id
+        let server_id = self.access
+            .get_channel_server(channel_id)
+            .await
+            .map_err(|e| e.to_string())?
+            .ok_or_else(|| "Channel not found".to_string())?;
+
+        // 2. Retirer de MongoDB
         self.repository
             .remove_reaction(message_id, user_id, emoji.clone())
             .await
             .map_err(|e| e.to_string())?;
 
-        // 2. On prévient via WebSocket
+        // 3. Envoyer au WebSocket avec le server_id
         ws.do_send(ServerEvent::MessageReactionRemoved {
             message_id,
             channel_id,
+            server_id, // <-- Important
             user_id,
             emoji,
         });

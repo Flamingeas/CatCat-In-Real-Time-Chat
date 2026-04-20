@@ -397,15 +397,15 @@ export default function ChatPage() {
         }
     }
 
-    async function sendGifMessage(gifUrl) {
+    function sendGifMessage(gifUrl, replyToId = null) {
         if (!selectedChannelId) return;
-        try {
-            setIsSending(true);
-            const created = await api(`/api/channels/${String(selectedChannelId)}/messages`, { method: "POST", body: JSON.stringify({ content: gifUrl }) });
-            setMessages((prev) => { if (prev.some((m) => String(m.message_id) === String(created.message_id))) return prev; return [...prev, created].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at)); });
-            setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
-        } catch (e) { pushToast("Erreur GIF", "warn"); } 
-        finally { setIsSending(false); }
+
+        wsSend({
+            type: "send_message", // 👈 Modifié ici pour matcher ton Rust !
+            channel_id: String(selectedChannelId),
+            content: gifUrl,
+            reply_to_message_id: replyToId ? String(replyToId) : null
+        });
     }
 
     async function deleteMyMessage(messageId) {
@@ -539,13 +539,29 @@ export default function ChatPage() {
                         setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }), 0);
                     }
                 } else if (msg.type === "message_reaction_added") {
+                    console.log("Réaction reçue du serveur !", msg); // AJOUTE CE LOG
                     setMessages((prev) => prev.map(m => {
-                        if (m.message_id !== msg.message_id) return m;
+                        if (String(m.message_id) !== String(msg.message_id)) return m;
+                        
                         const reactions = m.reactions || [];
-                        if (reactions.find(r => r.emoji === msg.emoji)) {
-                            return { ...m, reactions: reactions.map(r => r.emoji === msg.emoji && !r.users.includes(msg.user_id) ? { ...r, users: [...r.users, msg.user_id] } : r) };
+                        // On vérifie si l'emoji existe déjà dans la liste
+                        const existingReaction = reactions.find(r => r.emoji === msg.emoji);
+
+                        if (existingReaction) {
+                            return {
+                                ...m,
+                                reactions: reactions.map(r => 
+                                    r.emoji === msg.emoji 
+                                        ? { ...r, users: [...new Set([...r.users, msg.user_id])] } // Set pour éviter les doublons
+                                        : r
+                                )
+                            };
                         }
-                        return { ...m, reactions: [...reactions, { emoji: msg.emoji, users: [msg.user_id] }] };
+                        // Sinon on crée une nouvelle entrée pour cet emoji
+                        return {
+                            ...m,
+                            reactions: [...reactions, { emoji: msg.emoji, users: [msg.user_id] }]
+                        };
                     }));
                 } else if (msg.type === "message_reaction_removed") {
                     setMessages((prev) => prev.map(m => {
@@ -617,15 +633,18 @@ export default function ChatPage() {
         try { await leaveServerRequest(selectedServerId); setIsLeaveOpen(false); api("/api/servers").then(setServers).catch(()=>{}); } catch(e){}
     }
 
-    async function toggleReaction(messageId, emoji, hasReacted) {
-        if (!selectedChannelId || !me) return;
-        setMessages((prev) => prev.map(m => {
-            if (m.message_id !== messageId) return m;
-            const reactions = m.reactions || [];
-            if (hasReacted) return { ...m, reactions: reactions.map(r => r.emoji === emoji ? { ...r, users: r.users.filter(uid => String(uid) !== String(me.id)) } : r).filter(r => r.users.length > 0) };
-            return { ...m, reactions: reactions.find(r => r.emoji === emoji) ? reactions.map(r => r.emoji === emoji ? { ...r, users: [...r.users, String(me.id)] } : r) : [...reactions, { emoji, users: [String(me.id)] }] };
-        }));
-        try { await api(`/api/messages/${messageId}/reactions`, { method: hasReacted ? "DELETE" : "POST", body: JSON.stringify({ emoji, channel_id: selectedChannelId }) }); } catch (e) {}
+    function toggleReaction(messageId, emoji, currentlyReacted) {
+        if (!me?.id || !selectedChannelId) return;
+
+        const payload = {
+            type: currentlyReacted ? "remove_reaction" : "add_reaction",
+            channel_id: selectedChannelId, // Doit être un UUID string
+            message_id: messageId,         // Doit être un UUID string
+            emoji: emoji
+        };
+        
+        console.log("Envoi réaction:", payload); // Ajoute ce log pour voir si ça part !
+        wsSend(payload);
     }
 
     if (!hasCheckedAuth) return null;
@@ -718,6 +737,7 @@ export default function ChatPage() {
                     onSendGif={sendGifMessage} 
                     onSendTyping={sendTyping} 
                     typingLabel={typingLabel} 
+                    members={members}
                     canModerateMessages={canModerateMessages} 
                     onDeleteMessage={deleteMyMessage} 
                     onToggleReaction={toggleReaction} 

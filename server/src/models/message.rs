@@ -73,6 +73,10 @@ pub struct Message {
     pub channel_id: Uuid,
     pub server_id: Uuid,
 
+    // 👇 NOUVEAU CHAMP
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_to_message_id: Option<Uuid>,
+
     #[serde(with = "chrono_as_bson_datetime")]
     pub created_at: DateTime<Utc>,
 
@@ -99,6 +103,10 @@ pub struct CreateMessage {
     #[validate(length(min = 1, max = 2000, message = "Message must be between 1 and 2000 characters"))]
     pub content: String,
     pub channel_id: Uuid,
+    
+    // 👇 NOUVEAU CHAMP (Optionnel pour ne pas casser l'API)
+    #[serde(default)]
+    pub reply_to_message_id: Option<Uuid>,
 }
 
 #[derive(Debug, Deserialize, Validate)]
@@ -115,6 +123,11 @@ pub struct MessageResponse {
     pub username: String,
     pub channel_id: Uuid,
     pub server_id: Uuid,
+    
+    // 👇 NOUVEAU CHAMP
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reply_to_message_id: Option<Uuid>,
+
     pub created_at: DateTime<Utc>,
     pub updated_at: Option<DateTime<Utc>>,
     pub is_edited: bool,
@@ -133,6 +146,7 @@ impl From<Message> for MessageResponse {
             username: message.username,
             channel_id: message.channel_id,
             server_id: message.server_id,
+            reply_to_message_id: message.reply_to_message_id, // <-- Mapping
             created_at: message.created_at,
             updated_at: message.updated_at,
             is_edited,
@@ -168,6 +182,7 @@ impl Message {
         username: String,
         channel_id: Uuid,
         server_id: Uuid,
+        reply_to_message_id: Option<Uuid>, // <-- Ajouté ici
     ) -> Self {
         Self {
             id: None,
@@ -177,12 +192,14 @@ impl Message {
             username,
             channel_id,
             server_id,
+            reply_to_message_id, // <-- Assigné ici
             created_at: Utc::now(),
             updated_at: None,
             deleted_at: None,
             reactions: Vec::new(),
         }
     }
+    
     pub fn to_response(&self) -> MessageResponse {
         MessageResponse {
             message_id: self.message_id,
@@ -191,6 +208,7 @@ impl Message {
             username: self.username.clone(),
             channel_id: self.channel_id,
             server_id: self.server_id,
+            reply_to_message_id: self.reply_to_message_id, // <-- Mapping
             created_at: self.created_at,
             updated_at: self.updated_at,
             is_edited: self.updated_at.is_some(),
@@ -198,12 +216,15 @@ impl Message {
             reactions: self.reactions.clone(),
         }
     }
+    
     pub fn mark_as_deleted(&mut self) {
         self.deleted_at = Some(Utc::now());
     }
+    
     pub fn is_deleted(&self) -> bool {
         self.deleted_at.is_some()
     }
+    
     pub fn update_content(&mut self, new_content: String) {
         self.content = new_content;
         self.updated_at = Some(Utc::now());
@@ -221,18 +242,21 @@ mod tests {
         let valid_message = CreateMessage {
             content: "zoubizou!".to_string(),
             channel_id,
+            reply_to_message_id: None,
         };
         assert!(valid_message.validate().is_ok());
 
         let invalid_message = CreateMessage {
             content: "".to_string(),
             channel_id,
+            reply_to_message_id: None,
         };
         assert!(invalid_message.validate().is_err());
 
         let invalid_message = CreateMessage {
             content: "a".repeat(2001),
             channel_id,
+            reply_to_message_id: None,
         };
         assert!(invalid_message.validate().is_err());
     }
@@ -267,6 +291,7 @@ mod tests {
             "tester".to_string(),
             channel_id,
             server_id,
+            None, // <-- Nouveau paramètre
         );
 
         assert_eq!(message.content, "Test message");
@@ -274,6 +299,7 @@ mod tests {
         assert_eq!(message.username, "tester");
         assert_eq!(message.channel_id, channel_id);
         assert_eq!(message.server_id, server_id);
+        assert!(message.reply_to_message_id.is_none());
         assert!(message.updated_at.is_none());
         assert!(message.deleted_at.is_none());
         assert!(message.id.is_none());
@@ -287,6 +313,7 @@ mod tests {
             "user".to_string(),
             Uuid::new_v4(),
             Uuid::new_v4(),
+            None, // <-- Nouveau paramètre
         );
 
         assert!(!message.is_deleted());
@@ -306,6 +333,7 @@ mod tests {
             "user".to_string(),
             Uuid::new_v4(),
             Uuid::new_v4(),
+            None, // <-- Nouveau paramètre
         );
 
         assert!(message.updated_at.is_none());
@@ -356,6 +384,7 @@ mod tests {
             "tester".to_string(),
             Uuid::new_v4(),
             Uuid::new_v4(),
+            None, // <-- Nouveau paramètre
         );
 
         let response = message.to_response();
@@ -366,6 +395,7 @@ mod tests {
         assert_eq!(response.username, "tester");
         assert_eq!(response.channel_id, message.channel_id);
         assert_eq!(response.server_id, message.server_id);
+        assert!(response.reply_to_message_id.is_none());
         assert!(!response.is_edited);
         assert!(!response.is_deleted);
     }
@@ -378,6 +408,7 @@ mod tests {
             "tester".to_string(),
             Uuid::new_v4(),
             Uuid::new_v4(),
+            None, // <-- Nouveau paramètre
         );
 
         message.update_content("Hello edited".to_string());

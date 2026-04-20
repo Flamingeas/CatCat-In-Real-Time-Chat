@@ -73,12 +73,14 @@ pub enum ServerEvent {
     MessageReactionAdded {
         message_id: uuid::Uuid,
         channel_id: Uuid,
+        server_id: Uuid,
         user_id: uuid::Uuid,
         emoji: String,
     },
     MessageReactionRemoved {
         message_id: uuid::Uuid,
         channel_id: Uuid,
+        server_id: Uuid,
         user_id: uuid::Uuid,
         emoji: String,
     },
@@ -490,9 +492,9 @@ impl Handler<ServerEvent> for WsServer {
                     },
                 );
             }
-            ServerEvent::MessageReactionAdded { message_id, channel_id, user_id, emoji } => {
-                self.broadcast_to_channel(
-                    channel_id,
+            ServerEvent::MessageReactionAdded { message_id, channel_id, server_id, user_id, emoji } => {
+                self.broadcast_to_server(
+                    server_id,
                     OutgoingMessage::MessageReactionAdded {
                         message_id,
                         channel_id,
@@ -501,9 +503,9 @@ impl Handler<ServerEvent> for WsServer {
                     },
                 );
             }
-            ServerEvent::MessageReactionRemoved { message_id, channel_id, user_id, emoji } => {
-                self.broadcast_to_channel(
-                    channel_id,
+            ServerEvent::MessageReactionRemoved { message_id, channel_id, server_id, user_id, emoji } => {
+                self.broadcast_to_server(
+                    server_id,
                     OutgoingMessage::MessageReactionRemoved {
                         message_id,
                         channel_id,

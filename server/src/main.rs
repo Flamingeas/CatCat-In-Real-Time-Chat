@@ -22,6 +22,7 @@ use crate::modules::server::repository::ServerRepository;
 use crate::modules::server::service::ServerService;
 use crate::modules::user::repository::UserRepository;
 use crate::websocket::server::WsServer;
+use crate::modules::message::service::MessageService;
 
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::Modify;
@@ -153,6 +154,9 @@ async fn main() -> std::io::Result<()> {
     let pg_pool = app_state.db.pg.clone();
     let mongo_db = app_state.db.mongo.clone();
 
+    let message_service = MessageService::new(&mongo_db, &pg_pool);
+    let message_service_data = web::Data::new(message_service);
+
     // Génération de la documentation OpenAPI
     let openapi = ApiDoc::openapi();
 
@@ -183,6 +187,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(channel_service.clone())
             .app_data(web::Data::new(env_config.jwt_secret.clone()))
             .app_data(web::Data::new(ws_server.clone()))
+            .app_data(message_service_data.clone())
             .app_data(web::Data::new(pg_pool.clone()))
             .app_data(web::Data::new(mongo_db.clone()))
             

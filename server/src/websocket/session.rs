@@ -1,3 +1,5 @@
+use std::sync::Arc;
+use crate::modules::message::service::MessageService;
 use actix::{Actor, ActorContext, Addr, AsyncContext, Handler, Running, StreamHandler};
 use actix_web_actors::ws;
 use serde::{Deserialize, Serialize};
@@ -36,13 +38,21 @@ pub struct WsSession {
 
     pub active_servers: Vec<Uuid>,
     pub active_channels: Vec<Uuid>,
+    pub message_service: Arc<MessageService>,
 }
 
 impl WsSession {
-    pub fn new(jwt_secret: String, server: Addr<WsServer>) -> Self {
+    pub fn new(
+        jwt_secret: String, 
+        server: Addr<WsServer>,
+        // 👇 1. AJOUTE LE PARAMÈTRE ICI 👇
+        message_service: Arc<MessageService>, 
+    ) -> Self {
         Self {
             jwt_secret,
             server,
+            // 👇 2. ASSIGNE-LE ICI 👇
+            message_service, 
             hb: Instant::now(),
             user_id: None,
             username: None,
@@ -84,10 +94,8 @@ impl WsSession {
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum IncomingMessage {
     Auth { token: String },
-
     JoinServer { server_id: Uuid },
     LeaveServer { server_id: Uuid },
-
     JoinChannel { channel_id: Uuid },
     LeaveChannel { channel_id: Uuid },
 
@@ -102,10 +110,23 @@ pub enum IncomingMessage {
     },
 
     SendMessage { channel_id: Uuid, content: String },
-
     StatusChange { status: UserStatus, server_id: Option<Uuid> },
-
     Ping { t: Option<i64> },
+
+    // 👇 AJOUTE CES DEUX BLOCS 👇
+    #[serde(rename = "add_reaction")]
+    AddReaction {
+        message_id: Uuid,
+        channel_id: Uuid,
+        emoji: String,
+    },
+
+    #[serde(rename = "remove_reaction")]
+    RemoveReaction {
+        message_id: Uuid,
+        channel_id: Uuid,
+        emoji: String,
+    },
 }
 
 #[derive(Serialize, Clone, Debug, actix::Message)]
@@ -391,6 +412,32 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
                             status,
                             server_id,
                         });
+                    }
+
+                    IncomingMessage::AddReaction { message_id, channel_id, emoji } => {
+                        // 👇 On vérifie que l'utilisateur est bien connecté
+                        if let Some(user_id) = self.user_id {
+                            let service = self.message_service.clone(); 
+                            let ws_server = self.server.clone(); 
+
+                            actix_web::rt::spawn(async move {
+                                let ws_data = actix_web::web::Data::new(ws_server);
+                                let _ = service.add_reaction(message_id, channel_id, user_id, emoji, ws_data).await;
+                            });
+                        }
+                    }
+
+                    IncomingMessage::RemoveReaction { message_id, channel_id, emoji } => {
+                        // 👇 Pareil ici
+                        if let Some(user_id) = self.user_id {
+                            let service = self.message_service.clone();
+                            let ws_server = self.server.clone(); 
+
+                            actix_web::rt::spawn(async move {
+                                let ws_data = actix_web::web::Data::new(ws_server);
+                                let _ = service.remove_reaction(message_id, channel_id, user_id, emoji, ws_data).await;
+                            });
+                        }
                     }
                 }
             }
