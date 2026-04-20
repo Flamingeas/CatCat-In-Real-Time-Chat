@@ -20,7 +20,7 @@ import {
 import { api } from "@/lib/api";
 import logoImage from "../images/logo_catcat.svg";
 import { MemberActionsMenu } from "@/features/chat/components/member-actions-menu";
-import { banMember } from "@/features/chat/services/bans.service";
+import { banMember, banTemporaryMember } from "@/features/chat/services/bans.service";
 import BanList from "@/features/chat/components/ban-list";
 import {type ConversationItem, type DmMessage, getConversations, startConversation as startDmConversation } from "@/features/direct-message/services/dm.service";
 
@@ -83,6 +83,8 @@ type WsEvent =
     | { type: "new_direct_message"; conversation_id: string; message_id: string; sender_id: string; sender_username: string; content: string; created_at: string }
     | { type: "direct_message_updated"; conversation_id: string; message_id: string; content: string; updated_at: string }
     | { type: "direct_message_deleted"; conversation_id: string; message_id: string }
+    | { type: "server_member_temporary_banned"; server_id: string; user_id: string; username: string; until?: string }
+    | { type: "server_member_temporary_ban_lifted"; server_id: string; user_id: string; username: string }
     | { type: string; [k: string]: any };
 
 
@@ -294,6 +296,17 @@ export default function ChatPage() {
     const [typingUsers, setTypingUsers] = useState<Record<string, { username: string; channelId: string }>>({});
     const lastTypingSentAtRef = useRef<number>(0);
 
+    const [temporaryBanModal, setTemporaryBanModal] = useState<{
+    open: boolean;
+    userId: string;
+    username: string;
+    } | null>(null);
+
+    const [temporaryBanDuration, setTemporaryBanDuration] = useState("60");
+    const [temporaryBanError, setTemporaryBanError] = useState<string | null>(null);
+    const [isTemporaryBanning, setIsTemporaryBanning] = useState(false);
+    const [temporarilyRestrictedServers, setTemporarilyRestrictedServers] = useState<Record<string, boolean>>({});
+
     useEffect(() => {
         selectedChannelIdRef.current = selectedChannelId;
     }, [selectedChannelId]);
@@ -382,6 +395,35 @@ export default function ChatPage() {
         removeOnline(idStr);
     }
 
+    function hideContent(serverId: string, user_id: string) {
+        const currentSid = selectedServerIdRef.current;
+        if (!currentSid || String(serverId) !== String(currentSid)) return;
+
+        const isMe = String(myIdRef.current ?? "") === String(user_id);
+        if (!isMe) return;
+
+        wsSend({ type: "leave_channel", channel_id: selectedChannelIdRef.current });
+        wsSend({ type: "leave_server", server_id: serverId });
+
+        setTemporarilyRestrictedServers((prev) => ({
+            ...prev,
+            [String(serverId)]: true,
+        }));
+
+        setMembers([]);
+        setOnlineUserIds(new Set());
+        setChannels([]);
+        setSelectedChannelId(null);
+        setMessages([]);
+        setTypingUsers({});
+        setShowBans(false);
+
+        typingTimeoutsRef.current.forEach((t) => window.clearTimeout(t));
+        typingTimeoutsRef.current.clear();
+
+        setSelectedServerId(null);
+    }
+
     function upsertMember(serverId: string, user_id: string, username: string) {
         const currentSid = selectedServerIdRef.current;
         if (!currentSid || String(serverId) !== String(currentSid)) return;
@@ -407,6 +449,28 @@ export default function ChatPage() {
             pushToast("Membre banni définitivement", "warn")
         } catch (e) {
             pushToast("Action refusée", "warn")
+        }
+    }
+
+    async function handleBanTemporaryMember(serverId: string, userId: string, durationMinutes: number) {
+        try {
+            setIsTemporaryBanning(true);
+            setTemporaryBanError(null);
+
+            await banTemporaryMember(serverId, userId, durationMinutes);
+
+            removeMember(serverId, userId);
+
+            if (String(userId) === String(me?.id ?? "")) {
+                hideContent(serverId, userId);
+            }
+
+            setTemporaryBanModal(null);
+            setTemporaryBanDuration("60");
+        } catch (e: any) {
+            setTemporaryBanError(e?.message ?? "Action refusée");
+        } finally {
+            setIsTemporaryBanning(false);
         }
     }
 
@@ -559,6 +623,7 @@ export default function ChatPage() {
 
     async function sendMessage() {
         if (!selectedChannelId) return;
+        if (selectedServerId && temporarilyRestrictedServers[selectedServerId]) return;
         const content = messageText.trim();
         if (!content) return;
 
@@ -618,7 +683,7 @@ export default function ChatPage() {
 
     async function deleteMyMessage(messageId: string) {
         if (!messageId) return;
-
+        if (selectedServerId && temporarilyRestrictedServers[selectedServerId]) return;
         try {
             await api<void>(`/api/messages/${String(messageId)}`, { method: "DELETE" });
 
@@ -651,6 +716,7 @@ export default function ChatPage() {
     function sendTyping() {
         if (!me?.id || !me.username) return;
         if (!selectedChannelId) return;
+        if (selectedServerId && temporarilyRestrictedServers[selectedServerId]) return;
 
         const now = Date.now();
         if (now - lastTypingSentAtRef.current < 800) return;
@@ -1346,6 +1412,84 @@ export default function ChatPage() {
                             )
                         );
                     }
+                if (msg.type === "server_member_banned_temporary") {
+                    const sid = String(msg.server_id ?? "");
+                    const uid = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "quelqu’un");
+
+                    if (!sid || !uid) return;
+
+                    const isMe = String(myIdRef.current ?? "") === uid;
+
+                    removeMember(sid, uid);
+
+                    if (isMe) {
+                        const until = msg.until;
+                        let durationText = "";
+                        if (until) {
+                            const end = new Date(until);
+                            const now = new Date();
+                            const diffMs = end.getTime() - now.getTime();
+                            if (diffMs > 0) {
+                                const minutes = Math.ceil(diffMs / 60000);
+                                if (minutes < 60) {
+                                    durationText = `${minutes} minute${minutes > 1 ? "s" : ""}`;
+                                } else {
+                                    const hours = Math.ceil(minutes / 60);
+                                    durationText = `${hours} heure${hours > 1 ? "s" : ""}`;
+                                }
+                            }
+                        }
+
+                        pushToast(
+                            durationText
+                                ? `Tu as été exclu temporairement (${durationText})`
+                                : "Tu as été exclu temporairement du serveur",
+                            "warn"
+                        );
+                        hideContent(sid, uid);
+                    } else {
+                        pushToast(`${username} a été exclu temporairement`, "warn");
+                    }
+                    return;
+                }
+
+               if (msg.type === "server_member_temporary_ban_lifted") {
+                    const sid = String(msg.server_id ?? "");
+                    const uid = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "quelqu’un");
+
+                    if (!sid || !uid) return;
+
+                    const isMe = String(myIdRef.current ?? "") === uid;
+
+                    if (isMe) {
+                        setTemporarilyRestrictedServers((prev) => {
+                            const copy = { ...prev };
+                            delete copy[sid];
+                            return copy;
+                        });
+
+                        pushToast("Ton exclusion temporaire est terminée", "success");
+
+                        api<Server[]>("/api/servers")
+                            .then(async (list) => {
+                                setServers(list);
+
+                                const bannedServerStillExists = list.some((s) => String(s.id) === sid);
+                                if (bannedServerStillExists) {
+                                    setSelectedServerId(sid);
+                                    await reloadMembers(sid);
+                                    await reloadChannels(sid);
+                                } else if (!selectedServerIdRef.current && list.length) {
+                                    setSelectedServerId(list[0].id);
+                                }
+                            })
+                            .catch(() => {});
+                    } else {
+                        pushToast(`${username} peut à nouveau accéder au serveur`, "success");
+                    }
+
                     return;
                 }
             } catch {}
@@ -1389,6 +1533,14 @@ export default function ChatPage() {
             return;
         }
 
+        if (temporarilyRestrictedServers[selectedServerId]) {
+            setMembers([]);
+            setChannels([]);
+            setSelectedChannelId(null);
+            setMessages([]);
+            return;
+        }
+
         setIsLeaveOpen(false);
         setLeaveError(null);
         setOpenMenuFor(null);
@@ -1402,7 +1554,7 @@ export default function ChatPage() {
         return () => {
             wsSend({ type: "leave_server", server_id: selectedServerId });
         };
-    }, [selectedServerId]);
+    }, [selectedServerId, temporarilyRestrictedServers]);
 
     useEffect(() => {
         if (!me?.id) return;
@@ -1527,7 +1679,16 @@ export default function ChatPage() {
             setIsChannelCreating(false);
         }
     }
-
+    function openTemporaryBanModal(userId: string, username: string) {
+        setOpenMenuFor(null);
+        setTemporaryBanError(null);
+        setTemporaryBanDuration("60");
+        setTemporaryBanModal({
+            open: true,
+            userId,
+            username,
+        });
+    }
     async function deleteChannel(channelId: string) {
         if (!selectedServerId) return;
         if (!canCreateChannel) return;
@@ -1820,6 +1981,7 @@ export default function ChatPage() {
                     <div className="flex-1 overflow-y-auto px-2 pb-3">
                         {!selectedServerId ? (
                             <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Sélectionne / crée un serveur.</div>
+                            
                         ) : channels.length === 0 ? (
                             <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Aucun salon.</div>
                         ) : (
@@ -2299,13 +2461,25 @@ export default function ChatPage() {
                                 sendTyping();
                             }}
                             onKeyDown={onMessageKeyDown}
-                            disabled={!selectedServerId || !selectedChannelId || isSending}
-                            placeholder={selectedServerId && selectedChannel ? `Message dans #${selectedChannel.name}…` : "Choisis un salon pour commencer…"}
+                            disabled={!selectedServerId || !selectedChannelId || isSending || !!(selectedServerId && temporarilyRestrictedServers[selectedServerId])}                            
+                            placeholder={
+                            selectedServerId && temporarilyRestrictedServers[selectedServerId]
+                                ? "Tu es temporairement exclu de ce serveur"
+                                : selectedServerId && selectedChannel
+                                ? `Message dans #${selectedChannel.name}…`
+                                : "Choisis un salon pour commencer…"
+                            }                            
                             className="flex-1 bg-transparent text-[#DCCBC4] placeholder-[#DCCBC4]/30 focus:outline-none font-[family-name:var(--font-nunito)]"
                         />
                         <button
                             onClick={sendMessage}
-                            disabled={!selectedServerId || !selectedChannelId || isSending || !messageText.trim()}
+                            disabled={
+                            !selectedServerId ||
+                            !selectedChannelId ||
+                            isSending ||
+                            !messageText.trim() ||
+                            !!(selectedServerId && temporarilyRestrictedServers[selectedServerId])
+                            }                            
                             className={[
                                 "ml-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
                                 selectedServerId && selectedChannelId && messageText.trim()
@@ -2345,7 +2519,7 @@ export default function ChatPage() {
                                     const isOwnerMember = ownerByRole || ownerByServerField;
                                     
                                     const isMe = myIdRef.current && String(myIdRef.current) === String(m.user_id);
-                                    const canManageThis = Boolean(selectedServerId && isOwner && !isOwnerMember && !isMe);
+                                    const canManageThis = Boolean(selectedServerId && isOwner && !isOwnerMember && !isMe || myRole === "admin" && !isMe && !isOwnerMember);
                                     
                                     const isTyping =
                                     !!selectedChannelId &&
@@ -2405,14 +2579,15 @@ export default function ChatPage() {
                                                     </button>
                                                     {openMenuFor === String(m.user_id) && (
                                                         <MemberActionsMenu
-                                                        username={m.username}
-                                                        userId={String(m.user_id)}
-                                                        serverId={selectedServerId}
-                                                        role={m.role}
-                                                        onKick={handleKickMember}
-                                                        onBan={handleBanMember}
-                                                        onSetRole={setMemberRole}
-                                                        onTransferOwner={transferOwner}
+                                                                username={m.username}
+                                                                userId={String(m.user_id)}
+                                                                serverId={selectedServerId}
+                                                                role={m.role}
+                                                                onKick={handleKickMember}
+                                                                onBan={handleBanMember}
+                                                                onOpenTemporaryBanModal={openTemporaryBanModal}
+                                                                onSetRole={myRole === "owner" ? setMemberRole : undefined}
+                                                                onTransferOwner={myRole === "owner" ? transferOwner : undefined}
                                                         />
                                                     )}
                                                 </div>
@@ -2766,6 +2941,100 @@ export default function ChatPage() {
                     </div>
                 </div>
             )}
+            {temporaryBanModal?.open && selectedServerId && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div
+                        className="absolute inset-0 bg-black/70"
+                        onClick={() => !isTemporaryBanning && setTemporaryBanModal(null)}
+                    />
+
+                    <div className="relative w-full max-w-md rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">
+                                    Bannir temporairement
+                                </h3>
+                                <div className="text-xs text-[#DCCBC4]/50 mt-1">
+                                    Utilisateur : {temporaryBanModal.username}
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => !isTemporaryBanning && setTemporaryBanModal(null)}
+                                className="text-[#DCCBC4]/60 hover:text-white cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        <label className="block text-sm text-[#DCCBC4]/70 mb-2">
+                            Durée du bannissement
+                        </label>
+
+                        <select
+                            value={temporaryBanDuration}
+                            onChange={(e) => setTemporaryBanDuration(e.target.value)}
+                            disabled={isTemporaryBanning}
+                            className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
+                        >
+                            <option value="5">5 minutes</option>
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60">1 heure</option>
+                            <option value="180">3 heures</option>
+                            <option value="720">12 heures</option>
+                            <option value="1440">24 heures</option>
+                            <option value="10080">7 jours</option>
+                        </select>
+
+                        {temporaryBanError && (
+                            <div className="mt-3 text-sm text-red-400">{temporaryBanError}</div>
+                        )}
+
+                        <div className="mt-5 flex gap-2 justify-end">
+                            <button
+                                onClick={() => setTemporaryBanModal(null)}
+                                disabled={isTemporaryBanning}
+                                className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
+                            >
+                                Annuler
+                            </button>
+
+                            <button
+                                onClick={() =>
+                                    handleBanTemporaryMember(
+                                        selectedServerId,
+                                        temporaryBanModal.userId,
+                                        Number(temporaryBanDuration)
+                                    )
+                                }
+                                disabled={isTemporaryBanning}
+                                className="px-4 py-2 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-400 disabled:opacity-50 cursor-pointer"
+                            >
+                                {isTemporaryBanning ? "Bannissement..." : "Confirmer"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {selectedServerId && temporarilyRestrictedServers[selectedServerId] && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
+                    <div className="bg-[#0F0908] border border-red-500/20 rounded-2xl p-6 text-center">
+                    <div className="text-red-400 font-bold text-lg mb-2">
+                        Accès temporairement restreint
+                    </div>
+                    <div className="text-sm text-[#DCCBC4]/60 mb-4">
+                        Tu es exclu de ce serveur pendant encore X minutes.
+                    </div>
+                    <button
+                        onClick={() => setSelectedServerId(null)}
+                        className="px-4 py-2 bg-[#EB5E28] rounded-xl text-black font-bold cursor-pointer"
+                    >
+                        Retour
+                    </button>
+                    </div>
+                </div>
+                )}
         </div>
     );
 }
