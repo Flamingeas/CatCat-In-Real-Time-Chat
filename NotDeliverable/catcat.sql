@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
+\restrict IvJbWjreydlI2Js0h9kdFv1PNLj5xRBCTMv3RqYDbA27fhQv2xKxXIefdlntd6R
 
 -- Dumped from database version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
 -- Dumped by pg_dump version 16.13 (Ubuntu 16.13-0ubuntu0.24.04.1)
@@ -19,17 +19,17 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: catcat; Type: DATABASE; Schema: -; Owner: postgres
+-- Name: catcat; Type: DATABASE; Schema: -; Owner: catcat_user
 --
 
 CREATE DATABASE catcat WITH TEMPLATE = template0 ENCODING = 'UTF8' LOCALE_PROVIDER = libc LOCALE = 'C.UTF-8';
 
 
-ALTER DATABASE catcat OWNER TO postgres;
+ALTER DATABASE catcat OWNER TO catcat_user;
 
-\unrestrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
+\unrestrict IvJbWjreydlI2Js0h9kdFv1PNLj5xRBCTMv3RqYDbA27fhQv2xKxXIefdlntd6R
 \connect catcat
-\restrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
+\restrict IvJbWjreydlI2Js0h9kdFv1PNLj5xRBCTMv3RqYDbA27fhQv2xKxXIefdlntd6R
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -43,13 +43,13 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 --
--- Name: _sqlx_test; Type: SCHEMA; Schema: -; Owner: postgres
+-- Name: _sqlx_test; Type: SCHEMA; Schema: -; Owner: catcat_user
 --
 
 CREATE SCHEMA _sqlx_test;
 
 
-ALTER SCHEMA _sqlx_test OWNER TO postgres;
+ALTER SCHEMA _sqlx_test OWNER TO catcat_user;
 
 --
 -- Name: pgcrypto; Type: EXTENSION; Schema: -; Owner: -
@@ -80,7 +80,7 @@ COMMENT ON EXTENSION "uuid-ossp" IS 'generate universally unique identifiers (UU
 
 
 --
--- Name: set_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: set_updated_at(); Type: FUNCTION; Schema: public; Owner: catcat_user
 --
 
 CREATE FUNCTION public.set_updated_at() RETURNS trigger
@@ -93,10 +93,10 @@ END;
 $$;
 
 
-ALTER FUNCTION public.set_updated_at() OWNER TO postgres;
+ALTER FUNCTION public.set_updated_at() OWNER TO catcat_user;
 
 --
--- Name: database_ids; Type: SEQUENCE; Schema: _sqlx_test; Owner: postgres
+-- Name: database_ids; Type: SEQUENCE; Schema: _sqlx_test; Owner: catcat_user
 --
 
 CREATE SEQUENCE _sqlx_test.database_ids
@@ -107,14 +107,14 @@ CREATE SEQUENCE _sqlx_test.database_ids
     CACHE 1;
 
 
-ALTER SEQUENCE _sqlx_test.database_ids OWNER TO postgres;
+ALTER SEQUENCE _sqlx_test.database_ids OWNER TO catcat_user;
 
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
 
 --
--- Name: databases; Type: TABLE; Schema: _sqlx_test; Owner: postgres
+-- Name: databases; Type: TABLE; Schema: _sqlx_test; Owner: catcat_user
 --
 
 CREATE TABLE _sqlx_test.databases (
@@ -124,10 +124,10 @@ CREATE TABLE _sqlx_test.databases (
 );
 
 
-ALTER TABLE _sqlx_test.databases OWNER TO postgres;
+ALTER TABLE _sqlx_test.databases OWNER TO catcat_user;
 
 --
--- Name: channels; Type: TABLE; Schema: public; Owner: postgres
+-- Name: channels; Type: TABLE; Schema: public; Owner: catcat_user
 --
 
 CREATE TABLE public.channels (
@@ -139,10 +139,25 @@ CREATE TABLE public.channels (
 );
 
 
-ALTER TABLE public.channels OWNER TO postgres;
+ALTER TABLE public.channels OWNER TO catcat_user;
 
 --
--- Name: server_bans; Type: TABLE; Schema: public; Owner: postgres
+-- Name: conversations; Type: TABLE; Schema: public; Owner: catcat_user
+--
+
+CREATE TABLE public.conversations (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    user1_id uuid NOT NULL,
+    user2_id uuid NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT conversations_user_order CHECK ((user1_id < user2_id))
+);
+
+
+ALTER TABLE public.conversations OWNER TO catcat_user;
+
+--
+-- Name: server_bans; Type: TABLE; Schema: public; Owner: catcat_user
 --
 
 CREATE TABLE public.server_bans (
@@ -155,10 +170,10 @@ CREATE TABLE public.server_bans (
 );
 
 
-ALTER TABLE public.server_bans OWNER TO postgres;
+ALTER TABLE public.server_bans OWNER TO catcat_user;
 
 --
--- Name: server_members; Type: TABLE; Schema: public; Owner: postgres
+-- Name: server_members; Type: TABLE; Schema: public; Owner: catcat_user
 --
 
 CREATE TABLE public.server_members (
@@ -169,10 +184,10 @@ CREATE TABLE public.server_members (
 );
 
 
-ALTER TABLE public.server_members OWNER TO postgres;
+ALTER TABLE public.server_members OWNER TO catcat_user;
 
 --
--- Name: servers; Type: TABLE; Schema: public; Owner: postgres
+-- Name: servers; Type: TABLE; Schema: public; Owner: catcat_user
 --
 
 CREATE TABLE public.servers (
@@ -185,10 +200,10 @@ CREATE TABLE public.servers (
 );
 
 
-ALTER TABLE public.servers OWNER TO postgres;
+ALTER TABLE public.servers OWNER TO catcat_user;
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: postgres
+-- Name: users; Type: TABLE; Schema: public; Owner: catcat_user
 --
 
 CREATE TABLE public.users (
@@ -201,25 +216,10 @@ CREATE TABLE public.users (
 );
 
 
-ALTER TABLE public.users OWNER TO postgres;
+ALTER TABLE public.users OWNER TO catcat_user;
 
 --
--- Name: conversations; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.conversations (
-    id uuid DEFAULT public.gen_random_uuid() NOT NULL,
-    user1_id uuid NOT NULL,
-    user2_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT conversations_user_order CHECK (user1_id < user2_id)
-);
-
-
-ALTER TABLE public.conversations OWNER TO postgres;
-
---
--- Name: databases databases_pkey; Type: CONSTRAINT; Schema: _sqlx_test; Owner: postgres
+-- Name: databases databases_pkey; Type: CONSTRAINT; Schema: _sqlx_test; Owner: catcat_user
 --
 
 ALTER TABLE ONLY _sqlx_test.databases
@@ -227,23 +227,7 @@ ALTER TABLE ONLY _sqlx_test.databases
 
 
 --
--- Name: conversations conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_pkey PRIMARY KEY (id);
-
-
---
--- Name: conversations conversations_user1_id_user2_id_key; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_user1_id_user2_id_key UNIQUE (user1_id, user2_id);
-
-
---
--- Name: channels channels_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: channels channels_pkey; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.channels
@@ -251,7 +235,23 @@ ALTER TABLE ONLY public.channels
 
 
 --
--- Name: server_bans server_bans_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: conversations conversations_pkey; Type: CONSTRAINT; Schema: public; Owner: catcat_user
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: conversations conversations_user1_id_user2_id_key; Type: CONSTRAINT; Schema: public; Owner: catcat_user
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_user1_id_user2_id_key UNIQUE (user1_id, user2_id);
+
+
+--
+-- Name: server_bans server_bans_pkey; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.server_bans
@@ -259,7 +259,7 @@ ALTER TABLE ONLY public.server_bans
 
 
 --
--- Name: server_members server_members_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: server_members server_members_pkey; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.server_members
@@ -267,7 +267,7 @@ ALTER TABLE ONLY public.server_members
 
 
 --
--- Name: servers servers_invitation_code_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: servers servers_invitation_code_unique; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.servers
@@ -275,7 +275,7 @@ ALTER TABLE ONLY public.servers
 
 
 --
--- Name: servers servers_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: servers servers_pkey; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.servers
@@ -283,7 +283,7 @@ ALTER TABLE ONLY public.servers
 
 
 --
--- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_email_unique; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.users
@@ -291,7 +291,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_pkey; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.users
@@ -299,7 +299,7 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: users users_username_unique; Type: CONSTRAINT; Schema: public; Owner: postgres
+-- Name: users users_username_unique; Type: CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.users
@@ -307,93 +307,77 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: databases_created_at; Type: INDEX; Schema: _sqlx_test; Owner: postgres
+-- Name: databases_created_at; Type: INDEX; Schema: _sqlx_test; Owner: catcat_user
 --
 
 CREATE INDEX databases_created_at ON _sqlx_test.databases USING btree (created_at);
 
 
 --
--- Name: idx_conversations_user1; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_conversations_user1 ON public.conversations USING btree (user1_id);
-
-
---
--- Name: idx_conversations_user2; Type: INDEX; Schema: public; Owner: postgres
---
-
-CREATE INDEX idx_conversations_user2 ON public.conversations USING btree (user2_id);
-
-
---
--- Name: idx_channels_server_id; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_channels_server_id; Type: INDEX; Schema: public; Owner: catcat_user
 --
 
 CREATE INDEX idx_channels_server_id ON public.channels USING btree (server_id);
 
 
 --
--- Name: idx_server_members_server; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_conversations_user1; Type: INDEX; Schema: public; Owner: catcat_user
+--
+
+CREATE INDEX idx_conversations_user1 ON public.conversations USING btree (user1_id);
+
+
+--
+-- Name: idx_conversations_user2; Type: INDEX; Schema: public; Owner: catcat_user
+--
+
+CREATE INDEX idx_conversations_user2 ON public.conversations USING btree (user2_id);
+
+
+--
+-- Name: idx_server_members_server; Type: INDEX; Schema: public; Owner: catcat_user
 --
 
 CREATE INDEX idx_server_members_server ON public.server_members USING btree (server_id);
 
 
 --
--- Name: idx_server_members_user; Type: INDEX; Schema: public; Owner: postgres
+-- Name: idx_server_members_user; Type: INDEX; Schema: public; Owner: catcat_user
 --
 
 CREATE INDEX idx_server_members_user ON public.server_members USING btree (user_id);
 
 
 --
--- Name: uniq_channels_name_per_server; Type: INDEX; Schema: public; Owner: postgres
+-- Name: uniq_channels_name_per_server; Type: INDEX; Schema: public; Owner: catcat_user
 --
 
 CREATE UNIQUE INDEX uniq_channels_name_per_server ON public.channels USING btree (server_id, lower(name));
 
 
 --
--- Name: channels trg_channels_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+-- Name: channels trg_channels_updated_at; Type: TRIGGER; Schema: public; Owner: catcat_user
 --
 
 CREATE TRIGGER trg_channels_updated_at BEFORE UPDATE ON public.channels FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 
 --
--- Name: servers trg_servers_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+-- Name: servers trg_servers_updated_at; Type: TRIGGER; Schema: public; Owner: catcat_user
 --
 
 CREATE TRIGGER trg_servers_updated_at BEFORE UPDATE ON public.servers FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 
 --
--- Name: users trg_users_updated_at; Type: TRIGGER; Schema: public; Owner: postgres
+-- Name: users trg_users_updated_at; Type: TRIGGER; Schema: public; Owner: catcat_user
 --
 
 CREATE TRIGGER trg_users_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 
 --
--- Name: conversations conversations_user1_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_user1_id_fkey FOREIGN KEY (user1_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: conversations conversations_user2_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.conversations
-    ADD CONSTRAINT conversations_user2_id_fkey FOREIGN KEY (user2_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: channels channels_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: channels channels_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.channels
@@ -401,7 +385,23 @@ ALTER TABLE ONLY public.channels
 
 
 --
--- Name: server_bans server_bans_banned_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: conversations conversations_user1_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_user1_id_fkey FOREIGN KEY (user1_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: conversations conversations_user2_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
+--
+
+ALTER TABLE ONLY public.conversations
+    ADD CONSTRAINT conversations_user2_id_fkey FOREIGN KEY (user2_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: server_bans server_bans_banned_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.server_bans
@@ -409,7 +409,7 @@ ALTER TABLE ONLY public.server_bans
 
 
 --
--- Name: server_bans server_bans_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: server_bans server_bans_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.server_bans
@@ -417,7 +417,7 @@ ALTER TABLE ONLY public.server_bans
 
 
 --
--- Name: server_bans server_bans_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: server_bans server_bans_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.server_bans
@@ -425,7 +425,7 @@ ALTER TABLE ONLY public.server_bans
 
 
 --
--- Name: server_members server_members_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: server_members server_members_server_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.server_members
@@ -433,7 +433,7 @@ ALTER TABLE ONLY public.server_members
 
 
 --
--- Name: server_members server_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: server_members server_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.server_members
@@ -441,7 +441,7 @@ ALTER TABLE ONLY public.server_members
 
 
 --
--- Name: servers servers_owner_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: postgres
+-- Name: servers servers_owner_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: catcat_user
 --
 
 ALTER TABLE ONLY public.servers
@@ -452,5 +452,5 @@ ALTER TABLE ONLY public.servers
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 4p7Ej1QP210VO2dmpti7Zo7RNo5WA5eSaDeMmk5Sh84cGgaGhdVR3m17CLVw52N
+\unrestrict IvJbWjreydlI2Js0h9kdFv1PNLj5xRBCTMv3RqYDbA27fhQv2xKxXIefdlntd6R
 
