@@ -2,7 +2,7 @@ import { useState } from "react";
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { Grid } from '@giphy/react-components';
 import { GiphyFetch } from '@giphy/js-fetch-api';
-import { UserPlus, PanelLeftOpen, PanelRightOpen, Send, Trash2, Heart, SmilePlus, MessageCircle } from "lucide-react";
+import { UserPlus, PanelLeftOpen, PanelRightOpen, SendHorizontal, Trash2, Heart, SmilePlus, MessageCircle, Pencil } from "lucide-react";
 
 const gf = new GiphyFetch('ENOkgZEpFQKApnReETozPZEGXXeJUQ4l');
 
@@ -43,6 +43,14 @@ export function MessageArea({
     typingLabel,
     canModerateMessages,
     onDeleteMessage,
+    
+    // Props d'édition
+    editingMessageId,
+    setEditingMessageId,
+    editingContent,
+    setEditingContent,
+    onEditMessage,
+
     onToggleReaction,
     canInviteMember,
     onOpenInvite,
@@ -77,7 +85,6 @@ export function MessageArea({
                 <div className="flex justify-between items-center">
                     <div className="flex flex-col">
                         <div className="flex items-center gap-2">
-                            {/* CACHÉ SUR MOBILE (hidden md:flex) */}
                             {!isSidebarOpen && (
                                 <button 
                                     onClick={onToggleSidebar} 
@@ -111,7 +118,6 @@ export function MessageArea({
                             <span className="text-sm font-bold hidden md:block">Inviter</span>
                         </button>
 
-                        {/* CACHÉ SUR MOBILE (hidden md:flex) */}
                         {!isMemberAreaOpen && (
                             <button 
                                 onClick={onToggleMemberArea} 
@@ -172,7 +178,9 @@ export function MessageArea({
                                         const isMe = me && String(me.id) === String(m.user_id);
                                         const time = formatTimeFR(m.created_at);
                                         const canDeleteThis = !m.is_deleted && (isMe || canModerateMessages);
+                                        const canEditThis = isMe && !m.is_deleted && !m.content.includes("giphy.com/media"); // On n'édite pas les GIFs
                                         const isHovered = hoveredMessageId === m.message_id;
+                                        const isEditing = editingMessageId === m.message_id;
 
                                         return (
                                             <div 
@@ -200,25 +208,49 @@ export function MessageArea({
 
                                                     <div className={`relative flex flex-col w-fit max-w-full ${isMe ? "items-end" : "items-start"}`}>
                                                         
-                                                        <div className={[
-                                                                "px-4 py-3 rounded-[20px] border border-[#ffffff]/10 shadow-sm whitespace-pre-wrap break-words text-sm leading-relaxed",
-                                                                isMe ? "bg-[#EB5E28] text-[#1E1211] rounded-br-[6px] border-transparent" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-[6px]",
-                                                                m.is_deleted ? "opacity-50" : ""
-                                                            ].join(" ")}
-                                                        >
-                                                            {m.is_deleted ? (
-                                                                <span className="italic">Ce message a été supprimé.</span>
-                                                            ) : m.content.includes("giphy.com/media") ? (
-                                                                <img src={m.content} alt="GIF" className="rounded-lg max-w-[250px] object-cover" />
-                                                            ) : (
-                                                                m.content
-                                                            )}
-                                                        </div>
+                                                        {isEditing ? (
+                                                            // --- MODE ÉDITION ---
+                                                            <div className="w-full min-w-[250px] mb-1">
+                                                                <textarea
+                                                                    value={editingContent}
+                                                                    onChange={(e) => setEditingContent(e.target.value)}
+                                                                    className="w-full px-4 py-3 rounded-[20px] rounded-br-[6px] border border-[#EB5E28] bg-[#1E1211] text-[#DCCBC4] focus:outline-none resize-none"
+                                                                    rows={3}
+                                                                    autoFocus
+                                                                />
+                                                                <div className="flex gap-2 mt-2 justify-end">
+                                                                    <button onClick={() => { setEditingMessageId(null); setEditingContent(""); }} className="px-3 py-1.5 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] text-xs hover:bg-[#1E1211] transition-colors cursor-pointer">
+                                                                        Annuler
+                                                                    </button>
+                                                                    <button onClick={() => onEditMessage(m.message_id, editingContent)} className="px-3 py-1.5 rounded-xl bg-[#EB5E28] text-white text-xs font-bold hover:bg-white hover:text-[#1E1211] transition-colors cursor-pointer">
+                                                                        Sauvegarder
+                                                                    </button>
+                                                                </div>
+                                                            </div>
+                                                        ) : (
+                                                            // --- MODE LECTURE NORMALE ---
+                                                            <div className={[
+                                                                    "px-4 py-3 rounded-[20px] border border-[#ffffff]/10 shadow-sm whitespace-pre-wrap break-words text-sm leading-relaxed",
+                                                                    isMe ? "bg-[#EB5E28] text-[#1E1211] rounded-br-[6px] border-transparent" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-[6px]",
+                                                                    m.is_deleted ? "opacity-50" : ""
+                                                                ].join(" ")}
+                                                            >
+                                                                {m.is_deleted ? (
+                                                                    <span className="italic">Ce message a été supprimé.</span>
+                                                                ) : m.content.includes("giphy.com/media") ? (
+                                                                    <img src={m.content} alt="GIF" className="rounded-lg max-w-[250px] object-cover" />
+                                                                ) : (
+                                                                    m.content
+                                                                )}
+                                                            </div>
+                                                        )}
 
-                                                        {!m.is_deleted && isHovered && (
+                                                        {/* BARRE D'ACTIONS AU SURVOL (Placée en dessous de la bulle, avant les réactions) */}
+                                                        {!m.is_deleted && !isEditing && isHovered && (
                                                             <div className={`absolute top-full mt-1.5 ${isMe ? "right-0" : "left-0"} z-50 flex`}>
                                                                 <div className="bg-[#0F0908] border border-[#ffffff]/10 shadow-[0_4px_15px_rgba(0,0,0,0.5)] rounded-[14px] flex items-center overflow-hidden h-9">
                                                                     
+                                                                    {/* Quick Reactions */}
                                                                     {showQuickReactions === m.message_id && (
                                                                         <div className="flex items-center px-1 border-r border-[#ffffff]/10 bg-[#1E1211] h-full">
                                                                             {QUICK_EMOJIS.map(emoji => (
@@ -251,6 +283,22 @@ export function MessageArea({
                                                                         <Heart className="w-4 h-4" />
                                                                     </button>
 
+                                                                    {canEditThis && <div className="w-[1px] h-4 bg-[#ffffff]/10" />}
+
+                                                                    {canEditThis && (
+                                                                        <button 
+                                                                            onClick={() => {
+                                                                                setEditingMessageId(m.message_id);
+                                                                                setEditingContent(m.content);
+                                                                                setHoveredMessageId(null); // On cache la barre quand on édite
+                                                                            }}
+                                                                            className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-blue-400 transition-colors cursor-pointer"
+                                                                            title="Modifier le message"
+                                                                        >
+                                                                            <Pencil className="w-4 h-4" />
+                                                                        </button>
+                                                                    )}
+
                                                                     {canDeleteThis && <div className="w-[1px] h-4 bg-[#ffffff]/10" />}
 
                                                                     {canDeleteThis && (
@@ -259,7 +307,7 @@ export function MessageArea({
                                                                             className="px-3 h-full flex items-center justify-center text-[#DCCBC4]/70 hover:bg-[#ffffff]/10 hover:text-red-400 transition-colors cursor-pointer"
                                                                             title="Supprimer le message"
                                                                         >
-                                                                        <Trash2 className="w-4 h-4" />
+                                                                            <Trash2 className="w-4 h-4" />
                                                                         </button>
                                                                     )}
                                                                 </div>
@@ -267,8 +315,10 @@ export function MessageArea({
                                                         )}
                                                     </div>
 
+                                                    {/* RÉACTIONS ENREGISTRÉES */}
+                                                    {/* On rajoute un margin-top plus grand (mt-3 ou mt-10 au hover) pour laisser la place à la barre d'action */}
                                                     {m.reactions && m.reactions.length > 0 && (
-                                                        <div className={`flex flex-wrap gap-1 mt-1.5 ${isMe ? "justify-end" : "justify-start"}`}>
+                                                        <div className={`flex flex-wrap gap-1 transition-all duration-200 ${isHovered && !m.is_deleted && !isEditing ? "mt-12" : "mt-1.5"} ${isMe ? "justify-end" : "justify-start"}`}>
                                                             {m.reactions.map((r) => {
                                                                 const hasReacted = me ? r.users.includes(me.id) : false;
                                                                 return (
@@ -341,7 +391,7 @@ export function MessageArea({
                     />
                     
                     <button onClick={onSendMessage} disabled={!selectedServerId || !selectedChannelId || isSending || !messageText.trim()} className={["ml-3 w-10 h-10 rounded-xl flex items-center justify-center transition-all", selectedServerId && selectedChannelId && messageText.trim() ? "bg-[#EB5E28] text-[#1E1211] hover:scale-105 shadow-[0_0_15px_rgba(235,94,40,0.3)] cursor-pointer" : "bg-[#2A1A18] text-[#DCCBC4]/30 cursor-not-allowed"].join(" ")} title="Envoyer">
-                        <Send className="w-4 h-4 ml-0.5" />
+                        <SendHorizontal className="h-5 ml-0.5" />
                     </button>
                 </div>
             </div>

@@ -17,6 +17,7 @@ export function ChannelSidebar({
     channels,
     selectedChannelId,
     onSelectChannel,
+    onToggleSidebar,
     canEditChannel,
     onOpenEditChannel,
     onDeleteChannel,
