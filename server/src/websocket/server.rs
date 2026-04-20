@@ -1,5 +1,5 @@
 use actix::{Actor, Context, Handler, Message, Recipient};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use log::debug;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -34,11 +34,27 @@ pub enum ClientMessage {
         name: String,
         created_at: String,
     },
-    JoinChannel { user_id: Uuid, channel_id: Uuid },
-    LeaveChannel { user_id: Uuid, channel_id: Uuid },
-    ChannelDeleted { server_id: Uuid, channel_id: Uuid },
-    ChannelUpdated { server_id: Uuid, channel_id: Uuid },
-    Typing { user_id: Uuid, username: String, channel_id: Uuid },
+    JoinChannel {
+        user_id: Uuid,
+        channel_id: Uuid,
+    },
+    LeaveChannel {
+        user_id: Uuid,
+        channel_id: Uuid,
+    },
+    ChannelDeleted {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
+    ChannelUpdated {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
+    Typing {
+        user_id: Uuid,
+        username: String,
+        channel_id: Uuid,
+    },
 
     SendMessage {
         user_id: Uuid,
@@ -63,8 +79,20 @@ pub enum ClientMessage {
         message_id: Uuid,
     },
 
-    StatusChange { user_id: Uuid, username: String, status: UserStatus, server_id: Option<Uuid> },
-    BroadcastMessageUpdated { server_id: Uuid, channel_id: Uuid, message_id: Uuid, content: String, updated_at: DateTime<Utc>},
+    StatusChange {
+        user_id: Uuid,
+        username: String,
+        status: UserStatus,
+        server_id: Option<Uuid>,
+    },
+
+    BroadcastMessageUpdated {
+        server_id: Uuid,
+        channel_id: Uuid,
+        message_id: Uuid,
+        content: String,
+        updated_at: DateTime<Utc>,
+    },
 
     BroadcastDirectMessage {
         conversation_id: Uuid,
@@ -90,19 +118,6 @@ pub enum ClientMessage {
         message_id: Uuid,
         sender_id: Uuid,
         recipient_id: Uuid,
-    StatusChange {
-        user_id: Uuid,
-        username: String,
-        status: UserStatus,
-        server_id: Option<Uuid>,
-    },
-
-    BroadcastMessageUpdated {
-        server_id: Uuid,
-        channel_id: Uuid,
-        message_id: Uuid,
-        content: String,
-        updated_at: DateTime<Utc>,
     },
 }
 
@@ -111,23 +126,43 @@ pub enum ClientMessage {
 pub enum ServerEvent {
     ServerDeleted { server_id: Uuid },
     ServerUpdated { server_id: Uuid },
-    MemberJoined { server_id: Uuid, user_id: Uuid, username: String },
-    MemberLeft { server_id: Uuid, user_id: Uuid, username: String },
+    MemberJoined {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
+    MemberLeft {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
     MemberRoleUpdated {
         server_id: Uuid,
         user_id: Uuid,
         username: String,
         role: String,
     },
-    MemberKicked { server_id: Uuid, user_id: Uuid, username: String },
-    MemberBanned { server_id: Uuid, user_id: Uuid, username: String },
+    MemberKicked {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
+    MemberBanned {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
     MemberBannedTemporary {
         server_id: Uuid,
         user_id: Uuid,
         username: String,
-        until: Option<chrono::DateTime<chrono::Utc>>
+        until: Option<DateTime<Utc>>,
     },
-    MemberUnbanned { server_id: Uuid, user_id: Uuid, username: String },
+    MemberUnbanned {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
 }
 
 pub struct WsServer {
@@ -207,7 +242,10 @@ impl Handler<Connect> for WsServer {
         self.usernames.insert(msg.user_id, msg.username.clone());
 
         for server_id in msg.server_ids {
-            self.server_rooms.entry(server_id).or_default().insert(msg.user_id);
+            self.server_rooms
+                .entry(server_id)
+                .or_default()
+                .insert(msg.user_id);
         }
 
         self.send_to(
@@ -306,7 +344,10 @@ impl Handler<ClientMessage> for WsServer {
                     .map(|uid| (*uid, self.username_of(*uid)))
                     .collect();
 
-                self.send_to(user_id, OutgoingMessage::PresenceSnapshot { server_id, online });
+                self.send_to(
+                    user_id,
+                    OutgoingMessage::PresenceSnapshot { server_id, online },
+                );
             }
 
             ClientMessage::LeaveServer { user_id, server_id } => {
@@ -327,11 +368,20 @@ impl Handler<ClientMessage> for WsServer {
                 );
             }
 
-            ClientMessage::JoinChannel { user_id, channel_id } => {
-                self.channel_rooms.entry(channel_id).or_default().insert(user_id);
+            ClientMessage::JoinChannel {
+                user_id,
+                channel_id,
+            } => {
+                self.channel_rooms
+                    .entry(channel_id)
+                    .or_default()
+                    .insert(user_id);
             }
 
-            ClientMessage::LeaveChannel { user_id, channel_id } => {
+            ClientMessage::LeaveChannel {
+                user_id,
+                channel_id,
+            } => {
                 if let Some(set) = self.channel_rooms.get_mut(&channel_id) {
                     set.remove(&user_id);
                 }
@@ -507,7 +557,6 @@ impl Handler<ClientMessage> for WsServer {
                 self.send_to(recipient_id, msg);
             }
 
-            ClientMessage::StatusChange { user_id, username, status, server_id } => {
             ClientMessage::StatusChange {
                 user_id,
                 username,
@@ -960,7 +1009,10 @@ mod tests {
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
         let _ = take(&inbox);
 
-        ws.do_send(ClientMessage::JoinChannel { user_id, channel_id });
+        ws.do_send(ClientMessage::JoinChannel {
+            user_id,
+            channel_id,
+        });
         actix::clock::sleep(std::time::Duration::from_millis(10)).await;
 
         ws.do_send(ClientMessage::BroadcastMessageDeleted {
