@@ -63,6 +63,33 @@ pub enum ClientMessage {
         message_id: Uuid,
     },
 
+    StatusChange { user_id: Uuid, username: String, status: UserStatus, server_id: Option<Uuid> },
+    BroadcastMessageUpdated { server_id: Uuid, channel_id: Uuid, message_id: Uuid, content: String, updated_at: DateTime<Utc>},
+
+    BroadcastDirectMessage {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        sender_id: Uuid,
+        sender_username: String,
+        recipient_id: Uuid,
+        content: String,
+        created_at: String,
+    },
+
+    BroadcastDirectMessageUpdated {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        sender_id: Uuid,
+        recipient_id: Uuid,
+        content: String,
+        updated_at: String,
+    },
+
+    BroadcastDirectMessageDeleted {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        sender_id: Uuid,
+        recipient_id: Uuid,
     StatusChange {
         user_id: Uuid,
         username: String,
@@ -427,6 +454,60 @@ impl Handler<ClientMessage> for WsServer {
                 );
             }
 
+            ClientMessage::BroadcastDirectMessage {
+                conversation_id,
+                message_id,
+                sender_id,
+                sender_username,
+                recipient_id,
+                content,
+                created_at,
+            } => {
+                let msg = OutgoingMessage::NewDirectMessage {
+                    conversation_id,
+                    message_id,
+                    sender_id,
+                    sender_username,
+                    content,
+                    created_at,
+                };
+                self.send_to(sender_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::BroadcastDirectMessageUpdated {
+                conversation_id,
+                message_id,
+                sender_id,
+                recipient_id,
+                content,
+                updated_at,
+            } => {
+                let msg = OutgoingMessage::DirectMessageUpdated {
+                    conversation_id,
+                    message_id,
+                    content,
+                    updated_at,
+                };
+                self.send_to(sender_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::BroadcastDirectMessageDeleted {
+                conversation_id,
+                message_id,
+                sender_id,
+                recipient_id,
+            } => {
+                let msg = OutgoingMessage::DirectMessageDeleted {
+                    conversation_id,
+                    message_id,
+                };
+                self.send_to(sender_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::StatusChange { user_id, username, status, server_id } => {
             ClientMessage::StatusChange {
                 user_id,
                 username,
