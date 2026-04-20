@@ -208,7 +208,26 @@ pub enum OutgoingMessage {
         server_id: Uuid,
         user_id: Uuid,
         username: String,
-    }
+    },
+
+    NewDirectMessage {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        sender_id: Uuid,
+        sender_username: String,
+        content: String,
+        created_at: String,
+    },
+    DirectMessageUpdated {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        content: String,
+        updated_at: String,
+    },
+    DirectMessageDeleted {
+        conversation_id: Uuid,
+        message_id: Uuid,
+    },
 }
 
 impl actix::Message for OutgoingMessage {

@@ -19,6 +19,15 @@ export async function api<T>(
     },
   });
 
+  if (response.status === 401) {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("user");
+      window.location.replace("/");
+    }
+    throw new Error("401 Unauthorized");
+  }
+
   if (!response.ok) {
     const text = await response.text().catch(() => "");
     throw new Error(`${response.status} ${response.statusText} - ${text}`);
