@@ -208,6 +208,7 @@ pub enum OutgoingMessage {
         server_id: Uuid,
         user_id: Uuid,
         username: String,
+        until: Option<chrono::DateTime<chrono::Utc>>
     },
     ServerMemberUnbanned {
         server_id: Uuid,

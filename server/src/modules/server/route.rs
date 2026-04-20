@@ -344,12 +344,13 @@ pub async fn kick_member(
 }
 
 #[utoipa::path(
-    delete,
-    path = "/api/servers/{id}",
-    tag = "Servers",
-    params(("id" = Uuid, Path, description = "L'ID du serveur à supprimer")),
+    post,
+    path = "/api/servers/{id}/bans/{user_id}",
+    tag = "Member Ban",
+    params(MemberPath),
     responses(
-        (status = 200, description = "Serveur supprimé avec succès")
+        (status = 200, description = "Membre banni"),
+        (status = 403, description = "Non autorisé")
     ),
     security(("jwt" = []))
 )]
@@ -384,17 +385,46 @@ pub async fn ban_member(
     }
 }
 
+#[derive(Debug, Deserialize, utoipa::ToSchema)]
+pub struct TemporaryBanPayload {
+    pub duration_minutes: u32,
+}
+#[utoipa::path(
+    post,
+    path = "/api/servers/{id}/bans-temporary/{user_id}",
+    tag = "Member Ban",
+    params(MemberPath),
+    request_body = TemporaryBanPayload,
+    responses(
+        (status = 200, description = "Membre banni temporairement"),
+        (status = 403, description = "Non autorisé")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn ban_temporary_member(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,
     ws: web::Data<Addr<WsServer>>,
     path: web::Path<MemberPath>,
+    payload: web::Json<TemporaryBanPayload>,
 ) -> impl Responder {
     let server_id = path.id;
     let target_user_id = path.user_id;
-
-    match service.ban_temporary_member(user.user_id, server_id, target_user_id).await {
-        Ok(_) => {
+    if payload.duration_minutes == 0 {
+        return HttpResponse::BadRequest().json(json!({
+            "error": "duration_minutes must be greater than 0"
+        }));
+    }
+    match service
+        .ban_temporary_member(
+            user.user_id,
+            server_id,
+            target_user_id,
+            payload.duration_minutes,
+        )
+        .await
+    {
+        Ok(expires_at) => {
             let username = service
                 .get_username(target_user_id)
                 .await
@@ -404,9 +434,13 @@ pub async fn ban_temporary_member(
                 server_id,
                 user_id: target_user_id,
                 username,
+                until: Some(expires_at),
             });
 
-            HttpResponse::Ok().json(json!({ "message": "Member banned temporary" }))
+            HttpResponse::Ok().json(json!({
+                "message": "Member banned temporarily",
+                "expires_at": expires_at,
+            }))
         }
         Err(e) if e == "Forbidden" => {
             HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
@@ -484,6 +518,16 @@ pub async fn unban_member(
     }
 }
 
+#[utoipa::path(
+    delete,
+    path = "/api/servers/{id}",
+    tag = "Servers",
+    params(("id" = Uuid, Path, description = "L'ID du serveur à supprimer")),
+    responses(
+        (status = 200, description = "Serveur supprimé avec succès")
+    ),
+    security(("jwt" = []))
+)]
 pub async fn delete_server(
     user: AuthenticatedUser,
     service: web::Data<ServerService>,

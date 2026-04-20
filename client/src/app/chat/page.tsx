@@ -376,15 +376,26 @@ export default function ChatPage() {
         const isMe = String(myIdRef.current ?? "") === String(user_id);
         if (!isMe) return;
 
+        wsSend({ type: "leave_channel", channel_id: selectedChannelIdRef.current });
+        wsSend({ type: "leave_server", server_id: serverId });
+
         setTemporarilyRestrictedServers((prev) => ({
             ...prev,
             [String(serverId)]: true,
         }));
 
+        setMembers([]);
+        setOnlineUserIds(new Set());
         setChannels([]);
         setSelectedChannelId(null);
         setMessages([]);
         setTypingUsers({});
+        setShowBans(false);
+
+        typingTimeoutsRef.current.forEach((t) => window.clearTimeout(t));
+        typingTimeoutsRef.current.clear();
+
+        setSelectedServerId(null);
     }
 
     function upsertMember(serverId: string, user_id: string, username: string) {
@@ -422,9 +433,11 @@ export default function ChatPage() {
 
             await banTemporaryMember(serverId, userId, durationMinutes);
 
-            hideContent(serverId, userId);
+            removeMember(serverId, userId);
 
-            pushToast(`Membre banni temporairement (${durationMinutes} min)`, "warn");
+            if (String(userId) === String(me?.id ?? "")) {
+                hideContent(serverId, userId);
+            }
 
             setTemporaryBanModal(null);
             setTemporaryBanDuration("60");
@@ -584,6 +597,7 @@ export default function ChatPage() {
 
     async function sendMessage() {
         if (!selectedChannelId) return;
+        if (selectedServerId && temporarilyRestrictedServers[selectedServerId]) return;
         const content = messageText.trim();
         if (!content) return;
 
@@ -643,7 +657,7 @@ export default function ChatPage() {
 
     async function deleteMyMessage(messageId: string) {
         if (!messageId) return;
-
+        if (selectedServerId && temporarilyRestrictedServers[selectedServerId]) return;
         try {
             await api<void>(`/api/messages/${String(messageId)}`, { method: "DELETE" });
 
@@ -676,6 +690,7 @@ export default function ChatPage() {
     function sendTyping() {
         if (!me?.id || !me.username) return;
         if (!selectedChannelId) return;
+        if (selectedServerId && temporarilyRestrictedServers[selectedServerId]) return;
 
         const now = Date.now();
         if (now - lastTypingSentAtRef.current < 800) return;
@@ -1150,7 +1165,7 @@ export default function ChatPage() {
 
                     return;
                 }
-                if (msg.type === "server_member_temporary_banned") {
+                if (msg.type === "server_member_banned_temporary") {
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
                     const username = String(msg.username ?? "quelqu’un");
@@ -1159,27 +1174,40 @@ export default function ChatPage() {
 
                     const isMe = String(myIdRef.current ?? "") === uid;
 
-                    if (isMe) {
-                        setTemporarilyRestrictedServers((prev) => ({
-                            ...prev,
-                            [sid]: true,
-                        }));
+                    removeMember(sid, uid);
 
-                        if (String(selectedServerIdRef.current ?? "") === sid) {
-                            setChannels([]);
-                            setSelectedChannelId(null);
-                            setMessages([]);
-                            setTypingUsers({});
+                    if (isMe) {
+                        const until = msg.until;
+                        let durationText = "";
+                        if (until) {
+                            const end = new Date(until);
+                            const now = new Date();
+                            const diffMs = end.getTime() - now.getTime();
+                            if (diffMs > 0) {
+                                const minutes = Math.ceil(diffMs / 60000);
+                                if (minutes < 60) {
+                                    durationText = `${minutes} minute${minutes > 1 ? "s" : ""}`;
+                                } else {
+                                    const hours = Math.ceil(minutes / 60);
+                                    durationText = `${hours} heure${hours > 1 ? "s" : ""}`;
+                                }
+                            }
                         }
 
-                        pushToast("Tu es temporairement suspendu de ce serveur", "warn");
+                        pushToast(
+                            durationText
+                                ? `Tu as été exclu temporairement (${durationText})`
+                                : "Tu as été exclu temporairement du serveur",
+                            "warn"
+                        );
+                        hideContent(sid, uid);
                     } else {
-                        pushToast(`${username} a été suspendu temporairement`, "warn");
+                        pushToast(`${username} a été exclu temporairement`, "warn");
                     }
-
                     return;
                 }
-                if (msg.type === "server_member_temporary_ban_lifted") {
+
+               if (msg.type === "server_member_temporary_ban_lifted") {
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
                     const username = String(msg.username ?? "quelqu’un");
@@ -1195,12 +1223,22 @@ export default function ChatPage() {
                             return copy;
                         });
 
-                        if (String(selectedServerIdRef.current ?? "") === sid) {
-                            reloadMembers(sid);
-                            reloadChannels(sid);
-                        }
+                        pushToast("Ton exclusion temporaire est terminée", "success");
 
-                        pushToast("Ta suspension temporaire est terminée", "success");
+                        api<Server[]>("/api/servers")
+                            .then(async (list) => {
+                                setServers(list);
+
+                                const bannedServerStillExists = list.some((s) => String(s.id) === sid);
+                                if (bannedServerStillExists) {
+                                    setSelectedServerId(sid);
+                                    await reloadMembers(sid);
+                                    await reloadChannels(sid);
+                                } else if (!selectedServerIdRef.current && list.length) {
+                                    setSelectedServerId(list[0].id);
+                                }
+                            })
+                            .catch(() => {});
                     } else {
                         pushToast(`${username} peut à nouveau accéder au serveur`, "success");
                     }
@@ -1626,6 +1664,7 @@ export default function ChatPage() {
                     <div className="flex-1 overflow-y-auto px-2 pb-3">
                         {!selectedServerId ? (
                             <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Sélectionne / crée un serveur.</div>
+                            
                         ) : channels.length === 0 ? (
                             <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Aucun salon.</div>
                         ) : (
@@ -1928,13 +1967,25 @@ export default function ChatPage() {
                                 sendTyping();
                             }}
                             onKeyDown={onMessageKeyDown}
-                            disabled={!selectedServerId || !selectedChannelId || isSending}
-                            placeholder={selectedServerId && selectedChannel ? `Message dans #${selectedChannel.name}…` : "Choisis un salon pour commencer…"}
+                            disabled={!selectedServerId || !selectedChannelId || isSending || !!(selectedServerId && temporarilyRestrictedServers[selectedServerId])}                            
+                            placeholder={
+                            selectedServerId && temporarilyRestrictedServers[selectedServerId]
+                                ? "Tu es temporairement exclu de ce serveur"
+                                : selectedServerId && selectedChannel
+                                ? `Message dans #${selectedChannel.name}…`
+                                : "Choisis un salon pour commencer…"
+                            }                            
                             className="flex-1 bg-transparent text-[#DCCBC4] placeholder-[#DCCBC4]/30 focus:outline-none font-[family-name:var(--font-nunito)]"
                         />
                         <button
                             onClick={sendMessage}
-                            disabled={!selectedServerId || !selectedChannelId || isSending || !messageText.trim()}
+                            disabled={
+                            !selectedServerId ||
+                            !selectedChannelId ||
+                            isSending ||
+                            !messageText.trim() ||
+                            !!(selectedServerId && temporarilyRestrictedServers[selectedServerId])
+                            }                            
                             className={[
                                 "ml-3 w-10 h-10 rounded-full flex items-center justify-center transition-colors",
                                 selectedServerId && selectedChannelId && messageText.trim()
@@ -2456,6 +2507,24 @@ export default function ChatPage() {
                     </div>
                 </div>
             )}
+            {selectedServerId && temporarilyRestrictedServers[selectedServerId] && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 z-10">
+                    <div className="bg-[#0F0908] border border-red-500/20 rounded-2xl p-6 text-center">
+                    <div className="text-red-400 font-bold text-lg mb-2">
+                        Accès temporairement restreint
+                    </div>
+                    <div className="text-sm text-[#DCCBC4]/60 mb-4">
+                        Tu es exclu de ce serveur pendant encore X minutes.
+                    </div>
+                    <button
+                        onClick={() => setSelectedServerId(null)}
+                        className="px-4 py-2 bg-[#EB5E28] rounded-xl text-black font-bold cursor-pointer"
+                    >
+                        Retour
+                    </button>
+                    </div>
+                </div>
+                )}
         </div>
     );
 }

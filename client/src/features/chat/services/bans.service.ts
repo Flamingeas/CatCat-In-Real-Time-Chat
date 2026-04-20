@@ -35,7 +35,6 @@ export async function banTemporaryMember(
   await api<void>(`/api/servers/${serverId}/bans-temporary/${userId}`, {
     method: "POST",
     body: JSON.stringify({
-      user_id: userId,
       duration_minutes: durationMinutes,
     })
   });

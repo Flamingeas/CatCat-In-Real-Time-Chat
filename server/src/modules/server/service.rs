@@ -1,5 +1,5 @@
 use uuid::Uuid;
-
+use chrono::{DateTime, Duration, Utc};
 use crate::models::server::{Server, UpdateServer};
 use crate::models::server_member::{ServerMemberResponse, ServerMemberRole};
 use crate::models::server_ban::ServerBanResponse;
@@ -279,12 +279,13 @@ impl ServerService {
             })
     }
 
-    pub async fn ban_temporary_member (
+    pub async fn ban_temporary_member(
         &self,
         requester_id: Uuid,
         server_id: Uuid,
         target_user_id: Uuid,
-    ) -> Result<(), String> {
+        duration_minutes: u32,
+    ) -> Result<DateTime<Utc>, String> {
         let server = self
             .repo
             .find_by_id(server_id)
@@ -299,13 +300,26 @@ impl ServerService {
             return Err("Cannot ban owner".into());
         }
 
+        if duration_minutes == 0 {
+            return Err("Duration must be greater than 0".into());
+        }
+
+        let expires_at = Utc::now() + Duration::minutes(duration_minutes as i64);
         self.repo
-            .ban_member(server_id, target_user_id, requester_id, None, None)
+            .ban_member(
+                server_id,
+                target_user_id,
+                requester_id,
+                None,
+                Some(expires_at),
+            )
             .await
             .map_err(|e| {
-                log::error!("ban_member error: {:?}", e);
-                "Unable to ban member".to_string()
-            })
+                log::error!("ban_temporary_member error: {:?}", e);
+                "Unable to ban member temporarily".to_string()
+            })?;
+
+        Ok(expires_at)
     }
 
     pub async fn unban_member(
