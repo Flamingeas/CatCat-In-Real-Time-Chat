@@ -1412,6 +1412,7 @@ export default function ChatPage() {
                             )
                         );
                     }
+                }
                 if (msg.type === "server_member_banned_temporary") {
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
@@ -1866,7 +1867,10 @@ export default function ChatPage() {
                         return (
                             <button
                                 key={s.id}
-                                onClick={() => setSelectedServerId(s.id)}
+                                onClick={() => {
+                                    setView("servers");
+                                    setSelectedServerId(s.id);
+                                }}                                
                                 title={s.name}
                                 className={[
                                     "w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
