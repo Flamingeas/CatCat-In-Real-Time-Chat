@@ -1,7 +1,6 @@
 use sqlx::{FromRow, PgPool, Postgres, Transaction};
 use uuid::Uuid;
-use chrono::NaiveDateTime;
-
+use chrono::{DateTime, Duration, Utc};
 use crate::models::server::{Server, UpdateServer};
 use crate::models::server_member::{ServerMemberRole, ServerMemberResponse};
 use crate::models::server_ban::ServerBanResponse;
@@ -70,7 +69,7 @@ impl ServerRepository {
         user_id: Uuid,
         banned_by: Uuid,
         reason: Option<String>,
-        expires_at: Option<NaiveDateTime>,
+        expires_at: Option<DateTime<Utc>>
     ) -> Result<(), sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 

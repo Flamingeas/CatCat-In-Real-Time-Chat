@@ -204,6 +204,12 @@ pub enum OutgoingMessage {
         user_id: Uuid,
         username: String,
     },
+    ServerMemberBannedTemporary {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+        until: Option<chrono::DateTime<chrono::Utc>>
+    },
     ServerMemberUnbanned {
         server_id: Uuid,
         user_id: Uuid,
