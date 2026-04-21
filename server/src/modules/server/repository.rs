@@ -1,6 +1,6 @@
 use sqlx::{FromRow, PgPool, Postgres, Transaction};
 use uuid::Uuid;
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 use crate::models::server::{Server, UpdateServer};
 use crate::models::server_member::{ServerMemberRole, ServerMemberResponse};
 use crate::models::server_ban::ServerBanResponse;
@@ -218,24 +218,28 @@ impl ServerRepository {
             .fetch_one(&mut *tx)
             .await?;
 
-        let is_banned = sqlx::query_scalar::<_, bool>(
+        let active_ban = sqlx::query_as::<_, (Option<DateTime<Utc>>,)>(
             r#"
-                SELECT EXISTS(
-                    SELECT 1
-                    FROM server_bans
-                    WHERE server_id = $1
-                      AND user_id = $2
-                      AND (expires_at IS NULL OR expires_at > NOW())
-                )
+                SELECT expires_at
+                FROM server_bans
+                WHERE server_id = $1
+                  AND user_id = $2
+                  AND (expires_at IS NULL OR expires_at > NOW())
+                LIMIT 1
             "#,
         )
             .bind(server.id)
             .bind(user_id)
-            .fetch_one(&mut *tx)
+            .fetch_optional(&mut *tx)
             .await?;
 
-        if is_banned {
+        if let Some((expires_at,)) = active_ban {
             tx.rollback().await?;
+            if let Some(expires_at) = expires_at {
+                return Err(sqlx::Error::Protocol(
+                    format!("User is banned from this server until {}", expires_at.to_rfc3339()).into(),
+                ));
+            }
             return Err(sqlx::Error::Protocol("User is banned from this server".into()));
         }
 

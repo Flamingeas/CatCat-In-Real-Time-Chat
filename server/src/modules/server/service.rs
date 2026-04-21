@@ -15,7 +15,7 @@ pub enum JoinServerError {
     InvalidCode,
     NotFound,
     AlreadyMember,
-    Forbidden,
+    Forbidden { expires_at: Option<DateTime<Utc>> },
     Db,
 }
 
@@ -72,7 +72,12 @@ impl ServerService {
             }
             Err(sqlx::Error::RowNotFound) => Err(JoinServerError::NotFound),
             Err(sqlx::Error::Protocol(msg)) if msg.contains("User is banned") => {
-                Err(JoinServerError::Forbidden)
+                let expires_at = msg
+                    .strip_prefix("User is banned from this server until ")
+                    .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+                    .map(|date| date.with_timezone(&Utc));
+
+                Err(JoinServerError::Forbidden { expires_at })
             }
             Err(e) => {
                 log::error!("join_by_invitation_code error: {:?}", e);
