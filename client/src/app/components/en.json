@@ -1,0 +1,52 @@
+{
+  "nav": {
+    "login": "Sign in / Sign up",
+    "goToChat": "Go to chat",
+    "logout": "Log out"
+  },
+  "hero": {
+    "title": "The most",
+    "titleHighlight": "chill",
+    "titleEnd": "corner of the Internet.",
+    "description": "Far from the noise and hustle of classic social networks. CatCat is a space designed for genuine discussion, authentic sharing, and creativity. Take your time, connect with those who inspire you, and finally feel at home.",
+    "cta": "Sign in / Sign up",
+    "ctaAuthed": "Go to chat"
+  },
+  "authModal": {
+    "close": "Close",
+    "login": {
+      "title": "Welcome back!",
+      "subtitle": "Ready to purr?"
+    },
+    "register": {
+      "title": "Join the pack!",
+      "subtitle": "Create your space in seconds."
+    },
+    "fields": {
+      "username": {
+        "placeholder": "Your username",
+        "error": "Username must be at least 3 characters."
+      },
+      "email": {
+        "placeholder": "Your email address",
+        "error": "Invalid email (e.g. name@domain.com)."
+      },
+      "password": {
+        "placeholder": "Your password",
+        "error": "Password too short (8 characters minimum)."
+      }
+    },
+    "submit": {
+      "loading": "Loading...",
+      "login": "Sign in",
+      "register": "Create my account",
+      "invalidFields": "Please check your fields: some are invalid."
+    },
+    "footer": {
+      "noAccount": "Don't have an account? ",
+      "signUp": "Sign up",
+      "alreadyMember": "Already a member? ",
+      "signIn": "Sign in"
+    }
+  }
+}
