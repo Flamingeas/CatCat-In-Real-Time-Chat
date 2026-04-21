@@ -25,10 +25,17 @@ export type Message = {
     updated_at?: string | null;
     is_edited: boolean;
     is_deleted: boolean;
+    reactions?: Reaction[];
+};
+
+export type Reaction = {
+    emoji: string;
+    users: string[];
 };
 
 export type WsEvent =
     | { type: "presence_snapshot"; server_id: string; online: any[] }
+    | { type: "presence"; server_id: string; user_id: string; status: "online" | "offline"; username?: string }
     | { type: "authed"; user_id: string; username?: string }
     | { type: "user_connected"; server_id: string; user_id: string; username?: string; status?: string }
     | { type: "user_disconnected"; server_id: string; user_id: string; username?: string }
@@ -54,6 +61,8 @@ export type WsEvent =
     | { type: "direct_message_deleted"; conversation_id: string; message_id: string }
     | { type: "server_member_temporary_banned"; server_id: string; user_id: string; username: string; until?: string }
     | { type: "server_member_temporary_ban_lifted"; server_id: string; user_id: string; username: string }
+    | { type: "message_reaction_added"; message_id: string; channel_id: string; user_id: string; emoji: string }
+    | { type: "message_reaction_removed"; message_id: string; channel_id: string; user_id: string; emoji: string }
     | { type: string; [k: string]: any };
 
 export type Toast = { id: string; text: string; kind: "info" | "success" | "warn" };

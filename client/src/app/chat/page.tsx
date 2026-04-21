@@ -39,6 +39,7 @@ import { useServers } from "@/hooks/useServers";
 import { useChannels } from "@/hooks/useChannels";
 import { useDirectMessages } from "@/hooks/useDirectMessages";
 import { useChannelMessages } from "@/hooks/useChannelMessages";
+import { useWebSocket } from "@/lib/WebSocketProvider";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
@@ -116,7 +117,7 @@ export default function ChatPage() {
 
     const [openMenuFor, setOpenMenuFor] = useState<string | null>(null);
     const menuRef = useRef<HTMLDivElement | null>(null);
-
+    const [activePickerId, setActivePickerId] = useState<string | null>(null);
     const router = useRouter();
     const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
 
@@ -189,6 +190,7 @@ export default function ChatPage() {
     const channelMessages = useChannelMessages({
         selectedServerId,
         selectedChannelId,
+        currentUserId: me?.id ?? null,
         pushToast,
     });
 
@@ -514,6 +516,12 @@ export default function ChatPage() {
         const token = localStorage.getItem("access_token");
         if (!token) return;
 
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            const sid = selectedServerIdRef.current;
+            if (sid) wsRef.current.send(JSON.stringify({ type: "join_server", server_id: sid }));
+            return;
+        }
+
         const ws = new WebSocket(WS_URL);
         wsRef.current = ws;
 
@@ -521,6 +529,14 @@ export default function ChatPage() {
             ws.send(JSON.stringify({ type: "auth", token }));
             const sid = selectedServerIdRef.current;
             if (sid) ws.send(JSON.stringify({ type: "join_server", server_id: sid }));
+
+            // Send ping every 30 seconds to keep connection alive
+            const pingInterval = setInterval(() => {
+                if (ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: "ping" }));
+                }
+            }, 30000);
+            (ws as any).pingInterval = pingInterval;
         };
 
         ws.onmessage = (e) => {
@@ -739,6 +755,34 @@ export default function ChatPage() {
                     return;
                 }
 
+                if (msg.type === "presence") {
+                    const currentSid = selectedServerIdRef.current;
+                    const sid = msg.server_id != null ? String(msg.server_id) : null;
+                    if (!sid) return;
+                    if (currentSid && sid !== String(currentSid)) return;
+
+                    const id = msg.user_id != null ? String(msg.user_id) : null;
+                    if (!id) return;
+
+                    const status = msg.status;
+                    const offline = status === "offline";
+
+                    const wasOnline = onlineUserIdsRef.current.has(id);
+                    if (offline) removeOnline(id);
+                    else addOnline(id);
+                    const presenceChanged = offline ? wasOnline : !wasOnline;
+
+                    const isMe = myIdRef.current && String(myIdRef.current) === String(id);
+                    const isBoot = !seenPresenceRef.current[sid];
+
+                    if (!isMe && !isBoot && presenceChanged) {
+                        const username = typeof (msg as any).username === "string" ? String((msg as any).username) : "quelqu'un";
+                        if (status === "online") pushToastOnce(`presence:online:${sid}:${id}`, `${username} est en ligne`, "info");
+                        if (status === "offline") pushToastOnce(`presence:offline:${sid}:${id}`, `${username} est hors ligne`, "warn");
+                    }
+                    return;
+                }
+
                 if (msg.type === "user_typing" || msg.type === "typing") {
                     const currentChannel = selectedChannelIdRef.current;
                     if (!currentChannel) return;
@@ -903,7 +947,7 @@ export default function ChatPage() {
 
         return () => {
             window.clearInterval(heartbeatId);
-            ws.close();
+            // ws.close(); // Keep WS open to stay online when navigating away
         };
     }, []);
 
@@ -1115,7 +1159,6 @@ export default function ChatPage() {
             setIsLeaving(false);
         }
     }
-
     if (!hasCheckedAuth) return null;
 
     return (
@@ -1229,6 +1272,7 @@ export default function ChatPage() {
                         onSendMessage={channelMessages.sendMessage}
                         onEditMessage={channelMessages.editMessage}
                         onDeleteMessage={channelMessages.deleteMessage}
+                        onToggleReaction={channelMessages.toggleReaction}
                         onMessageKeyDown={channelMessages.onMessageKeyDown}
                         me={me}
                         typingLabel={typingLabel}
