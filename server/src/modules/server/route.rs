@@ -143,8 +143,11 @@ pub async fn join_server(
         Err(JoinServerError::AlreadyMember) => {
             HttpResponse::Conflict().json(json!({ "error": "Already a member." }))
         }
-        Err(JoinServerError::Forbidden) => {
-            HttpResponse::Forbidden().json(json!({ "error": "You are banned from this server." }))
+        Err(JoinServerError::Forbidden { expires_at }) => {
+            HttpResponse::Forbidden().json(json!({
+                "error": "You are banned from this server.",
+                "expires_at": expires_at,
+            }))
         }
         Err(JoinServerError::Db) => {
             HttpResponse::InternalServerError().json(json!({ "error": "Unable to join server." }))
