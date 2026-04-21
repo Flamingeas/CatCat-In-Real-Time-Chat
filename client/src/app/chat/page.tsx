@@ -1177,6 +1177,7 @@ export default function ChatPage() {
                 initials={initials}
                 view={view}
                 onToggleView={() => setView((v) => (v === "dm" ? "servers" : "dm"))}
+                unreadDmCount={dm.totalUnreadCount}
             />
 
             <div className="w-60 bg-[#150d0c] rounded-[20px] flex flex-col hidden md:flex h-full shadow-lg overflow-hidden">
@@ -1185,6 +1186,7 @@ export default function ChatPage() {
                         conversations={dm.conversations}
                         selectedConvId={dm.selectedConvId}
                         onSelectConversation={dm.setSelectedConvId}
+                        unreadCounts={dm.unreadCounts}
                     />
                 ) : (
                     <ServerChannelsSidebar

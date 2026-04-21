@@ -14,10 +14,46 @@ interface UseDirectMessagesOptions {
     pushToast: (text: string, kind?: Toast["kind"]) => void;
 }
 
+const DM_VIEW_STORAGE_KEY = "catcat_chat_view";
+const DM_SELECTED_CONVERSATION_STORAGE_KEY = "catcat_selected_dm_conversation";
+const DM_UNREAD_COUNTS_STORAGE_KEY = "catcat_dm_unread_counts";
+
+function getInitialView(): "servers" | "dm" {
+    if (typeof window === "undefined") return "servers";
+    return localStorage.getItem(DM_VIEW_STORAGE_KEY) === "dm" ? "dm" : "servers";
+}
+
+function getInitialSelectedConversationId() {
+    if (typeof window === "undefined") return null;
+    return localStorage.getItem(DM_SELECTED_CONVERSATION_STORAGE_KEY);
+}
+
+function getInitialUnreadCounts(): Record<string, number> {
+    if (typeof window === "undefined") return {};
+
+    try {
+        const raw = localStorage.getItem(DM_UNREAD_COUNTS_STORAGE_KEY);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+        return Object.entries(parsed).reduce<Record<string, number>>((acc, [conversationId, count]) => {
+            const unreadCount = Number(count);
+            if (Number.isFinite(unreadCount) && unreadCount > 0) {
+                acc[conversationId] = unreadCount;
+            }
+            return acc;
+        }, {});
+    } catch {
+        return {};
+    }
+}
+
 export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptions) {
-    const [view, setView] = useState<"servers" | "dm">("servers");
+    const [view, setView] = useState<"servers" | "dm">(getInitialView);
     const [conversations, setConversations] = useState<ConversationItem[]>([]);
-    const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
+    const [selectedConvId, setSelectedConvId] = useState<string | null>(getInitialSelectedConversationId);
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>(getInitialUnreadCounts);
     const [messages, setMessages] = useState<DmMessage[]>([]);
     const [messagesLoading, setMessagesLoading] = useState(false);
     const [messageText, setMessageText] = useState("");
@@ -28,11 +64,46 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
     const [loadingMore, setLoadingMore] = useState(false);
 
     const selectedConvIdRef = useRef<string | null>(null);
+    const viewRef = useRef<"servers" | "dm">(view);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        viewRef.current = view;
+    }, [view]);
 
     useEffect(() => {
         selectedConvIdRef.current = selectedConvId;
     }, [selectedConvId]);
+
+    useEffect(() => {
+        localStorage.setItem(DM_VIEW_STORAGE_KEY, view);
+    }, [view]);
+
+    useEffect(() => {
+        if (selectedConvId) localStorage.setItem(DM_SELECTED_CONVERSATION_STORAGE_KEY, selectedConvId);
+        else localStorage.removeItem(DM_SELECTED_CONVERSATION_STORAGE_KEY);
+    }, [selectedConvId]);
+
+    useEffect(() => {
+        localStorage.setItem(DM_UNREAD_COUNTS_STORAGE_KEY, JSON.stringify(unreadCounts));
+    }, [unreadCounts]);
+
+    useEffect(() => {
+        if (view !== "dm" || !selectedConvId) return;
+        setUnreadCounts((prev) => {
+            if (!prev[selectedConvId]) return prev;
+            const next = { ...prev };
+            delete next[selectedConvId];
+            return next;
+        });
+    }, [view, selectedConvId]);
+
+    function incrementUnreadCount(conversationId: string) {
+        setUnreadCounts((prev) => ({
+            ...prev,
+            [conversationId]: (prev[conversationId] ?? 0) + 1,
+        }));
+    }
 
     async function loadConversations() {
         try {
@@ -235,6 +306,8 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
         if (msg.type === "new_direct_message") {
             const convId = String(msg.conversation_id ?? "");
             const currentConv = selectedConvIdRef.current;
+            const isOwnMessage = myIdRef.current && String(msg.sender_id) === String(myIdRef.current);
+            const isActiveConversationOpen = viewRef.current === "dm" && currentConv === convId;
 
             if (currentConv && convId === String(currentConv)) {
                 const newMsg: DmMessage = {
@@ -257,9 +330,15 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
                 setTimeout(() => {
                     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
                 }, 0);
-            } else {
+            }
+
+            if (!isOwnMessage && !isActiveConversationOpen) {
+                incrementUnreadCount(convId);
+            }
+
+            if (!isActiveConversationOpen) {
                 const senderName = String(msg.sender_username ?? "quelqu’un");
-                if (myIdRef.current && String(msg.sender_id) !== String(myIdRef.current)) {
+                if (!isOwnMessage) {
                     pushToast(`Nouveau message de ${senderName}`, "info");
                 }
             }
@@ -347,6 +426,8 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
         conversations,
         selectedConvId,
         setSelectedConvId,
+        unreadCounts,
+        totalUnreadCount: Object.values(unreadCounts).reduce((total, count) => total + count, 0),
         messages,
         messagesLoading,
         messageText,
