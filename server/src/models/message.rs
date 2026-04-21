@@ -46,6 +46,12 @@ mod opt_chrono_as_bson_datetime {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MessageReaction {
+    pub emoji: String,
+    pub users: Vec<Uuid>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Message {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<mongodb::bson::oid::ObjectId>,
@@ -69,6 +75,8 @@ pub struct Message {
         skip_serializing_if = "Option::is_none"
     )]
     pub deleted_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub reactions: Vec<MessageReaction>,
 }
 
 #[derive(Debug, serde::Deserialize, validator::Validate)]
@@ -99,6 +107,7 @@ pub struct MessageResponse {
     pub updated_at: Option<DateTime<Utc>>,
     pub is_edited: bool,
     pub is_deleted: bool,
+    pub reactions: Vec<MessageReaction>,
 }
 
 impl From<Message> for MessageResponse {
@@ -116,6 +125,7 @@ impl From<Message> for MessageResponse {
             updated_at: message.updated_at,
             is_edited,
             is_deleted,
+            reactions: message.reactions,
         }
     }
 }
@@ -158,6 +168,7 @@ impl Message {
             created_at: Utc::now(),
             updated_at: None,
             deleted_at: None,
+            reactions: Vec::new(),
         }
     }
     pub fn to_response(&self) -> MessageResponse {
@@ -172,6 +183,7 @@ impl Message {
             updated_at: self.updated_at,
             is_edited: self.updated_at.is_some(),
             is_deleted: self.deleted_at.is_some(),
+            reactions: self.reactions.clone(),
         }
     }
     pub fn mark_as_deleted(&mut self) {

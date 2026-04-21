@@ -162,11 +162,10 @@ export function DirectMessagePanel({
                                                                 "whitespace-pre-wrap break-words text-sm leading-relaxed",
                                                                 isMe ? "bg-[#2563EB] text-white rounded-br-md" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-md",
                                                             ].join(" ")}
-                                                        >
-                                                            {message.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : message.content}
-                                                        </div>
+                                                    >
+                                                        {message.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : message.content}
+                                                    </div>
                                                     )}
-
                                                     <div className={`flex items-center gap-2 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
                                                         {time && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>{time}</span>}
                                                         {message.is_edited && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>• édité</span>}

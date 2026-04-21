@@ -79,6 +79,20 @@ pub enum ClientMessage {
         message_id: Uuid,
     },
 
+    BroadcastMessageReactionAdded {
+        channel_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
+
+    BroadcastMessageReactionRemoved {
+        channel_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
+
     StatusChange {
         user_id: Uuid,
         username: String,
@@ -500,6 +514,40 @@ impl Handler<ClientMessage> for WsServer {
                         server_id,
                         channel_id,
                         message_id,
+                    },
+                );
+            }
+
+            ClientMessage::BroadcastMessageReactionAdded {
+                channel_id,
+                message_id,
+                user_id,
+                emoji,
+            } => {
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageReactionAdded {
+                        message_id,
+                        channel_id,
+                        user_id,
+                        emoji,
+                    },
+                );
+            }
+
+            ClientMessage::BroadcastMessageReactionRemoved {
+                channel_id,
+                message_id,
+                user_id,
+                emoji,
+            } => {
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageReactionRemoved {
+                        message_id,
+                        channel_id,
+                        user_id,
+                        emoji,
                     },
                 );
             }

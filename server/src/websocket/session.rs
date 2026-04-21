@@ -154,6 +154,18 @@ pub enum OutgoingMessage {
         channel_id: Uuid,
         message_id: Uuid,
     },
+    MessageReactionAdded {
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
+    MessageReactionRemoved {
+        message_id: Uuid,
+        channel_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
     UserTyping {
         channel_id: Uuid,
         user_id: Uuid,

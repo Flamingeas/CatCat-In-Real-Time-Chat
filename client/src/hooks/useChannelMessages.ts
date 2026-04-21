@@ -7,12 +7,14 @@ import { getFriendlyErrorMessage } from "@/utils/errors";
 interface UseChannelMessagesOptions {
     selectedServerId: string | null;
     selectedChannelId: string | null;
+    currentUserId: string | null;
     pushToast: (text: string, kind?: Toast["kind"]) => void;
 }
 
 export function useChannelMessages({
     selectedServerId,
     selectedChannelId,
+    currentUserId,
     pushToast,
 }: UseChannelMessagesOptions) {
     const [messages, setMessages] = useState<Message[]>([]);
@@ -150,6 +152,61 @@ export function useChannelMessages({
         }
     }
 
+    function applyReaction(messageId: string, emoji: string, userId: string, action: "add" | "remove") {
+        setMessages((prev) =>
+            prev.map((message) => {
+                if (String(message.message_id) !== String(messageId)) return message;
+
+                const reactions = message.reactions ?? [];
+
+                if (action === "remove") {
+                    const nextReactions = reactions
+                        .map((reaction) =>
+                            reaction.emoji === emoji
+                                ? { ...reaction, users: reaction.users.filter((id) => String(id) !== String(userId)) }
+                                : reaction
+                        )
+                        .filter((reaction) => reaction.users.length > 0);
+
+                    return { ...message, reactions: nextReactions };
+                }
+
+                const existing = reactions.find((reaction) => reaction.emoji === emoji);
+                if (!existing) {
+                    return { ...message, reactions: [...reactions, { emoji, users: [String(userId)] }] };
+                }
+                if (existing.users.some((id) => String(id) === String(userId))) return message;
+
+                return {
+                    ...message,
+                    reactions: reactions.map((reaction) =>
+                        reaction.emoji === emoji
+                            ? { ...reaction, users: [...reaction.users, String(userId)] }
+                            : reaction
+                    ),
+                };
+            })
+        );
+    }
+
+    async function toggleReaction(messageId: string, emoji: string, hasReacted: boolean) {
+        if (!selectedChannelId || !currentUserId) return;
+
+        const action = hasReacted ? "remove" : "add";
+        applyReaction(messageId, emoji, currentUserId, action);
+
+        try {
+            await api(`/api/messages/${messageId}/reactions`, {
+                method: hasReacted ? "DELETE" : "POST",
+                body: JSON.stringify({ emoji }),
+            });
+        } catch (e) {
+            applyReaction(messageId, emoji, currentUserId, hasReacted ? "add" : "remove");
+            pushToast("Erreur de synchronisation de la réaction", "warn");
+            console.error(e);
+        }
+    }
+
     function handleWsEvent(msg: WsEvent) {
         if (msg.type === "new_message") {
             const currentChannel = selectedChannelIdRef.current;
@@ -216,6 +273,20 @@ export function useChannelMessages({
             return true;
         }
 
+        if (msg.type === "message_reaction_added") {
+            const currentChannel = selectedChannelIdRef.current;
+            if (!currentChannel || String(msg.channel_id) !== String(currentChannel)) return true;
+            applyReaction(String(msg.message_id), String(msg.emoji), String(msg.user_id), "add");
+            return true;
+        }
+
+        if (msg.type === "message_reaction_removed") {
+            const currentChannel = selectedChannelIdRef.current;
+            if (!currentChannel || String(msg.channel_id) !== String(currentChannel)) return true;
+            applyReaction(String(msg.message_id), String(msg.emoji), String(msg.user_id), "remove");
+            return true;
+        }
+
         return false;
     }
 
@@ -259,6 +330,7 @@ export function useChannelMessages({
         sendMessage,
         editMessage,
         deleteMessage,
+        toggleReaction,
         onMessageKeyDown,
         handleWsEvent,
     };

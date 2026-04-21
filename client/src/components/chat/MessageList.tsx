@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { Message } from "@/types/chat";
 import { getInitials, formatTimeFR } from "@/utils/chat";
 
@@ -20,6 +24,7 @@ interface MessageListProps {
     onStartEdit: (id: string) => void;
     onChangeEditingContent: (content: string) => void;
     onDeleteMessage: (id: string) => void;
+    onToggleReaction: (messageId: string, emoji: string, hasReacted: boolean) => void;
     onSaveEdit: (id: string, content: string) => void;
     onCancelEdit: () => void;
     selectedChannelId: string | null;
@@ -39,10 +44,13 @@ export function MessageList({
     onStartEdit,
     onChangeEditingContent,
     onDeleteMessage,
+    onToggleReaction,
     onSaveEdit,
     onCancelEdit,
     selectedChannelId,
 }: MessageListProps) {
+    const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
+
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto pr-2">
@@ -76,6 +84,7 @@ export function MessageList({
                             const canDeleteThis = !m.is_deleted && (isMe || canModerateMessages);
                             const canEditThis = isMe && !m.is_deleted;
                             const isEditing = editingMessageId === m.message_id;
+                            const canReact = !!me && !m.is_deleted && !isEditing;
 
                             return (
                                 <div key={m.message_id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
@@ -134,19 +143,79 @@ export function MessageList({
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div
-                                                className={`px-4 py-3 rounded-2xl ${
-                                                    isMe
-                                                        ? "bg-[#EB5E28] text-white"
-                                                        : "bg-[#1E1211] border border-[#ffffff]/5 text-[#DCCBC4]"
-                                                }`}
-                                            >
-                                                {m.is_deleted ? (
-                                                    <span className="text-[#DCCBC4]/50 italic">Message supprimé</span>
-                                                ) : (
-                                                    <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                                            <>
+                                                <div
+                                                    className={`px-4 py-3 rounded-2xl ${
+                                                        isMe
+                                                            ? "bg-[#EB5E28] text-white"
+                                                            : "bg-[#1E1211] border border-[#ffffff]/5 text-[#DCCBC4]"
+                                                    }`}
+                                                >
+                                                    {m.is_deleted ? (
+                                                        <span className="text-[#DCCBC4]/50 italic">Message supprimé</span>
+                                                    ) : (
+                                                        <div className="whitespace-pre-wrap break-words">{m.content}</div>
+                                                    )}
+                                                </div>
+
+                                                {m.reactions && m.reactions.length > 0 && (
+                                                    <div className={`flex flex-wrap gap-1 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                                                        {m.reactions.map((reaction) => {
+                                                            const hasReacted = !!me && reaction.users.some((id) => String(id) === String(me.id));
+                                                            return (
+                                                                <button
+                                                                    key={reaction.emoji}
+                                                                    onClick={() => onToggleReaction(m.message_id, reaction.emoji, hasReacted)}
+                                                                    className={[
+                                                                        "flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[11px] transition-all cursor-pointer",
+                                                                        hasReacted
+                                                                            ? "bg-[#EB5E28]/20 border-[#EB5E28] text-[#EB5E28]"
+                                                                            : "bg-[#0F0908] border-[#ffffff]/10 text-[#DCCBC4]/70 hover:border-[#ffffff]/30",
+                                                                    ].join(" ")}
+                                                                    title={hasReacted ? "Retirer ta réaction" : "Réagir aussi"}
+                                                                >
+                                                                    <span>{reaction.emoji}</span>
+                                                                    <span className="font-bold">{reaction.users.length}</span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
                                                 )}
-                                            </div>
+
+                                                {canReact && (
+                                                    <div className={`relative mt-1 px-1 ${isMe ? "self-end" : "self-start"}`}>
+                                                        <button
+                                                            onClick={() => setEmojiPickerFor((current) => (current === m.message_id ? null : m.message_id))}
+                                                            className="text-[11px] text-[#DCCBC4]/50 hover:text-white transition-colors cursor-pointer"
+                                                            title="Ajouter une réaction"
+                                                        >
+                                                            + réaction
+                                                        <hr />
+                                                        </button>
+                                                        {emojiPickerFor === m.message_id && (
+                                                            <div className={`absolute z-30 top-6 ${isMe ? "right-0" : "left-0"}`}>
+                                                                <EmojiPicker
+                                                                    theme={Theme.DARK}
+                                                                    width={320}
+                                                                    height={380}
+                                                                    previewConfig={{ showPreview: false }}
+                                                                    onEmojiClick={(emojiData: EmojiClickData) => {
+                                                                        const emoji = emojiData.emoji;
+                                                                        const alreadyReacted = (m.reactions ?? []).some(
+                                                                            (reaction) =>
+                                                                                reaction.emoji === emoji &&
+                                                                                me &&
+                                                                                reaction.users.some((id) => String(id) === String(me.id))
+                                                                        );
+                                                                        onToggleReaction(m.message_id, emoji, alreadyReacted);
+                                                                        setEmojiPickerFor(null);
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
 
                                         {isMe && time && (

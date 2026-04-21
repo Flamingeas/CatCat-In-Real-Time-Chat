@@ -31,6 +31,20 @@ pub trait MessageRepositoryTrait: Send + Sync {
     async fn update(&self, message_id: Uuid, data: &UpdateMessage) -> Result<Message, String>;
 
     async fn delete(&self, message_id: Uuid) -> Result<(), String>;
+
+    async fn add_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String>;
+
+    async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String>;
 }
 
 #[async_trait]
@@ -113,6 +127,30 @@ impl MessageRepositoryTrait for MongoMessageRepository {
     async fn delete(&self, message_id: Uuid) -> Result<(), String> {
         MessageRepository::new(&self.db)
             .delete(message_id)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    async fn add_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String> {
+        MessageRepository::new(&self.db)
+            .add_reaction(message_id, user_id, emoji)
+            .await
+            .map_err(|e| e.to_string())
+    }
+
+    async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String> {
+        MessageRepository::new(&self.db)
+            .remove_reaction(message_id, user_id, emoji)
             .await
             .map_err(|e| e.to_string())
     }
@@ -361,6 +399,78 @@ impl MessageService {
 
         self.repository
             .delete(message_id)
+            .await
+            .map_err(ServiceError::Internal)?;
+
+        Ok((message.server_id, message.channel_id, message.message_id))
+    }
+
+    pub async fn add_reaction(
+        &self,
+        user_id: Uuid,
+        message_id: Uuid,
+        emoji: String,
+    ) -> Result<(Uuid, Uuid, Uuid), ServiceError> {
+        let message = self
+            .repository
+            .find_by_id(message_id)
+            .await
+            .map_err(ServiceError::Internal)?
+            .ok_or(ServiceError::NotFound("Message not found".to_string()))?;
+
+        if message.is_deleted() {
+            return Err(ServiceError::Forbidden(
+                "Cannot react to a deleted message".to_string(),
+            ));
+        }
+
+        let is_member = self
+            .access
+            .is_server_member(message.server_id, user_id)
+            .await
+            .map_err(ServiceError::Database)?;
+
+        if !is_member {
+            return Err(ServiceError::Forbidden(
+                "You are not a member of this server".to_string(),
+            ));
+        }
+
+        self.repository
+            .add_reaction(message_id, user_id, &emoji)
+            .await
+            .map_err(ServiceError::Internal)?;
+
+        Ok((message.server_id, message.channel_id, message.message_id))
+    }
+
+    pub async fn remove_reaction(
+        &self,
+        user_id: Uuid,
+        message_id: Uuid,
+        emoji: String,
+    ) -> Result<(Uuid, Uuid, Uuid), ServiceError> {
+        let message = self
+            .repository
+            .find_by_id(message_id)
+            .await
+            .map_err(ServiceError::Internal)?
+            .ok_or(ServiceError::NotFound("Message not found".to_string()))?;
+
+        let is_member = self
+            .access
+            .is_server_member(message.server_id, user_id)
+            .await
+            .map_err(ServiceError::Database)?;
+
+        if !is_member {
+            return Err(ServiceError::Forbidden(
+                "You are not a member of this server".to_string(),
+            ));
+        }
+
+        self.repository
+            .remove_reaction(message_id, user_id, &emoji)
             .await
             .map_err(ServiceError::Internal)?;
 

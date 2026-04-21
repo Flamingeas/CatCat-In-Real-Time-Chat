@@ -36,6 +36,7 @@ interface ChannelChatPanelProps {
     onSendMessage: () => void;
     onEditMessage: (id: string, content: string) => void;
     onDeleteMessage: (id: string) => void;
+    onToggleReaction: (messageId: string, emoji: string, hasReacted: boolean) => void;
     onMessageKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
     me: User | null;
     typingLabel: string | null;
@@ -72,6 +73,7 @@ export function ChannelChatPanel({
     onSendMessage,
     onEditMessage,
     onDeleteMessage,
+    onToggleReaction,
     onMessageKeyDown,
     me,
     typingLabel,
@@ -206,6 +208,7 @@ export function ChannelChatPanel({
                                 }}
                                 onChangeEditingContent={setEditingContent}
                                 onDeleteMessage={onDeleteMessage}
+                                onToggleReaction={onToggleReaction}
                                 onSaveEdit={onEditMessage}
                                 onCancelEdit={() => {
                                     setEditingMessageId(null);

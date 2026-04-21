@@ -139,6 +139,12 @@ pub struct UpdateMessageRequest {
     pub content: String,
 }
 
+#[derive(Debug, serde::Deserialize, ToSchema)]
+pub struct ReactionRequest {
+    #[schema(example = "😺")]
+    pub emoji: String,
+}
+
 #[derive(Debug, serde::Deserialize, IntoParams)] // <-- Ajout de IntoParams pour les query
 pub struct GetMessagesQueryParams {
     pub limit: Option<i64>,
@@ -213,6 +219,30 @@ fn build_deleted_message_event(
         server_id,
         channel_id,
         message_id,
+    }
+}
+
+fn build_reaction_event(
+    added: bool,
+    channel_id: Uuid,
+    message_id: Uuid,
+    user_id: Uuid,
+    emoji: String,
+) -> ClientMessage {
+    if added {
+        ClientMessage::BroadcastMessageReactionAdded {
+            channel_id,
+            message_id,
+            user_id,
+            emoji,
+        }
+    } else {
+        ClientMessage::BroadcastMessageReactionRemoved {
+            channel_id,
+            message_id,
+            user_id,
+            emoji,
+        }
     }
 }
 
@@ -317,6 +347,83 @@ async fn delete_message_with_service(
     }
 }
 
+fn validate_reaction_request(data: &ReactionRequest) -> Result<String, String> {
+    let emoji = data.emoji.trim();
+    if emoji.is_empty() || emoji.chars().count() > 16 {
+        return Err("Emoji reaction is not valid".to_string());
+    }
+
+    Ok(emoji.to_string())
+}
+
+async fn add_reaction_with_service(
+    service: &MessageService,
+    ws_server: &Addr<WsServer>,
+    user_id: Uuid,
+    message_id: Uuid,
+    data: &ReactionRequest,
+) -> HttpResponse {
+    let emoji = match validate_reaction_request(data) {
+        Ok(emoji) => emoji,
+        Err(error_message) => return bad_request_response(error_message),
+    };
+
+    match service.add_reaction(user_id, message_id, emoji.clone()).await {
+        Ok((_server_id, channel_id, message_id)) => {
+            ws_server.do_send(build_reaction_event(true, channel_id, message_id, user_id, emoji));
+            no_content_response()
+        }
+        Err(e) => handle_service_error(e),
+    }
+}
+
+async fn remove_reaction_with_service(
+    service: &MessageService,
+    ws_server: &Addr<WsServer>,
+    user_id: Uuid,
+    message_id: Uuid,
+    data: &ReactionRequest,
+) -> HttpResponse {
+    let emoji = match validate_reaction_request(data) {
+        Ok(emoji) => emoji,
+        Err(error_message) => return bad_request_response(error_message),
+    };
+
+    match service.remove_reaction(user_id, message_id, emoji.clone()).await {
+        Ok((_server_id, channel_id, message_id)) => {
+            ws_server.do_send(build_reaction_event(false, channel_id, message_id, user_id, emoji));
+            no_content_response()
+        }
+        Err(e) => handle_service_error(e),
+    }
+}
+
+pub async fn add_reaction(
+    pg_pool: web::Data<PgPool>,
+    mongo_db: web::Data<Database>,
+    ws_server: web::Data<Addr<WsServer>>,
+    user: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    data: web::Json<ReactionRequest>,
+) -> impl Responder {
+    let message_id = path.into_inner();
+    let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
+    add_reaction_with_service(&service, ws_server.get_ref(), user.user_id, message_id, &data).await
+}
+
+pub async fn remove_reaction(
+    pg_pool: web::Data<PgPool>,
+    mongo_db: web::Data<Database>,
+    ws_server: web::Data<Addr<WsServer>>,
+    user: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    data: web::Json<ReactionRequest>,
+) -> impl Responder {
+    let message_id = path.into_inner();
+    let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
+    remove_reaction_with_service(&service, ws_server.get_ref(), user.user_id, message_id, &data).await
+}
+
 fn handle_service_error(error: ServiceError) -> HttpResponse {
     match error {
         ServiceError::NotFound(msg) => {
@@ -342,7 +449,9 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/messages")
             .route("/{id}", web::put().to(update_message))
-            .route("/{id}", web::delete().to(delete_message)),
+            .route("/{id}", web::delete().to(delete_message))
+            .route("/{id}/reactions", web::post().to(add_reaction))
+            .route("/{id}/reactions", web::delete().to(remove_reaction)),
     );
 }
 
