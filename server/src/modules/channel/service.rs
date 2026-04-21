@@ -1,10 +1,10 @@
-use std::sync::{Arc};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use uuid::Uuid;
 
 use crate::models::channel::{Channel, UpdateChannel};
-use crate::modules::channel::repository::{ChannelRepositoryTrait};
+use crate::modules::channel::repository::ChannelRepositoryTrait;
 
 #[async_trait]
 pub trait ChannelServiceTrait: Send + Sync {
@@ -15,11 +15,7 @@ pub trait ChannelServiceTrait: Send + Sync {
         user_id: Uuid,
     ) -> Result<Channel, String>;
 
-    async fn list_channel(
-        &self,
-        server_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Vec<Channel>, String>;
+    async fn list_channel(&self, server_id: Uuid, user_id: Uuid) -> Result<Vec<Channel>, String>;
 
     async fn update_channel(
         &self,
@@ -28,11 +24,7 @@ pub trait ChannelServiceTrait: Send + Sync {
         user_id: Uuid,
     ) -> Result<Channel, String>;
 
-    async fn delete_channel(
-        &self,
-        channel_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Channel, String>;
+    async fn delete_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<Channel, String>;
 }
 
 pub struct ChannelService {
@@ -56,7 +48,11 @@ impl ChannelService {
             return Err("Channel name must be between 3 and 50 characters.".into());
         }
 
-        if !self.repo.user_can_manage_channels(server_id, user_id).await? {
+        if !self
+            .repo
+            .user_can_manage_channels(server_id, user_id)
+            .await?
+        {
             return Err("Forbidden".into());
         }
 
@@ -87,7 +83,11 @@ impl ChannelService {
         payload: UpdateChannel,
         user_id: Uuid,
     ) -> Result<Channel, String> {
-        if !self.repo.user_can_manage_channel(channel_id, user_id).await? {
+        if !self
+            .repo
+            .user_can_manage_channel(channel_id, user_id)
+            .await?
+        {
             return Err("Forbidden".into());
         }
 
@@ -97,12 +97,12 @@ impl ChannelService {
         })
     }
 
-    pub async fn delete_channel(
-        &self,
-        channel_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Channel, String> {
-        if !self.repo.user_can_manage_channel(channel_id, user_id).await? {
+    pub async fn delete_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<Channel, String> {
+        if !self
+            .repo
+            .user_can_manage_channel(channel_id, user_id)
+            .await?
+        {
             return Err("Forbidden".into());
         }
 
@@ -124,11 +124,7 @@ impl ChannelServiceTrait for ChannelService {
         ChannelService::create_channel(self, server_id, name, user_id).await
     }
 
-    async fn list_channel(
-        &self,
-        server_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<Vec<Channel>, String> {
+    async fn list_channel(&self, server_id: Uuid, user_id: Uuid) -> Result<Vec<Channel>, String> {
         ChannelService::list_channel(self, server_id, user_id).await
     }
 
@@ -148,9 +144,9 @@ impl ChannelServiceTrait for ChannelService {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Mutex;
     use super::*;
     use chrono::Utc;
+    use std::sync::Mutex;
 
     fn sample_channel() -> Channel {
         Channel {
@@ -484,9 +480,7 @@ mod tests {
         let repo: Arc<dyn ChannelRepositoryTrait> = Arc::new(FakeChannelRepository::new());
         let service = ChannelService::new(repo);
 
-        let result = service
-            .delete_channel(Uuid::new_v4(), Uuid::new_v4())
-            .await;
+        let result = service.delete_channel(Uuid::new_v4(), Uuid::new_v4()).await;
 
         assert!(result.is_ok());
     }

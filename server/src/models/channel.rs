@@ -1,9 +1,9 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
-use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use validator::Validate;
 use utoipa::ToSchema;
+use uuid::Uuid;
+use validator::Validate;
 
 #[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct Channel {
@@ -16,7 +16,11 @@ pub struct Channel {
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateChannel {
-    #[validate(length(min = 1, max = 100, message = "Channel name must be between 1 and 100 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 100,
+        message = "Channel name must be between 1 and 100 characters"
+    ))]
     pub name: String,
 }
 
@@ -69,7 +73,6 @@ impl Channel {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -77,31 +80,45 @@ mod tests {
 
     #[test]
     fn test_create_channel_validation() {
-        let valid = CreateChannel { name: "general".to_string() };
+        let valid = CreateChannel {
+            name: "general".to_string(),
+        };
         assert!(valid.validate().is_ok());
 
-        let valid = CreateChannel { name: "announcements-and-discounts".to_string() };
+        let valid = CreateChannel {
+            name: "announcements-and-discounts".to_string(),
+        };
         assert!(valid.validate().is_ok());
 
-        let invalid = CreateChannel { name: "".to_string() };
+        let invalid = CreateChannel {
+            name: "".to_string(),
+        };
         assert!(invalid.validate().is_err());
 
-        let invalid = CreateChannel { name: "a".repeat(101) };
+        let invalid = CreateChannel {
+            name: "a".repeat(101),
+        };
         assert!(invalid.validate().is_err());
     }
 
     #[test]
     fn test_update_channel_validation() {
-        let valid = UpdateChannel { name: Some("new-name".to_string()) };
+        let valid = UpdateChannel {
+            name: Some("new-name".to_string()),
+        };
         assert!(valid.validate().is_ok());
 
         let valid = UpdateChannel { name: None };
         assert!(valid.validate().is_ok());
 
-        let invalid = UpdateChannel { name: Some("a".repeat(101)) };
+        let invalid = UpdateChannel {
+            name: Some("a".repeat(101)),
+        };
         assert!(invalid.validate().is_err());
 
-        let invalid = UpdateChannel { name: Some("".to_string()) };
+        let invalid = UpdateChannel {
+            name: Some("".to_string()),
+        };
         assert!(invalid.validate().is_err());
     }
 

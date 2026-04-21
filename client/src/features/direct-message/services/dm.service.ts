@@ -1,4 +1,5 @@
 import { api } from "@/lib/api";
+import { Reaction } from "@/types/chat";
 
 export type ConversationItem = {
   id: string;
@@ -18,6 +19,7 @@ export type DmMessage = {
   updated_at?: string | null;
   is_edited: boolean;
   is_deleted: boolean;
+  reactions?: Reaction[];
 };
 
 export async function getConversations(): Promise<ConversationItem[]> {

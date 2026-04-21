@@ -1,4 +1,3 @@
-
 use actix_web::{error::ResponseError, http::StatusCode, HttpResponse};
 use serde::Serialize;
 use std::fmt;
@@ -159,8 +158,7 @@ impl AppError {
             | AppError::Unauthorized
             | AppError::InvalidCredentials
             | AppError::InvalidPassword => StatusCode::UNAUTHORIZED,
-            AppError::PermissionDenied
-            | AppError::OwnerCannotLeave => StatusCode::FORBIDDEN,
+            AppError::PermissionDenied | AppError::OwnerCannotLeave => StatusCode::FORBIDDEN,
             AppError::UserNotFound
             | AppError::ServerNotFound
             | AppError::ChannelNotFound
@@ -172,9 +170,9 @@ impl AppError {
             | AppError::UniqueViolation(_)
             | AppError::Conflict(_) => StatusCode::CONFLICT,
             AppError::TooManyRequests => StatusCode::TOO_MANY_REQUESTS,
-            AppError::DatabaseError(_)
-            | AppError::ConnectionError
-            | AppError::InternalError(_) => StatusCode::INTERNAL_SERVER_ERROR,
+            AppError::DatabaseError(_) | AppError::ConnectionError | AppError::InternalError(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR
+            }
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -183,10 +181,7 @@ impl AppError {
 impl ResponseError for AppError {
     fn error_response(&self) -> HttpResponse {
         let status = self.status_code();
-        let error_response = ErrorResponse::new(
-            self.error_code(),
-            self.to_string()
-        );
+        let error_response = ErrorResponse::new(self.error_code(), self.to_string());
         if status.is_server_error() {
             log::error!("[{}] {}: {:?}", status, self.error_code(), self);
         } else if status.is_client_error() && status != StatusCode::NOT_FOUND {
@@ -277,9 +272,18 @@ mod tests {
     #[test]
     fn test_status_codes() {
         assert_eq!(AppError::UserNotFound.status_code(), StatusCode::NOT_FOUND);
-        assert_eq!(AppError::InvalidToken.status_code(), StatusCode::UNAUTHORIZED);
-        assert_eq!(AppError::PermissionDenied.status_code(), StatusCode::FORBIDDEN);
-        assert_eq!(AppError::EmailAlreadyExists.status_code(), StatusCode::CONFLICT);
+        assert_eq!(
+            AppError::InvalidToken.status_code(),
+            StatusCode::UNAUTHORIZED
+        );
+        assert_eq!(
+            AppError::PermissionDenied.status_code(),
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            AppError::EmailAlreadyExists.status_code(),
+            StatusCode::CONFLICT
+        );
     }
 
     #[test]

@@ -59,6 +59,8 @@ export type WsEvent =
     | { type: "new_direct_message"; conversation_id: string; message_id: string; sender_id: string; sender_username: string; content: string; created_at: string }
     | { type: "direct_message_updated"; conversation_id: string; message_id: string; content: string; updated_at: string }
     | { type: "direct_message_deleted"; conversation_id: string; message_id: string }
+    | { type: "direct_message_reaction_added"; conversation_id: string; message_id: string; user_id: string; emoji: string }
+    | { type: "direct_message_reaction_removed"; conversation_id: string; message_id: string; user_id: string; emoji: string }
     | { type: "server_member_temporary_banned"; server_id: string; user_id: string; username: string; until?: string }
     | { type: "server_member_temporary_ban_lifted"; server_id: string; user_id: string; username: string }
     | { type: "message_reaction_added"; message_id: string; channel_id: string; user_id: string; emoji: string }

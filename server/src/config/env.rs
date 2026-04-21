@@ -18,15 +18,16 @@ impl EnvConfig {
             dotenv::dotenv().ok();
         }
 
-        let database_url = env::var("DATABASE_URL")
-            .map_err(|_| "DATABASE_URL must be set".to_string())?;
+        let database_url =
+            env::var("DATABASE_URL").map_err(|_| "DATABASE_URL must be set".to_string())?;
 
         let mongodb_uri =
             env::var("MONGODB_URI").unwrap_or_else(|_| "mongodb://localhost:27017".to_string());
 
         let mongodb_db_name = env::var("MONGODB_DB_NAME").unwrap_or_else(|_| "catcat".to_string());
 
-        let jwt_secret = env::var("JWT_SECRET").map_err(|_| "JWT_SECRET must be set".to_string())?;
+        let jwt_secret =
+            env::var("JWT_SECRET").map_err(|_| "JWT_SECRET must be set".to_string())?;
 
         if jwt_secret.len() < 32 {
             return Err("JWT_SECRET must be at least 32 characters long".to_string());

@@ -84,7 +84,9 @@ where
             Err(err) => {
                 log::warn!("Invalid token from {:?}: {}", req.peer_addr(), err);
                 return Box::pin(async move {
-                    Err(actix_web::error::ErrorUnauthorized("Invalid or expired token"))
+                    Err(actix_web::error::ErrorUnauthorized(
+                        "Invalid or expired token",
+                    ))
                 });
             }
         };
@@ -109,7 +111,7 @@ where
         req.extensions_mut().insert(AuthenticatedUser {
             user_id,
             email: claims.email.clone(),
-            username: claims.username.clone()
+            username: claims.username.clone(),
         });
         #[cfg(debug_assertions)]
         log::debug!("Authenticated user {} from {:?}", user_id, req.peer_addr());
@@ -131,7 +133,10 @@ impl actix_web::FromRequest for AuthenticatedUser {
     type Error = Error;
     type Future = Pin<Box<dyn std::future::Future<Output = Result<Self, Self::Error>>>>;
 
-    fn from_request(req: &actix_web::HttpRequest, _payload: &mut actix_web::dev::Payload) -> Self::Future {
+    fn from_request(
+        req: &actix_web::HttpRequest,
+        _payload: &mut actix_web::dev::Payload,
+    ) -> Self::Future {
         let req = req.clone();
         Box::pin(async move {
             req.extensions()
@@ -145,9 +150,9 @@ impl actix_web::FromRequest for AuthenticatedUser {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::utils::jwt::generate_token;
     use actix_service::Service;
     use actix_web::{http::StatusCode, test, web, App, HttpResponse};
-    use crate::utils::jwt::generate_token;
 
     async fn test_route(user: AuthenticatedUser) -> HttpResponse {
         HttpResponse::Ok().json(serde_json::json!({
@@ -170,7 +175,7 @@ mod tests {
                     .route(web::get().to(test_route)),
             ),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::get()
             .uri("/test")
@@ -192,7 +197,7 @@ mod tests {
                     .route(web::get().to(test_route)),
             ),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::get().uri("/test").to_request();
 
@@ -200,7 +205,10 @@ mod tests {
         assert!(res.is_err());
 
         let err = res.err().unwrap();
-        assert_eq!(err.as_response_error().status_code(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            err.as_response_error().status_code(),
+            StatusCode::UNAUTHORIZED
+        );
         assert_eq!(err.to_string(), "Missing authorization header");
     }
 
@@ -215,7 +223,7 @@ mod tests {
                     .route(web::get().to(test_route)),
             ),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::get()
             .uri("/test")
@@ -226,7 +234,10 @@ mod tests {
         assert!(res.is_err());
 
         let err = res.err().unwrap();
-        assert_eq!(err.as_response_error().status_code(), StatusCode::UNAUTHORIZED);
+        assert_eq!(
+            err.as_response_error().status_code(),
+            StatusCode::UNAUTHORIZED
+        );
         assert_eq!(err.to_string(), "Invalid or expired token");
     }
 }

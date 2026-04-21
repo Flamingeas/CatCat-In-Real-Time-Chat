@@ -1,7 +1,7 @@
-pub mod user;
-pub mod server;
 pub mod channel;
-pub mod message;
 pub mod direct_message;
-pub mod server_member;
+pub mod message;
+pub mod server;
 pub mod server_ban;
+pub mod server_member;
+pub mod user;

@@ -1240,6 +1240,8 @@ export default function ChatPage() {
                         setMessageText={dm.setMessageText}
                         isSending={dm.isSending}
                         onSendMessage={dm.sendMessage}
+                        onSendGif={dm.sendGifMessage}
+                        onToggleReaction={dm.toggleReaction}
                         onMessageKeyDown={dm.onMessageKeyDown}
                         messagesEndRef={dm.messagesEndRef}
                     />
@@ -1270,6 +1272,7 @@ export default function ChatPage() {
                         messagesEndRef={channelMessages.messagesEndRef}
                         onLoadMoreMessages={channelMessages.loadMoreMessages}
                         onSendMessage={channelMessages.sendMessage}
+                        onSendGif={channelMessages.sendGifMessage}
                         onEditMessage={channelMessages.editMessage}
                         onDeleteMessage={channelMessages.deleteMessage}
                         onToggleReaction={channelMessages.toggleReaction}

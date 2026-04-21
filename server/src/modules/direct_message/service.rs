@@ -3,8 +3,8 @@ use mongodb::Database;
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::direct_message::{Conversation, ConversationResponse, DirectMessageResponse};
 use super::repository::DirectMessageRepository;
+use crate::models::direct_message::{Conversation, ConversationResponse, DirectMessageResponse};
 
 #[derive(Debug)]
 pub enum ServiceError {
@@ -45,13 +45,12 @@ impl<'a> DirectMessageService<'a> {
                 "You cannot start a conversation with yourself".to_string(),
             ));
         }
-        let recipient_row = sqlx::query_as::<_, (Uuid, String)>(
-            "SELECT id, username FROM users WHERE id = $1",
-        )
-        .bind(recipient_id)
-        .fetch_optional(self.pg)
-        .await
-        .map_err(ServiceError::Database)?;
+        let recipient_row =
+            sqlx::query_as::<_, (Uuid, String)>("SELECT id, username FROM users WHERE id = $1")
+                .bind(recipient_id)
+                .fetch_optional(self.pg)
+                .await
+                .map_err(ServiceError::Database)?;
 
         let (_, recipient_username) = recipient_row
             .ok_or_else(|| ServiceError::NotFound("Recipient user not found".to_string()))?;
@@ -81,7 +80,7 @@ impl<'a> DirectMessageService<'a> {
             created_at: conv.created_at,
         })
     }
-    
+
     pub async fn list_conversations(
         &self,
         user_id: Uuid,
@@ -110,7 +109,11 @@ impl<'a> DirectMessageService<'a> {
         Ok(rows
             .into_iter()
             .map(|(id, user1_id, user2_id, created_at, other_username)| {
-                let other_user_id = if user1_id == user_id { user2_id } else { user1_id };
+                let other_user_id = if user1_id == user_id {
+                    user2_id
+                } else {
+                    user1_id
+                };
                 ConversationResponse {
                     id,
                     other_user_id,
@@ -157,7 +160,13 @@ impl<'a> DirectMessageService<'a> {
         };
         let repo = DirectMessageRepository::new(self.mongo);
         let dm = repo
-            .create(conversation_id, sender_id, sender_username, recipient_id, content)
+            .create(
+                conversation_id,
+                sender_id,
+                sender_username,
+                recipient_id,
+                content,
+            )
             .await
             .map_err(|e| ServiceError::Internal(e.to_string()))?;
         Ok((dm.into(), recipient_id))
@@ -177,7 +186,10 @@ impl<'a> DirectMessageService<'a> {
             .find_by_conversation(conversation_id, limit, before)
             .await
             .map_err(|e| ServiceError::Internal(e.to_string()))?;
-        Ok(messages.into_iter().map(DirectMessageResponse::from).collect())
+        Ok(messages
+            .into_iter()
+            .map(DirectMessageResponse::from)
+            .collect())
     }
 
     pub async fn update_message(
@@ -209,9 +221,10 @@ impl<'a> DirectMessageService<'a> {
             .signed_duration_since(dm.created_at)
             .num_seconds();
         if elapsed >= EDIT_TIME_LIMIT_MINUTES * 60 {
-            return Err(ServiceError::Forbidden(
-                format!("Messages can only be edited within {} minutes", EDIT_TIME_LIMIT_MINUTES)
-            ));
+            return Err(ServiceError::Forbidden(format!(
+                "Messages can only be edited within {} minutes",
+                EDIT_TIME_LIMIT_MINUTES
+            )));
         }
         let recipient_id = dm.recipient_id;
         let updated = repo
@@ -248,5 +261,67 @@ impl<'a> DirectMessageService<'a> {
             .await
             .map_err(|e| ServiceError::Internal(e.to_string()))?;
         Ok((conversation_id, recipient_id))
+    }
+
+    pub async fn add_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    ) -> Result<(Uuid, Uuid), ServiceError> {
+        let repo = DirectMessageRepository::new(self.mongo);
+        let dm = repo
+            .find_by_id(message_id)
+            .await
+            .map_err(|e| ServiceError::Internal(e.to_string()))?
+            .ok_or_else(|| ServiceError::NotFound("Direct message not found".to_string()))?;
+
+        if dm.is_deleted() {
+            return Err(ServiceError::Forbidden(
+                "Cannot react to a deleted message".to_string(),
+            ));
+        }
+
+        self.check_participant(dm.conversation_id, user_id).await?;
+
+        let other_user_id = if dm.sender_id == user_id {
+            dm.recipient_id
+        } else {
+            dm.sender_id
+        };
+
+        repo.add_reaction(message_id, user_id, &emoji)
+            .await
+            .map_err(|e| ServiceError::Internal(e.to_string()))?;
+
+        Ok((dm.conversation_id, other_user_id))
+    }
+
+    pub async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    ) -> Result<(Uuid, Uuid), ServiceError> {
+        let repo = DirectMessageRepository::new(self.mongo);
+        let dm = repo
+            .find_by_id(message_id)
+            .await
+            .map_err(|e| ServiceError::Internal(e.to_string()))?
+            .ok_or_else(|| ServiceError::NotFound("Direct message not found".to_string()))?;
+
+        self.check_participant(dm.conversation_id, user_id).await?;
+
+        let other_user_id = if dm.sender_id == user_id {
+            dm.recipient_id
+        } else {
+            dm.sender_id
+        };
+
+        repo.remove_reaction(message_id, user_id, &emoji)
+            .await
+            .map_err(|e| ServiceError::Internal(e.to_string()))?;
+
+        Ok((dm.conversation_id, other_user_id))
     }
 }

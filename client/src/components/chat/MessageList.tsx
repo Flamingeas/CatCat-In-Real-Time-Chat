@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import { GifMessage } from "@/components/chat/GifMessage";
 import { Message } from "@/types/chat";
 import { getInitials, formatTimeFR } from "@/utils/chat";
+import { isGifMessage } from "@/utils/message-content";
 
 interface User {
     id: string;
@@ -153,6 +155,8 @@ export function MessageList({
                                                 >
                                                     {m.is_deleted ? (
                                                         <span className="text-[#DCCBC4]/50 italic">Message supprimé</span>
+                                                    ) : isGifMessage(m.content) ? (
+                                                        <GifMessage src={m.content} />
                                                     ) : (
                                                         <div className="whitespace-pre-wrap break-words">{m.content}</div>
                                                     )}
@@ -190,7 +194,6 @@ export function MessageList({
                                                             title="Ajouter une réaction"
                                                         >
                                                             + réaction
-                                                        <hr />
                                                         </button>
                                                         {emojiPickerFor === m.message_id && (
                                                             <div className={`absolute z-30 top-6 ${isMe ? "right-0" : "left-0"}`}>

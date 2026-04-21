@@ -10,7 +10,12 @@ const BCRYPT_COST: u32 = if cfg!(test) { 4 } else { 12 };
 pub trait UserRepo: Send + Sync {
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, String>;
     async fn find_by_username(&self, username: &str) -> Result<Option<User>, String>;
-    async fn create(&self, username: &str, email: &str, password_hash: &str) -> Result<User, String>;
+    async fn create(
+        &self,
+        username: &str,
+        email: &str,
+        password_hash: &str,
+    ) -> Result<User, String>;
 }
 
 #[async_trait::async_trait]
@@ -27,7 +32,12 @@ impl UserRepo for UserRepository {
             .map_err(|e| format!("Database error: {}", e))
     }
 
-    async fn create(&self, username: &str, email: &str, password_hash: &str) -> Result<User, String> {
+    async fn create(
+        &self,
+        username: &str,
+        email: &str,
+        password_hash: &str,
+    ) -> Result<User, String> {
         self.create(username, email, password_hash)
             .await
             .map_err(|e| format!("Database error: {}", e))
@@ -48,7 +58,10 @@ impl AuthService {
     }
 
     pub fn new_with_repo(user_repo: std::sync::Arc<dyn UserRepo>, jwt_secret: String) -> Self {
-        Self { user_repo, jwt_secret }
+        Self {
+            user_repo,
+            jwt_secret,
+        }
     }
 
     pub async fn signup(&self, data: CreateUser) -> Result<(UserResponse, String), String> {
@@ -66,7 +79,8 @@ impl AuthService {
             return Err("Username already exists".to_string());
         }
 
-        let password_hash = hash(&data.password, BCRYPT_COST).map_err(|_| "Failed to hash password")?;
+        let password_hash =
+            hash(&data.password, BCRYPT_COST).map_err(|_| "Failed to hash password")?;
 
         let user = self
             .user_repo
@@ -74,8 +88,14 @@ impl AuthService {
             .await
             .map_err(|e| format!("Database error: {}", e))?;
 
-        let token = generate_token(user.id, &user.email, Some(&user.username), &self.jwt_secret, 86400)
-            .map_err(|_| "Failed to create token")?;
+        let token = generate_token(
+            user.id,
+            &user.email,
+            Some(&user.username),
+            &self.jwt_secret,
+            86400,
+        )
+        .map_err(|_| "Failed to create token")?;
 
         let response = UserResponse {
             id: user.id,
@@ -88,7 +108,11 @@ impl AuthService {
         Ok((response, token))
     }
 
-    pub async fn login(&self, email: String, password: String) -> Result<(UserResponse, String), String> {
+    pub async fn login(
+        &self,
+        email: String,
+        password: String,
+    ) -> Result<(UserResponse, String), String> {
         let email = email.trim().to_lowercase();
 
         let user = self
@@ -98,14 +122,21 @@ impl AuthService {
             .map_err(|e| format!("Database error: {}", e))?
             .ok_or("Invalid credentials")?;
 
-        let is_valid = verify(&password, &user.password_hash).map_err(|_| "Failed to verify password")?;
+        let is_valid =
+            verify(&password, &user.password_hash).map_err(|_| "Failed to verify password")?;
 
         if !is_valid {
             return Err("Invalid credentials".to_string());
         }
 
-        let token = generate_token(user.id, &user.email, Some(&user.username), &self.jwt_secret, 86400)
-            .map_err(|_| "Failed to create token")?;
+        let token = generate_token(
+            user.id,
+            &user.email,
+            Some(&user.username),
+            &self.jwt_secret,
+            86400,
+        )
+        .map_err(|_| "Failed to create token")?;
 
         let response = UserResponse {
             id: user.id,
@@ -415,7 +446,10 @@ mod tests {
         mock.insert_user(user);
 
         let (resp, _) = service
-            .login("  TEST@example.com  ".to_string(), "password123".to_string())
+            .login(
+                "  TEST@example.com  ".to_string(),
+                "password123".to_string(),
+            )
             .await
             .unwrap();
 

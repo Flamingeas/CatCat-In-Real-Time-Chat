@@ -3,6 +3,8 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+use crate::models::message::MessageReaction;
+
 mod chrono_as_bson_datetime {
     use chrono::{DateTime, Utc};
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -66,6 +68,8 @@ pub struct DirectMessage {
         skip_serializing_if = "Option::is_none"
     )]
     pub deleted_at: Option<DateTime<Utc>>,
+    #[serde(default)]
+    pub reactions: Vec<MessageReaction>,
 }
 
 impl DirectMessage {
@@ -87,6 +91,7 @@ impl DirectMessage {
             created_at: Utc::now(),
             updated_at: None,
             deleted_at: None,
+            reactions: Vec::new(),
         }
     }
     pub fn is_deleted(&self) -> bool {
@@ -107,6 +112,7 @@ pub struct DirectMessageResponse {
     pub updated_at: Option<DateTime<Utc>>,
     pub is_edited: bool,
     pub is_deleted: bool,
+    pub reactions: Vec<MessageReaction>,
 }
 
 impl From<DirectMessage> for DirectMessageResponse {
@@ -124,6 +130,7 @@ impl From<DirectMessage> for DirectMessageResponse {
             updated_at: m.updated_at,
             is_edited,
             is_deleted,
+            reactions: m.reactions,
         }
     }
 }
@@ -144,4 +151,3 @@ pub struct ConversationResponse {
     pub other_username: String,
     pub created_at: DateTime<Utc>,
 }
-

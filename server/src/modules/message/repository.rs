@@ -1,7 +1,7 @@
 use futures::stream::TryStreamExt;
 use mongodb::{
-    bson::{doc, Binary},
     bson::spec::BinarySubtype,
+    bson::{doc, Binary},
     Database,
 };
 use uuid::Uuid;
@@ -85,11 +85,7 @@ impl<'a> MessageRepository<'a> {
             .limit(limit)
             .build();
 
-        let mut cursor = self
-            .collection()
-            .find(filter)
-            .with_options(options)
-            .await?;
+        let mut cursor = self.collection().find(filter).with_options(options).await?;
 
         let mut messages = Vec::new();
         while let Some(message) = cursor.try_next().await? {
@@ -136,10 +132,7 @@ impl<'a> MessageRepository<'a> {
         Ok(message)
     }
 
-    pub async fn delete(
-        &self,
-        message_id: Uuid,
-    ) -> Result<(), mongodb::error::Error> {
+    pub async fn delete(&self, message_id: Uuid) -> Result<(), mongodb::error::Error> {
         use mongodb::bson::DateTime as BsonDateTime;
 
         let filter = doc! {
@@ -234,10 +227,7 @@ impl<'a> MessageRepository<'a> {
         Ok(())
     }
 
-    pub async fn count_by_channel(
-        &self,
-        channel_id: Uuid,
-    ) -> Result<u64, mongodb::error::Error> {
+    pub async fn count_by_channel(&self, channel_id: Uuid) -> Result<u64, mongodb::error::Error> {
         let filter = doc! {
             "channel_id": uuid_bin0(channel_id),
             "$or": [
@@ -275,10 +265,7 @@ mod tests {
         let bi = by_id.get("message_id").unwrap();
 
         match (bc, bi) {
-            (
-                mongodb::bson::Bson::Binary(b1),
-                mongodb::bson::Bson::Binary(b2),
-            ) => {
+            (mongodb::bson::Bson::Binary(b1), mongodb::bson::Bson::Binary(b2)) => {
                 assert_eq!(b1.subtype, BinarySubtype::Generic);
                 assert_eq!(b1.bytes.as_slice(), channel_id.as_bytes());
 

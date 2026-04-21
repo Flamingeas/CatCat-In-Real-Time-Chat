@@ -81,14 +81,22 @@ pub struct Message {
 
 #[derive(Debug, serde::Deserialize, validator::Validate)]
 pub struct CreateMessage {
-    #[validate(length(min = 1, max = 2000, message = "Message must be between 1 and 2000 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 2000,
+        message = "Message must be between 1 and 2000 characters"
+    ))]
     pub content: String,
     pub channel_id: Uuid,
 }
 
 #[derive(Debug, Deserialize, Validate)]
 pub struct UpdateMessage {
-    #[validate(length(min = 1, max = 2000, message = "Message must be between 1 and 2000 characters"))]
+    #[validate(length(
+        min = 1,
+        max = 2000,
+        message = "Message must be between 1 and 2000 characters"
+    ))]
     pub content: String,
 }
 

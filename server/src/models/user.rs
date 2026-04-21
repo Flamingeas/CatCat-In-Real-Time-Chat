@@ -1,9 +1,9 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
-use validator::Validate;
-use utoipa::ToSchema; // N'oubliez pas cet import s'il n'y est plus !
+use validator::Validate; // N'oubliez pas cet import s'il n'y est plus !
 
 #[derive(Debug, Serialize, Deserialize, FromRow, Clone, ToSchema)]
 pub struct User {
@@ -12,12 +12,16 @@ pub struct User {
     pub email: String,
     pub password_hash: String,
     pub created_at: DateTime<Utc>,
-    pub updated_at: DateTime<Utc>
+    pub updated_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct CreateUser {
-    #[validate(length(min = 3, max = 50, message = "Username must be between 3 and 50 characters"))]
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Username must be between 3 and 50 characters"
+    ))]
     pub username: String,
     #[validate(email(message = "Invalid email format"))]
     pub email: String,
@@ -26,7 +30,7 @@ pub struct CreateUser {
 }
 
 // Ajout de ToSchema ici
-#[derive(Debug, Deserialize, Validate, ToSchema)] 
+#[derive(Debug, Deserialize, Validate, ToSchema)]
 pub struct UpdateUser {
     #[validate(length(min = 3, max = 50))]
     pub username: Option<String>,

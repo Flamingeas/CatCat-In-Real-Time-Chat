@@ -1,15 +1,15 @@
 use std::sync::Arc;
 
+use actix::Addr;
 use actix_web::{web, HttpResponse, Responder};
 use serde_json::json;
 use uuid::Uuid;
 use validator::Validate;
-use actix::Addr;
 
-use crate::websocket::server::{ClientMessage, WsServer};
 use crate::models::channel::{ChannelResponse, CreateChannel, UpdateChannel};
 use crate::modules::auth::AuthenticatedUser;
 use crate::modules::channel::service::ChannelServiceTrait;
+use crate::websocket::server::{ClientMessage, WsServer};
 
 #[utoipa::path(
     post,
@@ -40,7 +40,10 @@ pub async fn create_channel(
 
     let server_id = path.into_inner();
 
-    match service.create_channel(server_id, &payload.name, user.user_id).await {
+    match service
+        .create_channel(server_id, &payload.name, user.user_id)
+        .await
+    {
         Ok(channel) => {
             ws.do_send(ClientMessage::ChannelCreated {
                 server_id,
@@ -127,7 +130,7 @@ pub async fn channel_update(
                 channel_id: channel.id,
             });
             HttpResponse::Ok().json(ChannelResponse::from(channel))
-        },
+        }
         Err(e) if e == "Forbidden" => {
             HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
         }
@@ -240,11 +243,7 @@ mod tests {
             self.update_result.clone().unwrap()
         }
 
-        async fn delete_channel(
-            &self,
-            channel_id: Uuid,
-            user_id: Uuid,
-        ) -> Result<Channel, String> {
+        async fn delete_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<Channel, String> {
             self.delete_result.clone().unwrap()
         }
     }
@@ -270,10 +269,12 @@ mod tests {
             fake_user(),
             web::Data::new(service),
             web::Path::from(Uuid::new_v4()),
-            web::Json(CreateChannel { name: "general".into() }),
+            web::Json(CreateChannel {
+                name: "general".into(),
+            }),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::CREATED);
     }
@@ -293,8 +294,8 @@ mod tests {
             web::Path::from(Uuid::new_v4()),
             web::Json(CreateChannel { name: "".into() }),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
@@ -312,10 +313,12 @@ mod tests {
             fake_user(),
             web::Data::new(service),
             web::Path::from(Uuid::new_v4()),
-            web::Json(CreateChannel { name: "general".into() }),
+            web::Json(CreateChannel {
+                name: "general".into(),
+            }),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
@@ -334,8 +337,8 @@ mod tests {
             web::Data::new(service),
             web::Path::from(Uuid::new_v4()),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -354,8 +357,8 @@ mod tests {
             web::Data::new(service),
             web::Path::from(Uuid::new_v4()),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::FORBIDDEN);
     }
@@ -374,8 +377,8 @@ mod tests {
             web::Data::new(service),
             web::Path::from(Uuid::new_v4()),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
@@ -397,8 +400,8 @@ mod tests {
                 name: Some("new".into()),
             }),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -420,8 +423,8 @@ mod tests {
                 name: Some("".into()),
             }),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
@@ -443,8 +446,8 @@ mod tests {
                 name: Some("new-name".into()),
             }),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::FORBIDDEN);
     }
@@ -466,8 +469,8 @@ mod tests {
                 name: Some("new-name".into()),
             }),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
@@ -486,8 +489,8 @@ mod tests {
             web::Data::new(service),
             web::Path::from(Uuid::new_v4()),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::OK);
     }
@@ -506,8 +509,8 @@ mod tests {
             web::Data::new(service),
             web::Path::from(Uuid::new_v4()),
         )
-            .await
-            .respond_to(&test::TestRequest::default().to_http_request());
+        .await
+        .respond_to(&test::TestRequest::default().to_http_request());
 
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
     }
@@ -690,7 +693,7 @@ mod tests {
                 .configure(config_in_servers_scope)
                 .configure(config_root),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::get().uri("/nope").to_request();
         let resp = test::call_service(&app, req).await;
@@ -705,7 +708,7 @@ mod tests {
                 .configure(config_in_servers_scope)
                 .configure(config_root),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::get()
             .uri(&format!("/{}/channel", uuid_str()))

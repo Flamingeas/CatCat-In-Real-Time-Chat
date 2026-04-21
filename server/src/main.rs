@@ -13,7 +13,6 @@ mod modules;
 mod utils;
 mod websocket;
 
-use config::{AppState, DatabaseConfig, EnvConfig};
 use crate::modules::auth::service::AuthService;
 use crate::modules::auth::AuthMiddleware;
 use crate::modules::channel::repository::{ChannelRepository, ChannelRepositoryTrait};
@@ -22,6 +21,7 @@ use crate::modules::server::repository::ServerRepository;
 use crate::modules::server::service::ServerService;
 use crate::modules::user::repository::UserRepository;
 use crate::websocket::server::WsServer;
+use config::{AppState, DatabaseConfig, EnvConfig};
 
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::Modify;
@@ -149,14 +149,13 @@ async fn main() -> std::io::Result<()> {
         &env_config.mongodb_uri,
         &env_config.mongodb_db_name,
     )
-        .await
-        .expect("DB connection failed.");
+    .await
+    .expect("DB connection failed.");
 
     let app_state = web::Data::new(AppState { db: db_config });
 
     let user_repo = UserRepository::new(app_state.db.pg.clone());
-    let auth_service =
-        web::Data::new(AuthService::new(user_repo, env_config.jwt_secret.clone()));
+    let auth_service = web::Data::new(AuthService::new(user_repo, env_config.jwt_secret.clone()));
 
     let ws_server = WsServer::new().start();
 
@@ -206,13 +205,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ws_server.clone()))
             .app_data(web::Data::new(pg_pool.clone()))
             .app_data(web::Data::new(mongo_db.clone()))
-            
             // --- NOUVEAU : On ajoute la route visuelle du Swagger ---
             .service(
-                SwaggerUi::new("/swagger-ui/{_:.*}")
-                    .url("/api-docs/openapi.json", openapi.clone()),
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
             )
-
             .route("/ws", web::get().to(websocket::routes::ws_index))
             .configure(modules::auth::route::config)
             .service(
@@ -229,7 +225,7 @@ async fn main() -> std::io::Result<()> {
                     .configure(modules::direct_message::route::config),
             )
     })
-        .bind(env_config.server_address())?
-        .run()
-        .await
+    .bind(env_config.server_address())?
+    .run()
+    .await
 }

@@ -1,6 +1,11 @@
+import { useState } from "react";
 import type { KeyboardEvent, RefObject } from "react";
+import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
+import { GifMessage } from "@/components/chat/GifMessage";
+import { GifPicker } from "@/components/chat/GifPicker";
 import { ConversationItem, DmMessage } from "@/features/direct-message/services/dm.service";
 import { getInitials, formatTimeFR } from "@/utils/chat";
+import { isGifMessage } from "@/utils/message-content";
 
 interface User {
     id: string;
@@ -27,6 +32,8 @@ interface DirectMessagePanelProps {
     setMessageText: (text: string) => void;
     isSending: boolean;
     onSendMessage: () => void;
+    onSendGif: (gifUrl: string) => void;
+    onToggleReaction: (messageId: string, emoji: string, hasReacted: boolean) => void;
     onMessageKeyDown: (e: KeyboardEvent<HTMLInputElement>) => void;
     messagesEndRef: RefObject<HTMLDivElement | null>;
 }
@@ -51,12 +58,17 @@ export function DirectMessagePanel({
     setMessageText,
     isSending,
     onSendMessage,
+    onSendGif,
+    onToggleReaction,
     onMessageKeyDown,
     messagesEndRef,
 }: DirectMessagePanelProps) {
+    const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
+    const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
     const selectedConversation = selectedConvId
         ? conversations.find((conversation) => conversation.id === selectedConvId) ?? null
         : null;
+    const canSendGif = Boolean(selectedConvId && !isSending);
 
     return (
         <>
@@ -111,6 +123,7 @@ export function DirectMessagePanel({
                                         const isMe = me && String(me.id) === String(message.sender_id);
                                         const time = formatTimeFR(message.created_at);
                                         const isEditing = editingMessageId === message.message_id;
+                                        const canReact = !!me && !message.is_deleted && !isEditing;
 
                                         return (
                                             <div key={message.message_id} className={`flex ${isMe ? "justify-end" : "justify-start"}`}>
@@ -156,15 +169,80 @@ export function DirectMessagePanel({
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div
-                                                            className={[
-                                                                "px-4 py-3 rounded-2xl border border-[#ffffff]/10 shadow-sm",
-                                                                "whitespace-pre-wrap break-words text-sm leading-relaxed",
-                                                                isMe ? "bg-[#2563EB] text-white rounded-br-md" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-md",
-                                                            ].join(" ")}
-                                                    >
-                                                        {message.is_deleted ? <span className="text-white/60 italic">message supprimé</span> : message.content}
-                                                    </div>
+                                                        <>
+                                                            <div
+                                                                className={[
+                                                                    "px-4 py-3 rounded-2xl border border-[#ffffff]/10 shadow-sm",
+                                                                    "text-sm leading-relaxed",
+                                                                    isMe ? "bg-[#2563EB] text-white rounded-br-md" : "bg-[#1E1211] text-[#DCCBC4] rounded-bl-md",
+                                                                ].join(" ")}
+                                                            >
+                                                                {message.is_deleted ? (
+                                                                    <span className="text-white/60 italic">message supprimé</span>
+                                                                ) : isGifMessage(message.content) ? (
+                                                                    <GifMessage src={message.content} />
+                                                                ) : (
+                                                                    <div className="whitespace-pre-wrap break-words">{message.content}</div>
+                                                                )}
+                                                            </div>
+
+                                                            {message.reactions && message.reactions.length > 0 && (
+                                                                <div className={`flex flex-wrap gap-1 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
+                                                                    {message.reactions.map((reaction) => {
+                                                                        const hasReacted = !!me && reaction.users.some((id) => String(id) === String(me.id));
+                                                                        return (
+                                                                            <button
+                                                                                key={reaction.emoji}
+                                                                                onClick={() => onToggleReaction(message.message_id, reaction.emoji, hasReacted)}
+                                                                                className={[
+                                                                                    "flex items-center gap-1.5 px-2 py-0.5 rounded-lg border text-[11px] transition-all cursor-pointer",
+                                                                                    hasReacted
+                                                                                        ? "bg-[#EB5E28]/20 border-[#EB5E28] text-[#EB5E28]"
+                                                                                        : "bg-[#0F0908] border-[#ffffff]/10 text-[#DCCBC4]/70 hover:border-[#ffffff]/30",
+                                                                                ].join(" ")}
+                                                                                title={hasReacted ? "Retirer ta réaction" : "Réagir aussi"}
+                                                                            >
+                                                                                <span>{reaction.emoji}</span>
+                                                                                <span className="font-bold">{reaction.users.length}</span>
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+
+                                                            {canReact && (
+                                                                <div className={`relative mt-1 px-1 ${isMe ? "self-end" : "self-start"}`}>
+                                                                    <button
+                                                                        onClick={() => setEmojiPickerFor((current) => (current === message.message_id ? null : message.message_id))}
+                                                                        className={`text-[11px] transition-colors cursor-pointer ${isMe ? "text-white/70 hover:text-white" : "text-[#DCCBC4]/50 hover:text-white"}`}
+                                                                        title="Ajouter une réaction"
+                                                                    >
+                                                                        + réaction
+                                                                    </button>
+                                                                    {emojiPickerFor === message.message_id && (
+                                                                        <div className={`absolute z-30 top-6 ${isMe ? "right-0" : "left-0"}`}>
+                                                                            <EmojiPicker
+                                                                                theme={Theme.DARK}
+                                                                                width={320}
+                                                                                height={380}
+                                                                                previewConfig={{ showPreview: false }}
+                                                                                onEmojiClick={(emojiData: EmojiClickData) => {
+                                                                                    const emoji = emojiData.emoji;
+                                                                                    const alreadyReacted = (message.reactions ?? []).some(
+                                                                                        (reaction) =>
+                                                                                            reaction.emoji === emoji &&
+                                                                                            me &&
+                                                                                            reaction.users.some((id) => String(id) === String(me.id))
+                                                                                    );
+                                                                                    onToggleReaction(message.message_id, emoji, alreadyReacted);
+                                                                                    setEmojiPickerFor(null);
+                                                                                }}
+                                                                            />
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </>
                                                     )}
                                                     <div className={`flex items-center gap-2 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
                                                         {time && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>{time}</span>}
@@ -202,7 +280,23 @@ export function DirectMessagePanel({
             </div>
 
             <div className="p-6 pt-2 border-t border-[#ffffff]/5">
-                <div className="bg-[#1E1211] rounded-full flex items-center px-6 py-3 border border-[#ffffff]/5">
+                <div className="relative bg-[#1E1211] rounded-full flex items-center px-6 py-3 border border-[#ffffff]/5">
+                    <button
+                        type="button"
+                        onClick={() => setIsGifPickerOpen((current) => !current)}
+                        disabled={!canSendGif}
+                        className={[
+                            "mr-3 text-sm font-bold transition-colors",
+                            canSendGif ? "text-[#DCCBC4]/60 hover:text-[#EB5E28] cursor-pointer" : "text-[#DCCBC4]/30 cursor-not-allowed",
+                        ].join(" ")}
+                    >
+                        GIF
+                    </button>
+                    <GifPicker
+                        isOpen={isGifPickerOpen}
+                        onClose={() => setIsGifPickerOpen(false)}
+                        onSelectGif={onSendGif}
+                    />
                     <input
                         type="text"
                         value={messageText}

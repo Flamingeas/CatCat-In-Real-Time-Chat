@@ -88,6 +88,29 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
         }
     }
 
+    async function sendGifMessage(gifUrl: string) {
+        if (!selectedConvId || !gifUrl.trim()) return;
+
+        try {
+            setIsSending(true);
+            const created = await api<DmMessage>(`/api/dm/conversations/${selectedConvId}/messages`, {
+                method: "POST",
+                body: JSON.stringify({ content: gifUrl.trim() }),
+            });
+            setMessages((prev) => {
+                if (prev.some((message) => message.message_id === created.message_id)) return prev;
+                return [...prev, created].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+            });
+            window.setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, 0);
+        } catch {
+            pushToast("Envoi du GIF refusé", "warn");
+        } finally {
+            setIsSending(false);
+        }
+    }
+
     async function editMessage(messageId: string, newContent: string) {
         if (!newContent.trim()) return;
         try {
@@ -138,6 +161,62 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
         }
     }
 
+    function applyReaction(messageId: string, emoji: string, userId: string, action: "add" | "remove") {
+        setMessages((prev) =>
+            prev.map((message) => {
+                if (String(message.message_id) !== String(messageId)) return message;
+
+                const reactions = message.reactions ?? [];
+
+                if (action === "remove") {
+                    const nextReactions = reactions
+                        .map((reaction) =>
+                            reaction.emoji === emoji
+                                ? { ...reaction, users: reaction.users.filter((id) => String(id) !== String(userId)) }
+                                : reaction
+                        )
+                        .filter((reaction) => reaction.users.length > 0);
+
+                    return { ...message, reactions: nextReactions };
+                }
+
+                const existing = reactions.find((reaction) => reaction.emoji === emoji);
+                if (!existing) {
+                    return { ...message, reactions: [...reactions, { emoji, users: [String(userId)] }] };
+                }
+                if (existing.users.some((id) => String(id) === String(userId))) return message;
+
+                return {
+                    ...message,
+                    reactions: reactions.map((reaction) =>
+                        reaction.emoji === emoji
+                            ? { ...reaction, users: [...reaction.users, String(userId)] }
+                            : reaction
+                    ),
+                };
+            })
+        );
+    }
+
+    async function toggleReaction(messageId: string, emoji: string, hasReacted: boolean) {
+        const currentUserId = myIdRef.current;
+        if (!selectedConvId || !currentUserId) return;
+
+        const action = hasReacted ? "remove" : "add";
+        applyReaction(messageId, emoji, currentUserId, action);
+
+        try {
+            await api(`/api/dm/messages/${messageId}/reactions`, {
+                method: hasReacted ? "DELETE" : "POST",
+                body: JSON.stringify({ emoji }),
+            });
+        } catch (e) {
+            applyReaction(messageId, emoji, currentUserId, hasReacted ? "add" : "remove");
+            pushToast("Erreur de synchronisation de la réaction", "warn");
+            console.error(e);
+        }
+    }
+
     async function startWithMember(userId: string) {
         try {
             const conv = await startDmConversation(userId);
@@ -169,6 +248,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
                     updated_at: null,
                     is_edited: false,
                     is_deleted: false,
+                    reactions: [],
                 };
                 setMessages((prev) => {
                     if (prev.some((message) => message.message_id === newMsg.message_id)) return prev;
@@ -182,6 +262,24 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
                 if (myIdRef.current && String(msg.sender_id) !== String(myIdRef.current)) {
                     pushToast(`Nouveau message de ${senderName}`, "info");
                 }
+            }
+            return true;
+        }
+
+        if (msg.type === "direct_message_reaction_added") {
+            const convId = String(msg.conversation_id ?? "");
+            const currentConv = selectedConvIdRef.current;
+            if (currentConv && convId === String(currentConv)) {
+                applyReaction(String(msg.message_id), String(msg.emoji), String(msg.user_id), "add");
+            }
+            return true;
+        }
+
+        if (msg.type === "direct_message_reaction_removed") {
+            const convId = String(msg.conversation_id ?? "");
+            const currentConv = selectedConvIdRef.current;
+            if (currentConv && convId === String(currentConv)) {
+                applyReaction(String(msg.message_id), String(msg.emoji), String(msg.user_id), "remove");
             }
             return true;
         }
@@ -262,8 +360,10 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
         loadingMore,
         messagesEndRef,
         sendMessage,
+        sendGifMessage,
         editMessage,
         deleteMessage,
+        toggleReaction,
         loadMoreMessages,
         onMessageKeyDown,
         startWithMember,
