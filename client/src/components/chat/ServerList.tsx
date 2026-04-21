@@ -17,9 +17,14 @@ interface ServerListProps {
     initials: string;
     view: "servers" | "dm";
     onToggleView: () => void;
+    unreadDmCount: number;
 }
 
-export function ServerList({ servers, selectedServerId, onSelectServer, onCreate, onJoin, initials, view, onToggleView }: ServerListProps) {
+function formatBadgeCount(count: number) {
+    return count > 99 ? "99+" : String(count);
+}
+
+export function ServerList({ servers, selectedServerId, onSelectServer, onCreate, onJoin, initials, view, onToggleView, unreadDmCount }: ServerListProps) {
     return (
         <div className="w-[72px] bg-[#1E1211] rounded-[20px] flex flex-col items-center py-6 gap-4 z-20 h-full shadow-lg">
             <Link href="/" className="w-12 h-12 flex items-center justify-center hover:rounded-xl transition-all cursor-pointer group">
@@ -31,18 +36,23 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
                 onClick={onToggleView}
                 title="Messages directs"
                 className={[
-                    "w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
+                    "relative w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
                     view === "dm" ? "bg-[#EB5E28] text-white" : "bg-[#2A1A18] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white",
                 ].join(" ")}
             >
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
+                {unreadDmCount > 0 && (
+                    <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-[#bef264] text-[#1E1211] border-2 border-[#1E1211] text-[10px] font-black flex items-center justify-center">
+                        {formatBadgeCount(unreadDmCount)}
+                    </span>
+                )}
             </button>
             <div className="w-8 h-[2px] bg-[#ffffff]/10 rounded-full" />
             <div className="flex flex-col items-center gap-3 w-full px-2">
                 {servers.map((s) => {
-                    const active = s.id === selectedServerId;
+                    const active = view === "servers" && s.id === selectedServerId;
                     return (
                         <button
                             key={s.id}

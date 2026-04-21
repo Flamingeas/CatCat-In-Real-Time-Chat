@@ -5,12 +5,14 @@ interface DirectMessageSidebarProps {
     conversations: ConversationItem[];
     selectedConvId: string | null;
     onSelectConversation: (id: string) => void;
+    unreadCounts: Record<string, number>;
 }
 
 export function DirectMessageSidebar({
     conversations,
     selectedConvId,
     onSelectConversation,
+    unreadCounts,
 }: DirectMessageSidebarProps) {
     return (
         <>
@@ -25,6 +27,7 @@ export function DirectMessageSidebar({
                     <div className="flex flex-col gap-1">
                         {conversations.map((conversation) => {
                             const active = conversation.id === selectedConvId;
+                            const unreadCount = unreadCounts[conversation.id] ?? 0;
 
                             return (
                                 <button
@@ -38,7 +41,12 @@ export function DirectMessageSidebar({
                                     <div className="w-8 h-8 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4] shrink-0">
                                         {getInitials(conversation.other_username)}
                                     </div>
-                                    <span className="truncate text-sm">@{conversation.other_username}</span>
+                                    <span className="truncate text-sm flex-1">@{conversation.other_username}</span>
+                                    {unreadCount > 0 && (
+                                        <span className="min-w-5 h-5 px-1 rounded-full bg-[#EB5E28] text-[#1E1211] text-[10px] font-black flex items-center justify-center">
+                                            {unreadCount > 99 ? "99+" : unreadCount}
+                                        </span>
+                                    )}
                                 </button>
                             );
                         })}
