@@ -24,11 +24,11 @@ impl UserRepository {
             RETURNING id, username, email, password_hash, created_at, updated_at
             "#,
         )
-            .bind(username)
-            .bind(email)
-            .bind(password_hash)
-            .fetch_one(&self.pool)
-            .await?;
+        .bind(username)
+        .bind(email)
+        .bind(password_hash)
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(user)
     }
@@ -40,9 +40,9 @@ impl UserRepository {
             WHERE email = $1
             "#,
         )
-            .bind(email)
-            .fetch_optional(&self.pool)
-            .await?;
+        .bind(email)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(user)
     }
@@ -54,9 +54,9 @@ impl UserRepository {
             WHERE id = $1
             "#,
         )
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?;
+        .bind(id)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(user)
     }
@@ -68,26 +68,28 @@ impl UserRepository {
             WHERE username = $1
             "#,
         )
-            .bind(username)
-            .fetch_optional(&self.pool)
-            .await?;
+        .bind(username)
+        .fetch_optional(&self.pool)
+        .await?;
 
         Ok(user)
     }
     pub async fn email_exists(&self, email: &str) -> Result<bool, sqlx::Error> {
-        let result = sqlx::query_scalar::<_, bool>(r#"SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"#)
-            .bind(email)
-            .fetch_one(&self.pool)
-            .await?;
+        let result =
+            sqlx::query_scalar::<_, bool>(r#"SELECT EXISTS(SELECT 1 FROM users WHERE email = $1)"#)
+                .bind(email)
+                .fetch_one(&self.pool)
+                .await?;
 
         Ok(result)
     }
     pub async fn username_exists(&self, username: &str) -> Result<bool, sqlx::Error> {
-        let result =
-            sqlx::query_scalar::<_, bool>(r#"SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"#)
-                .bind(username)
-                .fetch_one(&self.pool)
-                .await?;
+        let result = sqlx::query_scalar::<_, bool>(
+            r#"SELECT EXISTS(SELECT 1 FROM users WHERE username = $1)"#,
+        )
+        .bind(username)
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(result)
     }
@@ -99,7 +101,10 @@ impl UserRepository {
 
         let username = data.username.as_ref().unwrap_or(&current_user.username);
         let email = data.email.as_ref().unwrap_or(&current_user.email);
-        let password_hash = data.password.as_ref().unwrap_or(&current_user.password_hash);
+        let password_hash = data
+            .password
+            .as_ref()
+            .unwrap_or(&current_user.password_hash);
         let user = sqlx::query_as::<_, User>(
             r#"
             UPDATE users
@@ -110,16 +115,20 @@ impl UserRepository {
             RETURNING id, username, email, password_hash, created_at, updated_at
             "#,
         )
-            .bind(username)
-            .bind(email)
-            .bind(password_hash)
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await?;
+        .bind(username)
+        .bind(email)
+        .bind(password_hash)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(user)
     }
-    pub async fn update_password(&self, user_id: Uuid, new_password_hash: &str) -> Result<User, sqlx::Error> {
+    pub async fn update_password(
+        &self,
+        user_id: Uuid,
+        new_password_hash: &str,
+    ) -> Result<User, sqlx::Error> {
         let user = sqlx::query_as::<_, User>(
             r#"
             UPDATE users
@@ -128,14 +137,18 @@ impl UserRepository {
             RETURNING id, username, email, password_hash, created_at, updated_at
             "#,
         )
-            .bind(new_password_hash)
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await?;
+        .bind(new_password_hash)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(user)
     }
-    pub async fn update_username(&self, user_id: Uuid, new_username: &str) -> Result<User, sqlx::Error> {
+    pub async fn update_username(
+        &self,
+        user_id: Uuid,
+        new_username: &str,
+    ) -> Result<User, sqlx::Error> {
         let user = sqlx::query_as::<_, User>(
             r#"
             UPDATE users
@@ -144,10 +157,10 @@ impl UserRepository {
             RETURNING id, username, email, password_hash, created_at, updated_at
             "#,
         )
-            .bind(new_username)
-            .bind(user_id)
-            .fetch_one(&self.pool)
-            .await?;
+        .bind(new_username)
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?;
 
         Ok(user)
     }
@@ -167,10 +180,10 @@ impl UserRepository {
             LIMIT $1 OFFSET $2
             "#,
         )
-            .bind(limit)
-            .bind(offset)
-            .fetch_all(&self.pool)
-            .await?;
+        .bind(limit)
+        .bind(offset)
+        .fetch_all(&self.pool)
+        .await?;
 
         Ok(users)
     }

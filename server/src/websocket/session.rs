@@ -4,8 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 
-use crate::utils::jwt::verify_token;
 use super::server::{ClientMessage, Connect, Disconnect, WsServer};
+use crate::utils::jwt::verify_token;
 
 const HEARTBEAT_INTERVAL: Duration = Duration::from_secs(5);
 const CLIENT_INACTIVITY: Duration = Duration::from_secs(20);
@@ -83,16 +83,28 @@ impl WsSession {
 #[derive(Debug, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum IncomingMessage {
-    Auth { token: String },
+    Auth {
+        token: String,
+    },
 
-    JoinServer { server_id: Uuid },
-    LeaveServer { server_id: Uuid },
+    JoinServer {
+        server_id: Uuid,
+    },
+    LeaveServer {
+        server_id: Uuid,
+    },
 
-    JoinChannel { channel_id: Uuid },
-    LeaveChannel { channel_id: Uuid },
+    JoinChannel {
+        channel_id: Uuid,
+    },
+    LeaveChannel {
+        channel_id: Uuid,
+    },
 
     #[serde(rename = "typing")]
-    Typing { channel_id: Uuid },
+    Typing {
+        channel_id: Uuid,
+    },
 
     #[serde(rename = "user_typing")]
     UserTyping {
@@ -101,20 +113,33 @@ pub enum IncomingMessage {
         username: Option<String>,
     },
 
-    SendMessage { channel_id: Uuid, content: String },
+    SendMessage {
+        channel_id: Uuid,
+        content: String,
+    },
 
-    StatusChange { status: UserStatus, server_id: Option<Uuid> },
+    StatusChange {
+        status: UserStatus,
+        server_id: Option<Uuid>,
+    },
 
-    Ping { t: Option<i64> },
-
+    Ping {
+        t: Option<i64>,
+    },
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum OutgoingMessage {
-    Authed { user_id: Uuid, username: String },
+    Authed {
+        user_id: Uuid,
+        username: String,
+    },
 
-    PresenceSnapshot { server_id: Uuid, online: Vec<(Uuid, String)> },
+    PresenceSnapshot {
+        server_id: Uuid,
+        online: Vec<(Uuid, String)>,
+    },
 
     UserConnected {
         server_id: Uuid,
@@ -172,8 +197,12 @@ pub enum OutgoingMessage {
         username: String,
     },
 
-    Error { message: String },
-    Ok { message: String },
+    Error {
+        message: String,
+    },
+    Ok {
+        message: String,
+    },
     ChannelCreated {
         server_id: Uuid,
         channel_id: Uuid,
@@ -188,8 +217,12 @@ pub enum OutgoingMessage {
         server_id: Uuid,
         channel_id: Uuid,
     },
-    ServerDeleted { server_id: Uuid },
-    ServerUpdated { server_id: Uuid },
+    ServerDeleted {
+        server_id: Uuid,
+    },
+    ServerUpdated {
+        server_id: Uuid,
+    },
     ServerMemberJoined {
         server_id: Uuid,
         user_id: Uuid,
@@ -220,7 +253,7 @@ pub enum OutgoingMessage {
         server_id: Uuid,
         user_id: Uuid,
         username: String,
-        until: Option<chrono::DateTime<chrono::Utc>>
+        until: Option<chrono::DateTime<chrono::Utc>>,
     },
     ServerMemberUnbanned {
         server_id: Uuid,
@@ -245,6 +278,18 @@ pub enum OutgoingMessage {
     DirectMessageDeleted {
         conversation_id: Uuid,
         message_id: Uuid,
+    },
+    DirectMessageReactionAdded {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
+    DirectMessageReactionRemoved {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
     },
 }
 
@@ -315,7 +360,12 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
 
                     IncomingMessage::Auth { token } => {
                         if self.is_authed() {
-                            WsSession::send_out(ctx, OutgoingMessage::Ok { message: "already_authed".into() });
+                            WsSession::send_out(
+                                ctx,
+                                OutgoingMessage::Ok {
+                                    message: "already_authed".into(),
+                                },
+                            );
                             return;
                         }
 
@@ -347,7 +397,10 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
                             }
                         };
 
-                        let username = claims.username.clone().unwrap_or_else(|| "unknown".to_string());
+                        let username = claims
+                            .username
+                            .clone()
+                            .unwrap_or_else(|| "unknown".to_string());
 
                         self.user_id = Some(user_id);
                         self.username = Some(username.clone());
@@ -376,13 +429,19 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
                         if !self.active_servers.contains(&server_id) {
                             self.active_servers.push(server_id);
                         }
-                        self.server.do_send(ClientMessage::JoinServer { user_id: uid, server_id });
+                        self.server.do_send(ClientMessage::JoinServer {
+                            user_id: uid,
+                            server_id,
+                        });
                     }
 
                     IncomingMessage::LeaveServer { server_id } => {
                         let uid = self.user_id.unwrap();
                         self.active_servers.retain(|id| *id != server_id);
-                        self.server.do_send(ClientMessage::LeaveServer { user_id: uid, server_id });
+                        self.server.do_send(ClientMessage::LeaveServer {
+                            user_id: uid,
+                            server_id,
+                        });
                     }
 
                     IncomingMessage::JoinChannel { channel_id } => {
@@ -390,22 +449,36 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsSession {
                         if !self.active_channels.contains(&channel_id) {
                             self.active_channels.push(channel_id);
                         }
-                        self.server.do_send(ClientMessage::JoinChannel { user_id: uid, channel_id });
+                        self.server.do_send(ClientMessage::JoinChannel {
+                            user_id: uid,
+                            channel_id,
+                        });
                     }
 
                     IncomingMessage::LeaveChannel { channel_id } => {
                         let uid = self.user_id.unwrap();
                         self.active_channels.retain(|id| *id != channel_id);
-                        self.server.do_send(ClientMessage::LeaveChannel { user_id: uid, channel_id });
+                        self.server.do_send(ClientMessage::LeaveChannel {
+                            user_id: uid,
+                            channel_id,
+                        });
                     }
 
-                    IncomingMessage::Typing { channel_id } | IncomingMessage::UserTyping { channel_id, .. } => {
+                    IncomingMessage::Typing { channel_id }
+                    | IncomingMessage::UserTyping { channel_id, .. } => {
                         let uid = self.user_id.unwrap();
                         let username = self.username.clone().unwrap();
-                        self.server.do_send(ClientMessage::Typing { user_id: uid, username, channel_id });
+                        self.server.do_send(ClientMessage::Typing {
+                            user_id: uid,
+                            username,
+                            channel_id,
+                        });
                     }
 
-                    IncomingMessage::SendMessage { channel_id, content } => {
+                    IncomingMessage::SendMessage {
+                        channel_id,
+                        content,
+                    } => {
                         let uid = self.user_id.unwrap();
                         let username = self.username.clone().unwrap();
                         self.server.do_send(ClientMessage::SendMessage {
@@ -458,9 +531,9 @@ mod ws_tests {
     use actix::Actor;
     use actix::Addr;
     use actix_test::start;
-    use actix_web::{web, App, HttpRequest};
+    use actix_web::{App, HttpRequest, web};
     use actix_web_actors::ws as actix_ws;
-    use awc::{ws as awc_ws, Client};
+    use awc::{Client, ws as awc_ws};
     use futures_util::{Sink, SinkExt, Stream, StreamExt};
 
     use crate::utils::jwt::generate_token;
@@ -479,7 +552,10 @@ mod ws_tests {
                          stream: web::Payload,
                          jwt_secret: web::Data<String>,
                          server: web::Data<Addr<WsServer>>| async move {
-                            let session = WsSession::new(jwt_secret.get_ref().clone(), server.get_ref().clone());
+                            let session = WsSession::new(
+                                jwt_secret.get_ref().clone(),
+                                server.get_ref().clone(),
+                            );
                             actix_ws::start(session, &req, stream)
                         },
                     ),
@@ -518,9 +594,10 @@ mod ws_tests {
 
         send_text(
             &mut conn,
-            r#"{"type":"join_server","server_id":"00000000-0000-0000-0000-000000000000"}"#.to_string(),
+            r#"{"type":"join_server","server_id":"00000000-0000-0000-0000-000000000000"}"#
+                .to_string(),
         )
-            .await;
+        .await;
 
         let txt = recv_text(&mut conn).await;
         let msg: OutgoingMessage = serde_json::from_str(&txt).unwrap();
@@ -541,7 +618,11 @@ mod ws_tests {
 
         let (_resp, mut conn) = Client::new().ws(url).connect().await.unwrap();
 
-        send_text(&mut conn, format!(r#"{{"type":"auth","token":"{}"}}"#, token)).await;
+        send_text(
+            &mut conn,
+            format!(r#"{{"type":"auth","token":"{}"}}"#, token),
+        )
+        .await;
 
         let txt = recv_text(&mut conn).await;
         let msg: OutgoingMessage = serde_json::from_str(&txt).unwrap();

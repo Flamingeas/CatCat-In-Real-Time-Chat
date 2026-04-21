@@ -1,5 +1,5 @@
 use actix::Addr;
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::{HttpResponse, Responder, web};
 use chrono::DateTime;
 use mongodb::Database;
 use sqlx::PgPool;
@@ -7,9 +7,10 @@ use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::modules::auth::middleware::AuthenticatedUser;
-use crate::websocket::server::{ClientMessage, WsServer};
 use super::service::{DirectMessageService, ServiceError};
+use crate::modules::auth::middleware::AuthenticatedUser;
+use crate::modules::message::route::ReactionRequest;
+use crate::websocket::server::{ClientMessage, WsServer};
 
 #[derive(Debug, serde::Deserialize, Validate, ToSchema)]
 pub struct SendDirectMessageRequest {
@@ -44,12 +45,10 @@ fn handle_service_error(error: ServiceError) -> HttpResponse {
         ServiceError::Forbidden(msg) => {
             HttpResponse::Forbidden().json(serde_json::json!({ "error": msg }))
         }
-        ServiceError::Database(_e) => {
-            HttpResponse::InternalServerError().json(serde_json::json!({ "error": "Database error" }))
-        }
-        ServiceError::Internal(_msg) => {
-            HttpResponse::InternalServerError().json(serde_json::json!({ "error": "Internal error" }))
-        }
+        ServiceError::Database(_e) => HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": "Database error" })),
+        ServiceError::Internal(_msg) => HttpResponse::InternalServerError()
+            .json(serde_json::json!({ "error": "Internal error" })),
     }
 }
 
@@ -62,7 +61,10 @@ async fn start_conversation_with_service(
     user_id: Uuid,
     recipient_id: Uuid,
 ) -> HttpResponse {
-    match service.get_or_create_conversation(user_id, recipient_id).await {
+    match service
+        .get_or_create_conversation(user_id, recipient_id)
+        .await
+    {
         Ok(conv) => HttpResponse::Ok().json(conv),
         Err(e) => handle_service_error(e),
     }
@@ -85,7 +87,10 @@ async fn get_messages_with_service(
     query: &GetDmMessagesQuery,
 ) -> HttpResponse {
     let limit = query.limit.unwrap_or(50).clamp(1, 100);
-    match service.get_messages(conversation_id, user_id, limit, query.before).await {
+    match service
+        .get_messages(conversation_id, user_id, limit, query.before)
+        .await
+    {
         Ok(msgs) => HttpResponse::Ok().json(msgs),
         Err(e) => handle_service_error(e),
     }
@@ -105,7 +110,10 @@ async fn send_message_with_service(
 
     let content = data.content.trim().to_string();
 
-    match service.send_message(conversation_id, sender_id, sender_username.clone(), content).await {
+    match service
+        .send_message(conversation_id, sender_id, sender_username.clone(), content)
+        .await
+    {
         Ok((dm, recipient_id)) => {
             ws_server.do_send(ClientMessage::BroadcastDirectMessage {
                 conversation_id,
@@ -163,6 +171,75 @@ async fn delete_message_with_service(
                 message_id,
                 sender_id: user_id,
                 recipient_id,
+            });
+            HttpResponse::NoContent().finish()
+        }
+        Err(e) => handle_service_error(e),
+    }
+}
+
+fn validate_reaction_request(data: &ReactionRequest) -> Result<String, String> {
+    let emoji = data.emoji.trim();
+    if emoji.is_empty() || emoji.chars().count() > 16 {
+        return Err("Emoji reaction is not valid".to_string());
+    }
+
+    Ok(emoji.to_string())
+}
+
+async fn add_reaction_with_service(
+    service: &DirectMessageService<'_>,
+    ws_server: &Addr<WsServer>,
+    user_id: Uuid,
+    message_id: Uuid,
+    data: &ReactionRequest,
+) -> HttpResponse {
+    let emoji = match validate_reaction_request(data) {
+        Ok(emoji) => emoji,
+        Err(error_message) => return bad_request(error_message),
+    };
+
+    match service
+        .add_reaction(message_id, user_id, emoji.clone())
+        .await
+    {
+        Ok((conversation_id, recipient_id)) => {
+            ws_server.do_send(ClientMessage::BroadcastDirectMessageReactionAdded {
+                conversation_id,
+                message_id,
+                user_id,
+                recipient_id,
+                emoji,
+            });
+            HttpResponse::NoContent().finish()
+        }
+        Err(e) => handle_service_error(e),
+    }
+}
+
+async fn remove_reaction_with_service(
+    service: &DirectMessageService<'_>,
+    ws_server: &Addr<WsServer>,
+    user_id: Uuid,
+    message_id: Uuid,
+    data: &ReactionRequest,
+) -> HttpResponse {
+    let emoji = match validate_reaction_request(data) {
+        Ok(emoji) => emoji,
+        Err(error_message) => return bad_request(error_message),
+    };
+
+    match service
+        .remove_reaction(message_id, user_id, emoji.clone())
+        .await
+    {
+        Ok((conversation_id, recipient_id)) => {
+            ws_server.do_send(ClientMessage::BroadcastDirectMessageReactionRemoved {
+                conversation_id,
+                message_id,
+                user_id,
+                recipient_id,
+                emoji,
             });
             HttpResponse::NoContent().finish()
         }
@@ -265,7 +342,15 @@ pub async fn send_message(
     let conversation_id = path.into_inner();
     let sender_username = user.username.clone().unwrap_or_default();
     let svc = DirectMessageService::new(mongo.get_ref(), pg.get_ref());
-    send_message_with_service(&svc, ws_server.get_ref(), conversation_id, user.user_id, sender_username, &body).await
+    send_message_with_service(
+        &svc,
+        ws_server.get_ref(),
+        conversation_id,
+        user.user_id,
+        sender_username,
+        &body,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -323,14 +408,54 @@ pub async fn delete_message(
     delete_message_with_service(&svc, ws_server.get_ref(), message_id, user.user_id).await
 }
 
+pub async fn add_reaction(
+    pg: web::Data<PgPool>,
+    mongo: web::Data<Database>,
+    ws_server: web::Data<Addr<WsServer>>,
+    user: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    body: web::Json<ReactionRequest>,
+) -> impl Responder {
+    let message_id = path.into_inner();
+    let svc = DirectMessageService::new(mongo.get_ref(), pg.get_ref());
+    add_reaction_with_service(&svc, ws_server.get_ref(), user.user_id, message_id, &body).await
+}
+
+pub async fn remove_reaction(
+    pg: web::Data<PgPool>,
+    mongo: web::Data<Database>,
+    ws_server: web::Data<Addr<WsServer>>,
+    user: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    body: web::Json<ReactionRequest>,
+) -> impl Responder {
+    let message_id = path.into_inner();
+    let svc = DirectMessageService::new(mongo.get_ref(), pg.get_ref());
+    remove_reaction_with_service(&svc, ws_server.get_ref(), user.user_id, message_id, &body).await
+}
+
 pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/dm")
             .route("/conversations", web::post().to(start_conversation))
             .route("/conversations", web::get().to(list_conversations))
-            .route("/conversations/{conversation_id}/messages", web::get().to(get_messages))
-            .route("/conversations/{conversation_id}/messages", web::post().to(send_message))
+            .route(
+                "/conversations/{conversation_id}/messages",
+                web::get().to(get_messages),
+            )
+            .route(
+                "/conversations/{conversation_id}/messages",
+                web::post().to(send_message),
+            )
             .route("/messages/{message_id}", web::put().to(update_message))
-            .route("/messages/{message_id}", web::delete().to(delete_message)),
+            .route("/messages/{message_id}", web::delete().to(delete_message))
+            .route(
+                "/messages/{message_id}/reactions",
+                web::post().to(add_reaction),
+            )
+            .route(
+                "/messages/{message_id}/reactions",
+                web::delete().to(remove_reaction),
+            ),
     );
 }

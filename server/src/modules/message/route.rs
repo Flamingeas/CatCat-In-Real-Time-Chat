@@ -3,14 +3,14 @@ use actix_web::{web, HttpResponse, Responder};
 use mongodb::Database;
 use sqlx::Error;
 use sqlx::PgPool;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
-use utoipa::{ToSchema, IntoParams};
 
+use super::service::{MessageService, ServiceError};
 use crate::models::message::{CreateMessage, MessageResponse, UpdateMessage};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::websocket::server::{ClientMessage, WsServer};
-use super::service::{MessageService, ServiceError};
 use crate::websocket::session::OutgoingMessage;
 
 #[utoipa::path(
@@ -37,7 +37,14 @@ pub async fn send_message(
 ) -> impl Responder {
     let channel_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-    send_message_with_service(&service, ws_server.get_ref(), user.user_id, channel_id, &data).await
+    send_message_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        channel_id,
+        &data,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -97,7 +104,14 @@ pub async fn update_message(
 
     log::info!("Calling update_message_with_service");
 
-    update_message_with_service(&service, ws_server.get_ref(), user.user_id, message_id, &data).await
+    update_message_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        message_id,
+        &data,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -205,8 +219,7 @@ fn build_new_message_event(message: &MessageResponse) -> ClientMessage {
         user_id: message.user_id,
         username: message.username.clone(),
         content: message.content.clone(),
-        created_at: message.created_at
-            .to_rfc3339(),
+        created_at: message.created_at.to_rfc3339(),
     }
 }
 
@@ -291,7 +304,12 @@ fn build_updated_message_event(message: &MessageResponse) -> ClientMessage {
         channel_id: message.channel_id,
         message_id: message.message_id,
         content: message.content.clone(),
-        updated_at: message.updated_at.unwrap_or(message.created_at).to_rfc3339().parse().unwrap(),
+        updated_at: message
+            .updated_at
+            .unwrap_or(message.created_at)
+            .to_rfc3339()
+            .parse()
+            .unwrap(),
     }
 }
 async fn update_message_with_service(
@@ -340,7 +358,9 @@ async fn delete_message_with_service(
 ) -> HttpResponse {
     match service.delete_message(user_id, message_id).await {
         Ok((server_id, channel_id, message_id)) => {
-            ws_server.do_send(build_deleted_message_event(server_id, channel_id, message_id));
+            ws_server.do_send(build_deleted_message_event(
+                server_id, channel_id, message_id,
+            ));
             no_content_response()
         }
         Err(e) => handle_service_error(e),
@@ -368,9 +388,14 @@ async fn add_reaction_with_service(
         Err(error_message) => return bad_request_response(error_message),
     };
 
-    match service.add_reaction(user_id, message_id, emoji.clone()).await {
+    match service
+        .add_reaction(user_id, message_id, emoji.clone())
+        .await
+    {
         Ok((_server_id, channel_id, message_id)) => {
-            ws_server.do_send(build_reaction_event(true, channel_id, message_id, user_id, emoji));
+            ws_server.do_send(build_reaction_event(
+                true, channel_id, message_id, user_id, emoji,
+            ));
             no_content_response()
         }
         Err(e) => handle_service_error(e),
@@ -389,9 +414,14 @@ async fn remove_reaction_with_service(
         Err(error_message) => return bad_request_response(error_message),
     };
 
-    match service.remove_reaction(user_id, message_id, emoji.clone()).await {
+    match service
+        .remove_reaction(user_id, message_id, emoji.clone())
+        .await
+    {
         Ok((_server_id, channel_id, message_id)) => {
-            ws_server.do_send(build_reaction_event(false, channel_id, message_id, user_id, emoji));
+            ws_server.do_send(build_reaction_event(
+                false, channel_id, message_id, user_id, emoji,
+            ));
             no_content_response()
         }
         Err(e) => handle_service_error(e),
@@ -408,7 +438,14 @@ pub async fn add_reaction(
 ) -> impl Responder {
     let message_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-    add_reaction_with_service(&service, ws_server.get_ref(), user.user_id, message_id, &data).await
+    add_reaction_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        message_id,
+        &data,
+    )
+    .await
 }
 
 pub async fn remove_reaction(
@@ -421,7 +458,14 @@ pub async fn remove_reaction(
 ) -> impl Responder {
     let message_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-    remove_reaction_with_service(&service, ws_server.get_ref(), user.user_id, message_id, &data).await
+    remove_reaction_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        message_id,
+        &data,
+    )
+    .await
 }
 
 fn handle_service_error(error: ServiceError) -> HttpResponse {

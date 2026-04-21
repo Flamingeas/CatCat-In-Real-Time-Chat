@@ -1,6 +1,6 @@
-use uuid::Uuid;
-use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse};
 use super::repository::UserRepository;
+use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse};
+use uuid::Uuid;
 
 pub struct UserService {
     repository: UserRepository,
@@ -22,7 +22,10 @@ impl UserService {
         Ok(user.to_response())
     }
 
-    pub async fn get_public_profile(&self, user_id: Uuid) -> Result<UserPublicResponse, ServiceError> {
+    pub async fn get_public_profile(
+        &self,
+        user_id: Uuid,
+    ) -> Result<UserPublicResponse, ServiceError> {
         let user = self
             .repository
             .find_by_id(user_id)
@@ -33,7 +36,11 @@ impl UserService {
         Ok(user.to_public_response())
     }
 
-    pub async fn list_users(&self, page: i64, per_page: i64) -> Result<UserListResponse, ServiceError> {
+    pub async fn list_users(
+        &self,
+        page: i64,
+        per_page: i64,
+    ) -> Result<UserListResponse, ServiceError> {
         let per_page = per_page.min(100).max(1);
         let page = page.max(1);
         let offset = (page - 1) * per_page;
@@ -50,10 +57,8 @@ impl UserService {
             .await
             .map_err(ServiceError::Database)?;
 
-        let users: Vec<UserPublicResponse> = users
-            .into_iter()
-            .map(|u| u.to_public_response())
-            .collect();
+        let users: Vec<UserPublicResponse> =
+            users.into_iter().map(|u| u.to_public_response()).collect();
 
         Ok(UserListResponse {
             users,
@@ -64,7 +69,11 @@ impl UserService {
         })
     }
 
-    pub async fn update_profile(&self, user_id: Uuid, mut data: UpdateUser) -> Result<UserResponse, ServiceError> {
+    pub async fn update_profile(
+        &self,
+        user_id: Uuid,
+        mut data: UpdateUser,
+    ) -> Result<UserResponse, ServiceError> {
         if let Some(ref username) = data.username {
             if let Some(existing) = self
                 .repository

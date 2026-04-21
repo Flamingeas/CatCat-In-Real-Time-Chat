@@ -1,16 +1,18 @@
 use chrono::DateTime;
 use futures::stream::TryStreamExt;
 use mongodb::{
-    bson::{doc, Binary},
-    bson::spec::BinarySubtype,
     Database,
+    bson::spec::BinarySubtype,
+    bson::{Binary, doc},
 };
 use uuid::Uuid;
 
 use crate::models::direct_message::DirectMessage;
 
 fn uuid_bin(id: Uuid) -> Binary {
-    Binary { subtype: BinarySubtype::Generic, bytes: id.as_bytes().to_vec(),
+    Binary {
+        subtype: BinarySubtype::Generic,
+        bytes: id.as_bytes().to_vec(),
     }
 }
 pub struct DirectMessageRepository<'a> {
@@ -31,7 +33,13 @@ impl<'a> DirectMessageRepository<'a> {
         recipient_id: Uuid,
         content: String,
     ) -> Result<DirectMessage, mongodb::error::Error> {
-        let dm = DirectMessage::new(conversation_id, sender_id, sender_username, recipient_id, content);
+        let dm = DirectMessage::new(
+            conversation_id,
+            sender_id,
+            sender_username,
+            recipient_id,
+            content,
+        );
         self.collection().insert_one(&dm).await?;
         Ok(dm)
     }
@@ -105,6 +113,87 @@ impl<'a> DirectMessageRepository<'a> {
         let filter = doc! { "message_id": uuid_bin(message_id) };
         let update = doc! { "$set": { "deleted_at": BsonDateTime::now() } };
         self.collection().update_one(filter, update).await?;
+        Ok(())
+    }
+
+    pub async fn add_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), mongodb::error::Error> {
+        let existing_reaction_filter = doc! {
+            "message_id": uuid_bin(message_id),
+            "reactions.emoji": emoji
+        };
+        let add_user_update = doc! {
+            "$addToSet": {
+                "reactions.$.users": uuid_bin(user_id)
+            }
+        };
+
+        let result = self
+            .collection()
+            .update_one(existing_reaction_filter, add_user_update)
+            .await?;
+
+        if result.matched_count > 0 {
+            return Ok(());
+        }
+
+        let new_reaction_filter = doc! {
+            "message_id": uuid_bin(message_id)
+        };
+        let new_reaction_update = doc! {
+            "$push": {
+                "reactions": {
+                    "emoji": emoji,
+                    "users": [uuid_bin(user_id)]
+                }
+            }
+        };
+
+        self.collection()
+            .update_one(new_reaction_filter, new_reaction_update)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), mongodb::error::Error> {
+        let remove_user_filter = doc! {
+            "message_id": uuid_bin(message_id),
+            "reactions.emoji": emoji
+        };
+        let remove_user_update = doc! {
+            "$pull": {
+                "reactions.$.users": uuid_bin(user_id)
+            }
+        };
+
+        self.collection()
+            .update_one(remove_user_filter, remove_user_update)
+            .await?;
+
+        let remove_empty_filter = doc! {
+            "message_id": uuid_bin(message_id)
+        };
+        let remove_empty_update = doc! {
+            "$pull": {
+                "reactions": {
+                    "emoji": emoji,
+                    "users": []
+                }
+            }
+        };
+
+        self.collection()
+            .update_one(remove_empty_filter, remove_empty_update)
+            .await?;
         Ok(())
     }
 }

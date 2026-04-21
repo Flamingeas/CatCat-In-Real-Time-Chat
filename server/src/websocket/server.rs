@@ -25,8 +25,14 @@ pub struct Disconnect {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub enum ClientMessage {
-    JoinServer { user_id: Uuid, server_id: Uuid },
-    LeaveServer { user_id: Uuid, server_id: Uuid },
+    JoinServer {
+        user_id: Uuid,
+        server_id: Uuid,
+    },
+    LeaveServer {
+        user_id: Uuid,
+        server_id: Uuid,
+    },
 
     ChannelCreated {
         server_id: Uuid,
@@ -133,13 +139,33 @@ pub enum ClientMessage {
         sender_id: Uuid,
         recipient_id: Uuid,
     },
+
+    BroadcastDirectMessageReactionAdded {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        recipient_id: Uuid,
+        emoji: String,
+    },
+
+    BroadcastDirectMessageReactionRemoved {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        recipient_id: Uuid,
+        emoji: String,
+    },
 }
 
 #[derive(Message)]
 #[rtype(result = "()")]
 pub enum ServerEvent {
-    ServerDeleted { server_id: Uuid },
-    ServerUpdated { server_id: Uuid },
+    ServerDeleted {
+        server_id: Uuid,
+    },
+    ServerUpdated {
+        server_id: Uuid,
+    },
     MemberJoined {
         server_id: Uuid,
         user_id: Uuid,
@@ -252,7 +278,10 @@ impl Handler<Connect> for WsServer {
     type Result = ();
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) {
-        self.sessions.entry(msg.user_id).or_default().insert(msg.addr);
+        self.sessions
+            .entry(msg.user_id)
+            .or_default()
+            .insert(msg.addr);
         self.usernames.insert(msg.user_id, msg.username.clone());
 
         for server_id in msg.server_ids {
@@ -335,7 +364,10 @@ impl Handler<ClientMessage> for WsServer {
     fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>) {
         match msg {
             ClientMessage::JoinServer { user_id, server_id } => {
-                self.server_rooms.entry(server_id).or_default().insert(user_id);
+                self.server_rooms
+                    .entry(server_id)
+                    .or_default()
+                    .insert(user_id);
 
                 let username = self.username_of(user_id);
 
@@ -605,6 +637,40 @@ impl Handler<ClientMessage> for WsServer {
                 self.send_to(recipient_id, msg);
             }
 
+            ClientMessage::BroadcastDirectMessageReactionAdded {
+                conversation_id,
+                message_id,
+                user_id,
+                recipient_id,
+                emoji,
+            } => {
+                let msg = OutgoingMessage::DirectMessageReactionAdded {
+                    conversation_id,
+                    message_id,
+                    user_id,
+                    emoji,
+                };
+                self.send_to(user_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::BroadcastDirectMessageReactionRemoved {
+                conversation_id,
+                message_id,
+                user_id,
+                recipient_id,
+                emoji,
+            } => {
+                let msg = OutgoingMessage::DirectMessageReactionRemoved {
+                    conversation_id,
+                    message_id,
+                    user_id,
+                    emoji,
+                };
+                self.send_to(user_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
             ClientMessage::StatusChange {
                 user_id,
                 username,
@@ -836,7 +902,7 @@ mod tests {
         let addr = TestClient {
             inbox: inbox.clone(),
         }
-            .start();
+        .start();
         (addr.recipient(), inbox)
     }
 

@@ -1,6 +1,8 @@
 import { MessageList } from "@/components/chat/MessageList";
+import { GifPicker } from "@/components/chat/GifPicker";
 import { UserPlusIcon } from "@/components/icons";
 import { Channel, Message, Server } from "@/types/chat";
+import { useState } from "react";
 import type { KeyboardEvent, RefObject } from "react";
 
 interface User {
@@ -34,6 +36,7 @@ interface ChannelChatPanelProps {
     messagesEndRef: RefObject<HTMLDivElement | null>;
     onLoadMoreMessages: () => void;
     onSendMessage: () => void;
+    onSendGif: (gifUrl: string) => void;
     onEditMessage: (id: string, content: string) => void;
     onDeleteMessage: (id: string) => void;
     onToggleReaction: (messageId: string, emoji: string, hasReacted: boolean) => void;
@@ -71,6 +74,7 @@ export function ChannelChatPanel({
     messagesEndRef,
     onLoadMoreMessages,
     onSendMessage,
+    onSendGif,
     onEditMessage,
     onDeleteMessage,
     onToggleReaction,
@@ -81,7 +85,9 @@ export function ChannelChatPanel({
     onCreateChannel,
     onSendTyping,
 }: ChannelChatPanelProps) {
+    const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
     const canSendMessage = selectedServerId && selectedChannelId && messageText.trim();
+    const canSendGif = Boolean(selectedServerId && selectedChannelId && !isSending);
 
     return (
         <>
@@ -224,7 +230,23 @@ export function ChannelChatPanel({
 
             <div className="p-6 pt-2 border-t border-[#ffffff]/5">
                 {typingLabel && <div className="px-6 pb-2 text-xs text-[#DCCBC4]/50 font-[family-name:var(--font-nunito)]">{typingLabel}</div>}
-                <div className="bg-[#1E1211] rounded-full flex items-center px-6 py-3 border border-[#ffffff]/5">
+                <div className="relative bg-[#1E1211] rounded-full flex items-center px-6 py-3 border border-[#ffffff]/5">
+                    <button
+                        type="button"
+                        onClick={() => setIsGifPickerOpen((current) => !current)}
+                        disabled={!canSendGif}
+                        className={[
+                            "mr-3 text-sm font-bold transition-colors",
+                            canSendGif ? "text-[#DCCBC4]/60 hover:text-[#EB5E28] cursor-pointer" : "text-[#DCCBC4]/30 cursor-not-allowed",
+                        ].join(" ")}
+                    >
+                        GIF
+                    </button>
+                    <GifPicker
+                        isOpen={isGifPickerOpen}
+                        onClose={() => setIsGifPickerOpen(false)}
+                        onSelectGif={onSendGif}
+                    />
                     <input
                         type="text"
                         value={messageText}

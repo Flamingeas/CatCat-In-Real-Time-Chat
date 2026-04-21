@@ -101,6 +101,31 @@ export function useChannelMessages({
         }
     }
 
+    async function sendGifMessage(gifUrl: string) {
+        if (!selectedChannelId || !gifUrl.trim()) return;
+
+        try {
+            setIsSending(true);
+            const created = await api<Message>(`/api/channels/${String(selectedChannelId)}/messages`, {
+                method: "POST",
+                body: JSON.stringify({ content: gifUrl.trim() }),
+            });
+
+            setMessages((prev) => {
+                if (prev.some((message) => String(message.message_id) === String(created.message_id))) return prev;
+                return [...prev, created].sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+            });
+
+            window.setTimeout(() => {
+                messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+            }, 0);
+        } catch {
+            pushToast("Envoi du GIF refusé", "warn");
+        } finally {
+            setIsSending(false);
+        }
+    }
+
     async function editMessage(messageId: string, newContent: string) {
         if (!newContent.trim()) {
             alert("Le message ne peut pas être vide");
@@ -328,6 +353,7 @@ export function useChannelMessages({
         clearMessages,
         loadMoreMessages,
         sendMessage,
+        sendGifMessage,
         editMessage,
         deleteMessage,
         toggleReaction,
