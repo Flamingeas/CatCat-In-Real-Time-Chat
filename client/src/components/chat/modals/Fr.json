@@ -1,0 +1,96 @@
+{
+  "modals": {
+    "common": {
+      "cancel": "Annuler",
+      "close": "✕"
+    },
+    "temporaryBan": {
+      "title": "Bannir temporairement",
+      "userLabel": "Utilisateur : {username}",
+      "durationLabel": "Durée du bannissement",
+      "durations": {
+        "5": "5 minutes",
+        "15": "15 minutes",
+        "30": "30 minutes",
+        "60": "1 heure",
+        "180": "3 heures",
+        "720": "12 heures",
+        "1440": "24 heures",
+        "10080": "7 jours"
+      },
+      "banButton": "Confirmer",
+      "banningButton": "Bannissement..."
+    },
+    "serverSettings": {
+      "title": "Paramètres du serveur",
+      "serverLabel": "Serveur: {name}",
+      "renameSection": {
+        "title": "Renommer le serveur",
+        "nameLabel": "Nom",
+        "saveButton": "Sauvegarder",
+        "savingButton": "Sauvegarde..."
+      },
+      "deleteSection": {
+        "title": "Supprimer le serveur",
+        "description": "Cette action est {highlight}. Même s'il y a des membres dedans.",
+        "irreversible": "irréversible",
+        "confirmHint": "Tape {word} pour confirmer",
+        "confirmWord": "DELETE",
+        "confirmPlaceholder": "DELETE",
+        "deleteButton": "Supprimer",
+        "deletingButton": "Suppression..."
+      }
+    },
+    "leaveServer": {
+      "title": "Quitter le serveur",
+      "serverLabel": "Serveur: {name}",
+      "description": "Tu vas quitter ce serveur. Tu pourras le rejoindre de nouveau uniquement avec un code d'invitation.",
+      "leaveButton": "Quitter",
+      "leavingButton": "Quitte..."
+    },
+    "joinServer": {
+      "title": "Rejoindre un serveur",
+      "codeLabel": "Code d'invitation",
+      "codePlaceholder": "ex: 7F2K9A1B",
+      "joinButton": "Rejoindre",
+      "joiningButton": "Rejoindre..."
+    },
+    "inviteMember": {
+      "title": "Inviter un membre",
+      "serverLabel": "Serveur: {name}",
+      "inviteSection": {
+        "title": "Code d'invitation",
+        "description": "Partage ce code à ton pote.",
+        "copyButton": "Copier",
+        "copiedButton": "Copié",
+        "noCodeError": "Aucun code d'invitation disponible.",
+        "clipboardError": "Impossible de copier. Sélectionne le texte et fais Ctrl+C."
+      },
+      "tip": "Tip: tu peux aussi coller ce code dans \"Rejoindre un serveur\"."
+    },
+    "createServer": {
+      "title": "Créer un serveur",
+      "nameLabel": "Nom du serveur",
+      "namePlaceholder": "ex: CatCat Dev Server",
+      "createButton": "Créer",
+      "creatingButton": "Création..."
+    },
+    "channelEdit": {
+      "title": "Renommer le salon",
+      "nameLabel": "Nom du salon",
+      "namePlaceholder": "ex: general",
+      "saveButton": "Sauvegarder",
+      "savingButton": "Sauvegarde..."
+    },
+    "channelCreate": {
+      "title": "Créer un salon",
+      "nameLabel": "Nom du salon",
+      "namePlaceholder": "ex: general",
+      "createButton": "Créer",
+      "creatingButton": "Création..."
+    },
+    "bannedUsers": {
+      "title": "Utilisateurs bannis"
+    }
+  }
+}

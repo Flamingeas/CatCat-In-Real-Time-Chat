@@ -1,0 +1,312 @@
+{
+  "nav": {
+    "login": "Sign in / Sign up",
+    "goToChat": "Go to chat",
+    "logout": "Log out"
+  },
+  "hero": {
+    "title": "The most",
+    "titleHighlight": "chill",
+    "titleEnd": "corner of the Internet.",
+    "description": "Far from the noise and hustle of classic social networks. CatCat is a space designed for genuine discussion, authentic sharing, and creativity. Take your time, connect with those who inspire you, and finally feel at home.",
+    "cta": "Sign in / Sign up",
+    "ctaAuthed": "Go to chat"
+  },
+  "authModal": {
+    "close": "Close",
+    "login": {
+      "title": "Welcome back!",
+      "subtitle": "Ready to purr?"
+    },
+    "register": {
+      "title": "Join the pack!",
+      "subtitle": "Create your space in seconds."
+    },
+    "fields": {
+      "username": {
+        "placeholder": "Your username",
+        "error": "Username must be at least 3 characters."
+      },
+      "email": {
+        "placeholder": "Your email address",
+        "error": "Invalid email (e.g. name@domain.com)."
+      },
+      "password": {
+        "placeholder": "Your password",
+        "error": "Password too short (8 characters minimum)."
+      }
+    },
+    "submit": {
+      "loading": "Loading...",
+      "login": "Sign in",
+      "register": "Create my account",
+      "invalidFields": "Please check your fields: some are invalid."
+    },
+    "footer": {
+      "noAccount": "Don't have an account? ",
+      "signUp": "Sign up",
+      "alreadyMember": "Already a member? ",
+      "signIn": "Sign in"
+    }
+  },
+  "chat": {
+    "sidebar": {
+      "dmButton": "Direct messages",
+      "createServer": "Create a server",
+      "joinServer": "Join a server"
+    },
+    "channels": {
+      "title": "Channels",
+      "noServer": "Select / create a server.",
+      "noChannels": "No channels.",
+      "createTooltipAllowed": "Create a channel",
+      "createTooltipForbidden": "Owner/admin only",
+      "createTooltipNoServer": "Select a server",
+      "renameChannel": "Rename channel",
+      "deleteChannel": "Delete",
+      "deleteConfirm": "Delete channel #{name}?"
+    },
+    "members": {
+      "title": "Members",
+      "noServer": "Select a server.",
+      "noMembers": "No members.",
+      "online": "Online",
+      "offline": "Offline",
+      "typing": "Typing…",
+      "bannedUsers": "Banned users",
+      "dmButton": "Send a message to @{username}"
+    },
+    "header": {
+      "noServer": "Chat",
+      "currentChannel": "Current channel:",
+      "noChannel": "No channel selected",
+      "inviteButton": "Invite",
+      "inviteTooltipAllowed": "Invite a member",
+      "inviteTooltipForbidden": "Only owners/admins can invite",
+      "inviteTooltipNoServer": "Select a server",
+      "serverSettings": "Server settings",
+      "leaveServer": "Leave server"
+    },
+    "messages": {
+      "loading": "Loading...",
+      "loadingMessages": "Loading messages...",
+      "count": "{count} message(s)",
+      "loadMore": "Load more",
+      "loadingMore": "Loading...",
+      "noMessages": "No messages yet.",
+      "deleted": "message deleted",
+      "edited": "• edited",
+      "me": "me",
+      "editButton": "✏️ Edit",
+      "deleteButton": "🗑 Delete",
+      "deleteConfirm": "Delete this message?",
+      "savingEdit": "Save",
+      "cancelEdit": "Cancel",
+      "emptyCannotEdit": "Message cannot be empty",
+      "addReaction": "Add a reaction",
+      "addReactionButton": "+ react",
+      "removeReaction": "Remove your reaction",
+      "reactAlso": "React too"
+    },
+    "emptyStates": {
+      "noServerTitle": "Choose a server",
+      "noServerDesc": "Select a server on the left, or create one with the {button} button.",
+      "noChannelsTitle": "No channels yet",
+      "noChannelsDesc": "Create your first channel to start chatting. (e.g. {example})",
+      "createFirstChannel": "Create my first channel",
+      "createFirstChannelForbidden": "Ask the owner/admin to create a channel.",
+      "noChannelSelectedTitle": "Choose a channel",
+      "noChannelSelectedDesc": "Select a channel from the left column."
+    },
+    "input": {
+      "placeholderRestricted": "You are temporarily excluded from this server",
+      "placeholderChannel": "Message in #{channel}…",
+      "placeholderNoChannel": "Choose a channel to start…",
+      "send": "Send"
+    },
+    "dm": {
+      "title": "Direct messages",
+      "noConversations": "No conversations.",
+      "selectConversation": "Select a conversation",
+      "selectConversationDesc": "Choose a conversation on the left or start a new one with the {button} button.",
+      "loadingMessages": "Loading messages...",
+      "noMessages": "No messages yet.",
+      "count": "{count} message(s)",
+      "loadMore": "Load more",
+      "loadingMore": "Loading...",
+      "inputPlaceholderActive": "Send a message…",
+      "inputPlaceholderInactive": "Select a conversation…",
+      "savingEdit": "Save",
+      "cancelEdit": "Cancel"
+    },
+    "newDm": {
+      "title": "New conversation",
+      "usernamePlaceholder": "Username",
+      "notFound": "User not found.",
+      "start": "Start",
+      "starting": "Starting...",
+      "cancel": "Cancel",
+      "errorGeneric": "Unable to start conversation."
+    },
+    "modals": {
+      "createServer": {
+        "title": "Create a server",
+        "label": "Server name",
+        "placeholder": "e.g. CatCat Dev Server",
+        "cancel": "Cancel",
+        "submit": "Create",
+        "submitting": "Creating...",
+        "errorMinLength": "Name must be at least 3 characters.",
+        "errorMaxLength": "Name must be at most 50 characters."
+      },
+      "joinServer": {
+        "title": "Join a server",
+        "label": "Invitation code",
+        "placeholder": "e.g. 7F2K9A1B",
+        "cancel": "Cancel",
+        "submit": "Join",
+        "submitting": "Joining...",
+        "errorLength": "Code must be 8 characters.",
+        "errorGeneric": "Unable to join this server."
+      },
+      "createChannel": {
+        "title": "Create a channel",
+        "label": "Channel name",
+        "placeholder": "e.g. general",
+        "cancel": "Cancel",
+        "submit": "Create",
+        "submitting": "Creating...",
+        "errorMinLength": "Name must be at least 3 characters.",
+        "errorMaxLength": "Name must be at most 50 characters."
+      },
+      "editChannel": {
+        "title": "Rename channel",
+        "label": "Channel name",
+        "placeholder": "e.g. general",
+        "cancel": "Cancel",
+        "submit": "Save",
+        "submitting": "Saving...",
+        "errorMinLength": "Name must be at least 3 characters.",
+        "errorMaxLength": "Name must be at most 50 characters."
+      },
+      "invite": {
+        "title": "Invite a member",
+        "serverLabel": "Server:",
+        "codeTitle": "Invitation code",
+        "codeDesc": "Share this code with a friend.",
+        "copy": "Copy",
+        "copied": "Copied",
+        "tip": "Tip: you can also paste this code in \"Join a server\".",
+        "errorNoCode": "No invitation code available.",
+        "errorCopy": "Unable to copy. Select the text and press Ctrl+C."
+      },
+      "serverSettings": {
+        "title": "Server settings",
+        "serverLabel": "Server:",
+        "renameTitle": "Rename server",
+        "renameLabel": "Name",
+        "save": "Save",
+        "saving": "Saving...",
+        "deleteTitle": "Delete server",
+        "deleteWarning": "This action is {irreversible}. Even if there are members in it.",
+        "deleteIrreversible": "irreversible",
+        "deleteInstruction": "Type {keyword} to confirm",
+        "deletePlaceholder": "DELETE",
+        "deleteSubmit": "Delete",
+        "deleteSubmitting": "Deleting...",
+        "errorMinLength": "Name must be at least 3 characters.",
+        "errorMaxLength": "Name must be at most 50 characters.",
+        "errorDeleteConfirm": "Type DELETE to confirm deletion."
+      },
+      "leaveServer": {
+        "title": "Leave server",
+        "serverLabel": "Server:",
+        "description": "You are about to leave this server. You can only rejoin with an invitation code.",
+        "cancel": "Cancel",
+        "submit": "Leave",
+        "submitting": "Leaving...",
+        "errorGeneric": "Unable to leave the server."
+      },
+      "temporaryBan": {
+        "title": "Temporary ban",
+        "userLabel": "User:",
+        "durationLabel": "Ban duration",
+        "duration5": "5 minutes",
+        "duration15": "15 minutes",
+        "duration30": "30 minutes",
+        "duration60": "1 hour",
+        "duration180": "3 hours",
+        "duration720": "12 hours",
+        "duration1440": "24 hours",
+        "duration10080": "7 days",
+        "cancel": "Cancel",
+        "submit": "Confirm",
+        "submitting": "Banning..."
+      },
+      "bans": {
+        "title": "Banned users"
+      }
+    },
+    "toasts": {
+      "ownerChanged": "Owner updated",
+      "actionForbidden": "Action denied",
+      "channelCreated": "Channel #{name} created",
+      "channelDeleted": "Channel deleted",
+      "channelUpdated": "Channel updated",
+      "memberJoined": "{username} joined the server",
+      "memberLeft": "{username} left the server",
+      "memberKickedSelf": "You have been kicked from the server",
+      "memberKickedOther": "{username} was kicked",
+      "memberBannedSelf": "You have been banned from the server",
+      "memberBannedOther": "{username} was banned",
+      "memberUnbanned": "{username} was unbanned",
+      "memberTempBannedSelf": "You have been temporarily excluded ({duration})",
+      "memberTempBannedSelfNoDuration": "You have been temporarily excluded from the server",
+      "memberTempBannedOther": "{username} was temporarily excluded",
+      "tempBanLiftedSelf": "Your temporary exclusion is over",
+      "tempBanLiftedOther": "{username} can access the server again",
+      "serverDeleted": "Server deleted",
+      "serverUpdated": "Server updated",
+      "userOnline": "{username} is online",
+      "userOffline": "{username} is offline",
+      "roleAdmin": "Admin added",
+      "roleOwner": "Owner updated",
+      "roleMember": "Admin removed",
+      "memberIsNowRole": "{username} is now {role}",
+      "messageEdited": "Message edited",
+      "messageDeleted": "Message deleted",
+      "editForbidden": "Edit denied",
+      "deleteForbidden": "Delete denied",
+      "sendForbidden": "Send denied",
+      "loadMoreError": "Unable to load more",
+      "dmError": "Unable to start conversation.",
+      "newDmFrom": "New message from {username}",
+      "serverJoined": "You joined {name}",
+      "leftServer": "You left the server",
+      "accessForbidden403Members": "Access denied to members (403)",
+      "notFound404Members": "Server not found (404)",
+      "accessForbidden403Channels": "Access denied to channels (403)",
+      "notFound404Channels": "Channels not found (404)"
+    },
+    "restrictedOverlay": {
+      "title": "Access temporarily restricted",
+      "description": "You are excluded from this server for X more minutes.",
+      "back": "Back"
+    },
+    "typing": {
+      "one": "{user} is typing…",
+      "two": "{user1} and {user2} are typing…",
+      "many": "{user1}, {user2} and {count} others are typing…"
+    },
+    "channelDates": {
+      "createdAt": "Created on {date}",
+      "updatedAt": "Updated on {date}"
+    },
+    "reactions": {
+      "add": "Add a reaction",
+      "remove": "Remove your reaction",
+      "reactToo": "React too",
+      "button": "+ reaction"
+    }
+  }
+}
