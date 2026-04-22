@@ -6,9 +6,14 @@ export default getRequestConfig(async () => {
   const locale = cookieStore.get("locale")?.value ?? "fr";
   const validLocales = ["fr", "en"];
   const resolvedLocale = validLocales.includes(locale) ? locale : "fr";
+  const componentMessages = (await import(`../app/components/${resolvedLocale}.json`)).default;
+  const chatMessages = (await import(`../app/chat/${resolvedLocale}.json`)).default;
 
   return {
     locale: resolvedLocale,
-    messages: (await import(`../app/components/${resolvedLocale}.json`)).default,
+    messages: {
+      ...componentMessages,
+      ...chatMessages,
+    },
   };
 });
