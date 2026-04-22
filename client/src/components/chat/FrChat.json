@@ -1,0 +1,93 @@
+{
+  "serverList": {
+    "logoAlt": "Logo CatCat",
+    "directMessagesTitle": "Messages directs",
+    "createServerTitle": "Créer un serveur",
+    "joinServerTitle": "Rejoindre un serveur",
+    "badgeOverflow": "99+"
+  },
+  "serverChannelsSidebar": {
+    "noServer": "Aucun serveur",
+    "serverSettingsTitle": "Paramètres du serveur",
+    "leaveServerTitle": "Quitter le serveur"
+  },
+  "channelList": {
+    "sectionTitle": "Salons",
+    "createChannelTitle": "Créer un salon",
+    "createChannelDisabledNoServer": "Sélectionne un serveur",
+    "createChannelDisabledNoPermission": "Seuls owner/admin",
+    "noServerMessage": "Sélectionne / crée un serveur.",
+    "noChannels": "Aucun salon.",
+    "renameChannelTitle": "Renommer le salon",
+    "deleteChannelTitle": "Supprimer",
+    "deleteChannelConfirm": "Supprimer le salon #{name} ?"
+  },
+  "membersSidebar": {
+    "title": "Membres",
+    "noServerMessage": "Sélectionne un serveur.",
+    "noMembers": "Aucun membre.",
+    "ownerBadgeTitle": "Owner",
+    "adminBadge": "admin",
+    "sendDmTitle": "Envoyer un message à @{username}",
+    "actionsTitle": "Actions",
+    "status": {
+      "typing": "Écrit…",
+      "online": "En ligne",
+      "offline": "Hors ligne"
+    },
+    "bannedUsersButton": "Utilisateurs bannis"
+  },
+  "gifPicker": {
+    "searchPlaceholder": "Rechercher un GIF...",
+    "noResults": "Aucun GIF trouvé",
+    "categories": {
+      "trending": "Tendances",
+      "reactions": "Réactions",
+      "memes": "Mèmes",
+      "anime": "Anime",
+      "fail": "Fail"
+    }
+  },
+  "gifMessage": {
+    "alt": "GIF"
+  },
+  "channelChatPanel": {
+    "defaultTitle": "Chat",
+    "currentChannel": "Salon actuel: #{name}",
+    "noChannelSelected": "Aucun salon sélectionné",
+    "inviteButton": "Inviter",
+    "inviteTitle": "Inviter un membre",
+    "inviteDisabledNoServer": "Sélectionne un serveur",
+    "inviteDisabledNoPermission": "Seuls les proprio/admins peuvent inviter",
+    "channelCreatedLabel": "Créé le {date}",
+    "channelUpdatedLabel": "Mis à jour le {date}",
+    "noServerState": {
+      "title": "Choisis un serveur",
+      "description": "Sélectionne un serveur à gauche, ou crée-en un avec le bouton {icon}."
+    },
+    "noChannelsState": {
+      "title": "Aucun salon pour l'instant",
+      "description": "Crée ton premier salon pour commencer à discuter. (ex: {example})",
+      "example": "général",
+      "createButton": "Créer mon premier salon",
+      "createButtonTitle": "Créer un salon",
+      "createButtonDisabledTitle": "Seuls les owners/admins peuvent créer un salon",
+      "askAdmin": "Demande au(x) proprio/admin de créer un salon."
+    },
+    "noChannelSelectedState": {
+      "title": "Choisis un salon",
+      "description": "Sélectionne un salon dans la colonne de gauche."
+    },
+    "messages": {
+      "loadMore": "Charger plus",
+      "loadingMore": "Chargement..."
+    },
+    "input": {
+      "placeholderWithChannel": "Message dans #{channel}…",
+      "placeholderNoChannel": "Choisis un salon pour commencer…",
+      "sendTitle": "Envoyer"
+    }
+  }
+}
+
+
