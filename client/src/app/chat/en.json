@@ -1,0 +1,50 @@
+{
+  "chatPage": {
+    "toast": {
+      "ownerTransferred": "Owner transferred",
+      "actionDenied": "Action denied",
+      "memberBannedPermanently": "Member permanently banned",
+      "adminAdded": "Admin added",
+      "adminRemoved": "Admin removed",
+      "memberKicked": "Member kicked",
+      "channelDeleted": "Channel deleted",
+      "deletionDenied": "Deletion denied",
+      "leftServer": "You left the server",
+      "channelCreated": "Channel #{name} created",
+      "channelUpdated": "Channel updated",
+      "memberJoined": "{username} joined the server",
+      "memberLeft": "{username} left the server",
+      "memberNowRole": "{username} is now {role}",
+      "kickedSelf": "You have been kicked from the server",
+      "kickedOther": "{username} was kicked",
+      "serverDeleted": "Server deleted",
+      "serverUpdated": "Server updated",
+      "userOnline": "{username} is online",
+      "userOffline": "{username} is offline",
+      "bannedSelf": "You have been banned from the server",
+      "bannedOther": "{username} was banned",
+      "unbanned": "{username} was unbanned",
+      "tempBannedSelf": "You have been temporarily banned ({duration})",
+      "tempBannedSelfNoDuration": "You have been temporarily banned",
+      "tempBannedOther": "{username} was temporarily banned",
+      "tempBanLiftedSelf": "Your temporary ban has been lifted",
+      "tempBanLiftedOther": "{username} can access the server again"
+    },
+    "errors": {
+      "nameTooShort": "Name must be at least 3 characters.",
+      "nameTooLong": "Name must be at most 50 characters.",
+      "deleteConfirm": "Type DELETE to confirm deletion."
+    },
+    "typing": {
+      "one": "{user} is typing…",
+      "two": "{user1} and {user2} are typing…",
+      "many": "{user1}, {user2} and {count} others are typing…"
+    },
+    "fallbackUsername": "someone",
+    "confirmDeleteMessage": "Delete this message?",
+    "duration": {
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "hours": "{count, plural, one {# hour} other {# hours}}"
+    }
+  }
+}

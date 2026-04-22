@@ -1,0 +1,50 @@
+{
+  "chatPage": {
+    "toast": {
+      "ownerTransferred": "Propriétaire modifié",
+      "actionDenied": "Action refusée",
+      "memberBannedPermanently": "Membre banni définitivement",
+      "adminAdded": "Admin ajouté",
+      "adminRemoved": "Admin retiré",
+      "memberKicked": "Membre expulsé",
+      "channelDeleted": "Salon supprimé",
+      "deletionDenied": "Suppression refusée",
+      "leftServer": "Tu as quitté le serveur",
+      "channelCreated": "Salon #{name} créé",
+      "channelUpdated": "Salon modifié",
+      "memberJoined": "{username} a rejoint le serveur",
+      "memberLeft": "{username} a quitté le serveur",
+      "memberNowRole": "{username} est maintenant {role}",
+      "kickedSelf": "Tu as été expulsé du serveur",
+      "kickedOther": "{username} a été expulsé",
+      "serverDeleted": "Serveur supprimé",
+      "serverUpdated": "Serveur modifié",
+      "userOnline": "{username} est en ligne",
+      "userOffline": "{username} est hors ligne",
+      "bannedSelf": "Tu as été banni du serveur",
+      "bannedOther": "{username} a été banni",
+      "unbanned": "{username} a été débanni",
+      "tempBannedSelf": "Tu as été exclu temporairement ({duration})",
+      "tempBannedSelfNoDuration": "Tu as été exclu temporairement du serveur",
+      "tempBannedOther": "{username} a été exclu temporairement",
+      "tempBanLiftedSelf": "Ton exclusion temporaire est terminée",
+      "tempBanLiftedOther": "{username} peut à nouveau accéder au serveur"
+    },
+    "errors": {
+      "nameTooShort": "Le nom doit faire au moins 3 caractères.",
+      "nameTooLong": "Le nom doit faire maximum 50 caractères.",
+      "deleteConfirm": "Tape DELETE pour confirmer la suppression."
+    },
+    "typing": {
+      "one": "{user} écrit…",
+      "two": "{user1} et {user2} écrivent…",
+      "many": "{user1}, {user2} et {count} autres écrivent…"
+    },
+    "fallbackUsername": "quelqu'un",
+    "confirmDeleteMessage": "Supprimer ce message ?",
+    "duration": {
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "hours": "{count, plural, one {# heure} other {# heures}}"
+    }
+  }
+}
