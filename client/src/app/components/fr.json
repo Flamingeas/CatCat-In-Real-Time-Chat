@@ -12,6 +12,10 @@
     "cta": "Connexion / Inscription",
     "ctaAuthed": "Aller au chat"
   },
+  "metadata": {
+    "title": "CatCat | Le réseau social qui ronronne",
+    "description": "Rejoignez CatCat, l'endroit idéal pour se poser, miauler avec votre bande et partager vos meilleures trouvailles."
+  },
   "authModal": {
     "close": "Fermer",
     "login": {

@@ -12,6 +12,10 @@
     "cta": "Sign in / Sign up",
     "ctaAuthed": "Go to chat"
   },
+  "metadata": {
+    "title": "CatCat | The social network that purrs",
+    "description": "Join CatCat, the perfect place to chill, meow with your crew and share your best finds."
+  },
   "authModal": {
     "close": "Close",
     "login": {

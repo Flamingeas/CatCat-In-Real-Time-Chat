@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 type AuthModalProps = {
     isOpen: boolean;
@@ -27,6 +28,7 @@ function setAuthStorage(token: string, user: unknown) {
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
     const router = useRouter();
+    const t = useTranslations("authModal");
 
     const [isLogin, setIsLogin] = useState(true);
 
@@ -101,7 +103,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
 
         if (!canSubmit) {
             markAllTouched();
-            setErrorMsg("Vérifie les champs : certains sont invalides.");
+            setErrorMsg(t("submit.invalidFields"));
             return;
         }
 
@@ -156,7 +158,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 <button
                     onClick={onClose}
                     className="absolute top-2 right-2 p-2 text-[#DCCBC4] hover:text-[#FF7F50] transition-colors z-10 cursor-pointer"
-                    aria-label="Close"
+                    aria-label={t("close")}
                     type="button"
                 >
                     <svg
@@ -172,10 +174,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </button>
                 <div className="text-center mb-8">
                     <h2 className="font-[family-name:var(--font-cocogoose)] text-2xl text-[#E89E68] mb-2">
-                        {isLogin ? "Bon retour parmi nous !" : "Rejoignez la meute !"}
+                        {isLogin ? t("login.title") : t("register.title")}
                     </h2>
                     <p className="text-[#DCCBC4] text-sm font-[family-name:var(--font-nunito)]">
-                        {isLogin ? "Prêt à ronronner ?" : "Créez votre espace en 2 secondes."}
+                        {isLogin ? t("login.subtitle") : t("register.subtitle")}
                     </p>
                 </div>
                 <form onSubmit={handleSubmit} className="space-y-4 font-[family-name:var(--font-nunito)]">
@@ -186,14 +188,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                                 onChange={(e) => setUsername(e.target.value)}
                                 onBlur={() => setTouched((t) => ({ ...t, username: true }))}
                                 type="text"
-                                placeholder="Votre pseudo"
+                                placeholder={t("fields.username.placeholder")}
                                 className={`${inputBase} ${touched.username && !usernameOk ? borderKo : borderOk}`}
                                 required
                                 minLength={3}
                                 autoComplete="username"
                             />
                             {touched.username && !usernameOk && (
-                                <p className="mt-1 text-xs text-red-300">Le pseudo doit faire au moins 3 caractères.</p>
+                                <p className="mt-1 text-xs text-red-300">{t("fields.username.error")}</p>
                             )}
                         </div>
                     )}
@@ -203,14 +205,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             onChange={(e) => setEmail(e.target.value)}
                             onBlur={() => setTouched((t) => ({ ...t, email: true }))}
                             type="email"
-                            placeholder="Votre adresse email"
+                            placeholder={t("fields.email.placeholder")}
                             className={`${inputBase} ${touched.email && !emailOk ? borderKo : borderOk}`}
                             required
                             autoComplete="email"
                             inputMode="email"
                         />
                         {touched.email && !emailOk && (
-                            <p className="mt-1 text-xs text-red-300">Email invalide (ex: nom@domaine.com).</p>
+                            <p className="mt-1 text-xs text-red-300">{t("fields.email.error")}</p>
                         )}
                     </div>
                     <div>
@@ -219,14 +221,14 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                             onChange={(e) => setPassword(e.target.value)}
                             onBlur={() => setTouched((t) => ({ ...t, password: true }))}
                             type="password"
-                            placeholder="Votre mot de passe"
+                            placeholder={t("fields.password.placeholder")}
                             className={`${inputBase} ${touched.password && !passwordOk ? borderKo : borderOk}`}
                             required
                             minLength={8}
                             autoComplete={isLogin ? "current-password" : "new-password"}
                         />
                         {touched.password && !passwordOk && (
-                            <p className="mt-1 text-xs text-red-300">Mot de passe trop court (8 caractères minimum).</p>
+                            <p className="mt-1 text-xs text-red-300">{t("fields.password.error")}</p>
                         )}
                     </div>
                     {errorMsg && (
@@ -239,13 +241,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                         disabled={loading || !canSubmit}
                         className="w-full py-3 bg-[#EB5E28] hover:bg-[#FF7F50] disabled:opacity-60 disabled:cursor-not-allowed text-[#1E1211] font-bold rounded-xl transition-all hover:scale-[1.02] cursor-pointer"
                     >
-                        {loading ? "Chargement..." : isLogin ? "Se connecter" : "Créer mon compte"}
+                        {loading ? t("submit.loading") : isLogin ? t("submit.login") : t("submit.register")}
                     </button>
                 </form>
                 <div className="mt-6 text-center text-sm text-[#DCCBC4] font-[family-name:var(--font-nunito)]">
-                    {isLogin ? "Pas encore de compte ? " : "Déjà membre ? "}
+                    {isLogin ? t("footer.noAccount") : t("footer.alreadyMember")}
                     <button onClick={toggleMode} className="text-[#FF7F50] hover:underline font-bold cursor-pointer" type="button">
-                        {isLogin ? "Inscrivez-vous" : "Connectez-vous"}
+                        {isLogin ? t("footer.signUp") : t("footer.signIn")}
                     </button>
                 </div>
             </div>

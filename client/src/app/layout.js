@@ -1,7 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WebSocketProvider } from "@/lib/WebSocketProvider";
-import { getLocale, getTranslations } from "next-intl/server";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,14 +24,17 @@ export async function generateMetadata() {
 
 export default async function RootLayout({ children }) {
   const locale = await getLocale();
+  const messages = await getMessages();
   return (
     <html lang={locale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <WebSocketProvider>
-          {children}
-        </WebSocketProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <WebSocketProvider>
+            {children}
+          </WebSocketProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

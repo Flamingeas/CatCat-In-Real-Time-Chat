@@ -5,8 +5,10 @@ import Image from "next/image";
 import localFont from "next/font/local";
 import { Nunito } from "next/font/google";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import AuthModal from "./components/AuthModal";
+import LanguageSwitcher from "./components/LanguageSwitcher";
 
 import heroImage from "./images/catcat_illustration_hero.png";
 import logoImage from "./images/logo_catcat.svg";
@@ -49,13 +51,9 @@ function getToken(): string | null {
   return localStorage.getItem("access_token");
 }
 
-function clearAuth() {
-  localStorage.removeItem("access_token");
-  localStorage.removeItem("user");
-}
-
 export default function Home() {
   const router = useRouter();
+  const t = useTranslations();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
 
@@ -83,6 +81,7 @@ export default function Home() {
   };
 
   const goChat = () => router.push("/chat");
+
   async function logout() {
     try {
       await fetch(`${API_BASE}/auth/logout`, { method: "POST" });
@@ -110,19 +109,20 @@ export default function Home() {
           </span>
           </div>
           <div className="hidden sm:flex items-center gap-6">
+            <LanguageSwitcher />
             {!isAuthed ? (
                 <button
                     onClick={openAuthModal}
                     className="cursor-pointer font-[family-name:var(--font-cocogoose)] text-l hover:text-[#FF7F50] transition-colors"
                 >
-                  Connexion / Inscription
+                  {t("nav.login")}
                 </button>
             ) : (
                 <button
                     onClick={goChat}
                     className="cursor-pointer font-[family-name:var(--font-cocogoose)] text-l hover:text-[#FF7F50] transition-colors"
                 >
-                  Aller au chat
+                  {t("nav.goToChat")}
                 </button>
             )}
             {isAuthed && (
@@ -130,7 +130,7 @@ export default function Home() {
                     onClick={logout}
                     className="cursor-pointer group relative inline-flex items-center justify-center px-6 py-2 font-[family-name:var(--font-cocogoose)] text-l text-[#3E1C0A] transition-all duration-200 bg-[#EB5E28] rounded-full hover:bg-[#ffffff] hover:scale-105 shadow-[0_0_20px_rgba(255,127,80,0.3)] hover:shadow-[0_0_30px_rgba(255,127,80,0.5)]"
                 >
-                  Se déconnecter
+                  {t("nav.logout")}
                 </button>
             )}
           </div>
@@ -143,15 +143,13 @@ export default function Home() {
         >
           <div className="w-full lg:max-w-[50%] space-y-8 flex flex-col items-center text-center lg:items-start lg:text-left">
             <h1 className="font-[family-name:var(--font-typographica)] text-4xl md:text-5xl lg:text-6xl leading-[1.1] text-[#E89E68]">
-              Le coin le plus <span className="text-[#FF7F50]">chill </span> d&apos;Internet.
+              {t("hero.title")} <span className="text-[#FF7F50]">{t("hero.titleHighlight")} </span>{t("hero.titleEnd")}
             </h1>
 
             <div className="w-16 h-2 bg-[#E89E68] rounded-full"></div>
 
             <p className="font-[family-name:var(--font-nunito)] font-bold text-lg md:text-xl text-[#DCCBC4] leading-relaxed lg:pr-4">
-              Loin du bruit et de l&apos;agitation des réseaux classiques. CatCat est un espace pensé pour
-              la discussion, le partage authentique et la créativité. Prenez le temps, connectez-vous
-              avec ceux qui vous inspirent et sentez-vous enfin chez vous.
+              {t("hero.description")}
             </p>
 
             {!isAuthed ? (
@@ -159,14 +157,14 @@ export default function Home() {
                     onClick={openAuthModal}
                     className="cursor-pointer group relative inline-flex items-center justify-center px-6 py-2 font-[family-name:var(--font-cocogoose)] text-l text-[#3E1C0A] transition-all duration-200 bg-[#EB5E28] rounded-full hover:bg-[#ffffff] hover:scale-105 shadow-[0_0_20px_rgba(255,127,80,0.3)] hover:shadow-[0_0_30px_rgba(255,127,80,0.5)]"
                 >
-                  Connexion / Inscription
+                  {t("hero.cta")}
                 </button>
             ) : (
                 <button
                     onClick={goChat}
                     className="cursor-pointer group relative inline-flex items-center justify-center px-6 py-2 font-[family-name:var(--font-salks)] text-xl text-[#3E1C0A] transition-all duration-200 bg-[#EB5E28] rounded-full hover:bg-[#ffffff] hover:scale-105 shadow-[0_0_20px_rgba(255,127,80,0.3)] hover:shadow-[0_0_30px_rgba(255,127,80,0.5)]"
                 >
-                  Aller au chat
+                  {t("hero.ctaAuthed")}
                 </button>
             )}
           </div>

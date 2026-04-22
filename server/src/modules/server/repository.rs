@@ -1,9 +1,9 @@
-use crate::models::server::{Server, UpdateServer};
-use crate::models::server_ban::ServerBanResponse;
-use crate::models::server_member::{ServerMemberResponse, ServerMemberRole};
-use chrono::{DateTime, Utc};
 use sqlx::{FromRow, PgPool, Postgres, Transaction};
 use uuid::Uuid;
+use chrono::{DateTime, Duration, Utc};
+use crate::models::server::{Server, UpdateServer};
+use crate::models::server_member::{ServerMemberRole, ServerMemberResponse};
+use crate::models::server_ban::ServerBanResponse;
 
 #[derive(Debug, FromRow)]
 struct ServerMemberRow {
@@ -22,16 +22,10 @@ impl ServerRepository {
         Self { pool }
     }
 
-    pub async fn create_with_owner(
-        &self,
-        owner_id: Uuid,
-        name: &str,
-    ) -> Result<Server, sqlx::Error> {
+    pub async fn create_with_owner(&self, owner_id: Uuid, name: &str) -> Result<Server, sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 
-        let server = self
-            .insert_server_retrying_code(&mut tx, owner_id, name)
-            .await?;
+        let server = self.insert_server_retrying_code(&mut tx, owner_id, name).await?;
 
         sqlx::query!(
             r#"
@@ -42,8 +36,8 @@ impl ServerRepository {
             server.id,
             owner_id
         )
-        .execute(&mut *tx)
-        .await?;
+            .execute(&mut *tx)
+            .await?;
 
         tx.commit().await?;
         Ok(server)
@@ -61,10 +55,10 @@ impl ServerRepository {
         )
         "#,
         )
-        .bind(server_id)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
+            .bind(server_id)
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(exists)
     }
@@ -75,12 +69,12 @@ impl ServerRepository {
         user_id: Uuid,
         banned_by: Uuid,
         reason: Option<String>,
-        expires_at: Option<DateTime<Utc>>,
+        expires_at: Option<DateTime<Utc>>
     ) -> Result<(), sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 
         sqlx::query!(
-            r#"
+        r#"
         INSERT INTO server_bans (server_id, user_id, banned_by, reason, expires_at)
         VALUES ($1, $2, $3, $4, $5)
         ON CONFLICT (server_id, user_id)
@@ -90,16 +84,6 @@ impl ServerRepository {
             expires_at = EXCLUDED.expires_at,
             created_at = NOW()
         "#,
-<<<<<<< HEAD
-            server_id,
-            user_id,
-            banned_by,
-            reason,
-            expires_at
-        )
-        .execute(&mut *tx)
-        .await?;
-=======
         server_id,
         user_id,
         banned_by,
@@ -108,18 +92,17 @@ impl ServerRepository {
     )
             .execute(&mut *tx)
             .await?;
->>>>>>> a93467ee4b139630f454b22b5865b5801e748be8
 
         sqlx::query!(
-            r#"
+        r#"
         DELETE FROM server_members
         WHERE server_id = $1 AND user_id = $2
         "#,
-            server_id,
-            user_id
-        )
-        .execute(&mut *tx)
-        .await?;
+        server_id,
+        user_id
+    )
+            .execute(&mut *tx)
+            .await?;
 
         tx.commit().await?;
         Ok(())
@@ -141,24 +124,24 @@ impl ServerRepository {
         ORDER BY sb.created_at DESC
         "#,
         )
-        .bind(server_id)
-        .fetch_all(&self.pool)
-        .await?;
+            .bind(server_id)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(bans)
     }
 
     pub async fn unban_member(&self, server_id: Uuid, user_id: Uuid) -> Result<(), sqlx::Error> {
         let res = sqlx::query!(
-            r#"
+        r#"
         DELETE FROM server_bans
         WHERE server_id = $1 AND user_id = $2
         "#,
-            server_id,
-            user_id
-        )
-        .execute(&self.pool)
-        .await?;
+        server_id,
+        user_id
+    )
+            .execute(&self.pool)
+            .await?;
 
         if res.rows_affected() == 0 {
             return Err(sqlx::Error::RowNotFound);
@@ -187,12 +170,12 @@ impl ServerRepository {
                 RETURNING id, name, owner_id, invitation_code, created_at, updated_at
                 "#,
             )
-            .bind(id)
-            .bind(name)
-            .bind(owner_id)
-            .bind(code)
-            .fetch_optional(&mut **tx)
-            .await?;
+                .bind(id)
+                .bind(name)
+                .bind(owner_id)
+                .bind(code)
+                .fetch_optional(&mut **tx)
+                .await?;
 
             if let Some(server) = inserted {
                 return Ok(server);
@@ -214,18 +197,14 @@ impl ServerRepository {
             ORDER BY s.created_at DESC
             "#,
         )
-        .bind(user_id)
-        .fetch_all(&self.pool)
-        .await?;
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await?;
 
         Ok(servers)
     }
 
-    pub async fn join_by_invitation_code(
-        &self,
-        user_id: Uuid,
-        code: &str,
-    ) -> Result<(Server, bool), sqlx::Error> {
+    pub async fn join_by_invitation_code(&self, user_id: Uuid, code: &str) -> Result<(Server, bool), sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 
         let server = sqlx::query_as::<_, Server>(
@@ -235,39 +214,29 @@ impl ServerRepository {
         WHERE invitation_code = $1
         "#,
         )
-        .bind(code)
-        .fetch_one(&mut *tx)
-        .await?;
+            .bind(code)
+            .fetch_one(&mut *tx)
+            .await?;
 
-        let active_ban = sqlx::query_as::<_, (Option<DateTime<Utc>>,)>(
+        let is_banned = sqlx::query_scalar::<_, bool>(
             r#"
-                SELECT expires_at
-                FROM server_bans
-                WHERE server_id = $1
-                  AND user_id = $2
-                  AND (expires_at IS NULL OR expires_at > NOW())
-                LIMIT 1
+                SELECT EXISTS(
+                    SELECT 1
+                    FROM server_bans
+                    WHERE server_id = $1
+                      AND user_id = $2
+                      AND (expires_at IS NULL OR expires_at > NOW())
+                )
             "#,
         )
-        .bind(server.id)
-        .bind(user_id)
-        .fetch_optional(&mut *tx)
-        .await?;
+            .bind(server.id)
+            .bind(user_id)
+            .fetch_one(&mut *tx)
+            .await?;
 
-        if let Some((expires_at,)) = active_ban {
+        if is_banned {
             tx.rollback().await?;
-            if let Some(expires_at) = expires_at {
-                return Err(sqlx::Error::Protocol(
-                    format!(
-                        "User is banned from this server until {}",
-                        expires_at.to_rfc3339()
-                    )
-                    .into(),
-                ));
-            }
-            return Err(sqlx::Error::Protocol(
-                "User is banned from this server".into(),
-            ));
+            return Err(sqlx::Error::Protocol("User is banned from this server".into()));
         }
 
         let inserted = sqlx::query_scalar::<_, Uuid>(
@@ -278,21 +247,17 @@ impl ServerRepository {
         RETURNING server_id
         "#,
         )
-        .bind(server.id)
-        .bind(user_id)
-        .fetch_optional(&mut *tx)
-        .await?
-        .is_some();
+            .bind(server.id)
+            .bind(user_id)
+            .fetch_optional(&mut *tx)
+            .await?
+            .is_some();
 
         tx.commit().await?;
         Ok((server, inserted))
     }
 
-    pub async fn leave_server(
-        &self,
-        server_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<(Server, bool), sqlx::Error> {
+    pub async fn leave_server(&self, server_id: Uuid, user_id: Uuid) -> Result<(Server, bool), sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 
         let server = sqlx::query_as::<_, Server>(
@@ -302,15 +267,13 @@ impl ServerRepository {
             WHERE id = $1
             "#,
         )
-        .bind(server_id)
-        .fetch_one(&mut *tx)
-        .await?;
+            .bind(server_id)
+            .fetch_one(&mut *tx)
+            .await?;
 
         if server.owner_id == user_id {
             tx.rollback().await?;
-            return Err(sqlx::Error::Protocol(
-                "Owner cannot leave their own server".into(),
-            ));
+            return Err(sqlx::Error::Protocol("Owner cannot leave their own server".into()));
         }
 
         let affected = sqlx::query!(
@@ -321,9 +284,9 @@ impl ServerRepository {
             server_id,
             user_id
         )
-        .execute(&mut *tx)
-        .await?
-        .rows_affected();
+            .execute(&mut *tx)
+            .await?
+            .rows_affected();
 
         tx.commit().await?;
         Ok((server, affected > 0))
@@ -338,10 +301,10 @@ impl ServerRepository {
             )
             "#,
         )
-        .bind(server_id)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
+            .bind(server_id)
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(exists)
     }
@@ -354,17 +317,14 @@ impl ServerRepository {
             WHERE id = $1
             "#,
         )
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
 
         Ok(username)
     }
 
-    pub async fn list_members(
-        &self,
-        server_id: Uuid,
-    ) -> Result<Vec<ServerMemberResponse>, sqlx::Error> {
+    pub async fn list_members(&self, server_id: Uuid) -> Result<Vec<ServerMemberResponse>, sqlx::Error> {
         let rows = sqlx::query_as::<_, ServerMemberRow>(
             r#"
             SELECT
@@ -377,9 +337,9 @@ impl ServerRepository {
             ORDER BY u.username ASC
             "#,
         )
-        .bind(server_id)
-        .fetch_all(&self.pool)
-        .await?;
+            .bind(server_id)
+            .fetch_all(&self.pool)
+            .await?;
 
         let members = rows
             .into_iter()
@@ -402,11 +362,7 @@ impl ServerRepository {
         Ok(members)
     }
 
-    pub async fn get_member_role(
-        &self,
-        server_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<ServerMemberRole, sqlx::Error> {
+    pub async fn get_member_role(&self, server_id: Uuid, user_id: Uuid) -> Result<ServerMemberRole, sqlx::Error> {
         let role = sqlx::query_scalar::<_, String>(
             r#"
             SELECT role
@@ -414,10 +370,10 @@ impl ServerRepository {
             WHERE server_id = $1 AND user_id = $2
             "#,
         )
-        .bind(server_id)
-        .bind(user_id)
-        .fetch_one(&self.pool)
-        .await?;
+            .bind(server_id)
+            .bind(user_id)
+            .fetch_one(&self.pool)
+            .await?;
 
         ServerMemberRole::try_from(role).map_err(|e| sqlx::Error::Protocol(e.into()))
     }
@@ -440,8 +396,8 @@ impl ServerRepository {
             user_id,
             role.as_str()
         )
-        .execute(&self.pool)
-        .await?;
+            .execute(&self.pool)
+            .await?;
 
         if res.rows_affected() == 0 {
             return Err(sqlx::Error::RowNotFound);
@@ -467,10 +423,10 @@ impl ServerRepository {
             RETURNING id, name, owner_id, invitation_code, created_at, updated_at
             "#,
         )
-        .bind(server_id)
-        .bind(new_owner_id)
-        .fetch_one(&mut *tx)
-        .await?;
+            .bind(server_id)
+            .bind(new_owner_id)
+            .fetch_one(&mut *tx)
+            .await?;
 
         sqlx::query!(
             r#"
@@ -481,8 +437,8 @@ impl ServerRepository {
             server_id,
             new_owner_id
         )
-        .execute(&mut *tx)
-        .await?;
+            .execute(&mut *tx)
+            .await?;
 
         sqlx::query!(
             r#"
@@ -493,8 +449,8 @@ impl ServerRepository {
             server_id,
             old_owner_id
         )
-        .execute(&mut *tx)
-        .await?;
+            .execute(&mut *tx)
+            .await?;
 
         tx.commit().await?;
         Ok(server)
@@ -509,8 +465,8 @@ impl ServerRepository {
             server_id,
             user_id
         )
-        .execute(&self.pool)
-        .await?;
+            .execute(&self.pool)
+            .await?;
 
         if res.rows_affected() == 0 {
             return Err(sqlx::Error::RowNotFound);
@@ -527,16 +483,12 @@ impl ServerRepository {
             WHERE id = $1
             "#,
         )
-        .bind(server_id)
-        .fetch_one(&self.pool)
-        .await
+            .bind(server_id)
+            .fetch_one(&self.pool)
+            .await
     }
 
-    pub async fn update(
-        &self,
-        server_id: Uuid,
-        payload: UpdateServer,
-    ) -> Result<Server, sqlx::Error> {
+    pub async fn update(&self, server_id: Uuid, payload: UpdateServer) -> Result<Server, sqlx::Error> {
         let name = payload.name.map(|s| s.trim().to_string());
 
         sqlx::query_as::<_, Server>(
@@ -549,21 +501,18 @@ impl ServerRepository {
             RETURNING id, name, owner_id, invitation_code, created_at, updated_at
             "#,
         )
-        .bind(server_id)
-        .bind(name)
-        .fetch_one(&self.pool)
-        .await
+            .bind(server_id)
+            .bind(name)
+            .fetch_one(&self.pool)
+            .await
     }
 
     pub async fn delete_server(&self, server_id: Uuid, owner_id: Uuid) -> Result<(), sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 
-        sqlx::query!(
-            r#"DELETE FROM server_members WHERE server_id = $1"#,
-            server_id
-        )
-        .execute(&mut *tx)
-        .await?;
+        sqlx::query!(r#"DELETE FROM server_members WHERE server_id = $1"#, server_id)
+            .execute(&mut *tx)
+            .await?;
 
         let res = sqlx::query!(
             r#"
@@ -573,8 +522,8 @@ impl ServerRepository {
             server_id,
             owner_id
         )
-        .execute(&mut *tx)
-        .await?;
+            .execute(&mut *tx)
+            .await?;
 
         tx.commit().await?;
 
@@ -620,11 +569,11 @@ mod tests {
             ON CONFLICT (id) DO NOTHING
             "#,
         )
-        .bind(user_id)
-        .bind(username)
-        .bind(email)
-        .execute(pool)
-        .await;
+            .bind(user_id)
+            .bind(username)
+            .bind(email)
+            .execute(pool)
+            .await;
     }
 
     async fn cleanup(pool: &PgPool, server_id: Uuid, user_ids: &[Uuid]) {
@@ -663,10 +612,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         insert_user(&pool, owner_id, "repo_owner_u", "repo_owner_u@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo test server")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo test server").await.unwrap();
         assert_eq!(server.owner_id, owner_id);
 
         let is_member = repo.is_member(server.id, owner_id).await.unwrap();
@@ -692,10 +638,7 @@ mod tests {
         insert_user(&pool, owner_id, "repo_owner2", "repo_owner2@example.com").await;
         insert_user(&pool, user_id, "repo_user2", "repo_user2@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo join test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo join test").await.unwrap();
 
         let (_s, inserted1) = repo
             .join_by_invitation_code(user_id, &server.invitation_code)
@@ -724,10 +667,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         insert_user(&pool, owner_id, "repo_owner3", "repo_owner3@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo leave test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo leave test").await.unwrap();
 
         let err = repo.leave_server(server.id, owner_id).await.unwrap_err();
         match err {
@@ -750,10 +690,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         insert_user(&pool, owner_id, "repo_owner4", "repo_owner4@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo role test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo role test").await.unwrap();
 
         let err = repo
             .update_member_role(server.id, owner_id, ServerMemberRole::Admin)
@@ -775,25 +712,10 @@ mod tests {
 
         let old_owner_id = Uuid::new_v4();
         let new_owner_id = Uuid::new_v4();
-        insert_user(
-            &pool,
-            old_owner_id,
-            "repo_owner5",
-            "repo_owner5@example.com",
-        )
-        .await;
-        insert_user(
-            &pool,
-            new_owner_id,
-            "repo_owner6",
-            "repo_owner6@example.com",
-        )
-        .await;
+        insert_user(&pool, old_owner_id, "repo_owner5", "repo_owner5@example.com").await;
+        insert_user(&pool, new_owner_id, "repo_owner6", "repo_owner6@example.com").await;
 
-        let server = repo
-            .create_with_owner(old_owner_id, "repo transfer test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(old_owner_id, "repo transfer test").await.unwrap();
 
         let _ = sqlx::query(
             r#"
@@ -802,11 +724,11 @@ mod tests {
             ON CONFLICT (server_id, user_id) DO NOTHING
             "#,
         )
-        .bind(server.id)
-        .bind(new_owner_id)
-        .execute(&pool)
-        .await
-        .unwrap();
+            .bind(server.id)
+            .bind(new_owner_id)
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let updated = repo
             .transfer_owner(server.id, old_owner_id, new_owner_id)
@@ -834,16 +756,10 @@ mod tests {
         let owner_id = Uuid::new_v4();
         insert_user(&pool, owner_id, "repo_owner7", "repo_owner7@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo remove test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo remove test").await.unwrap();
 
         let missing_user_id = Uuid::new_v4();
-        let err = repo
-            .remove_member(server.id, missing_user_id)
-            .await
-            .unwrap_err();
+        let err = repo.remove_member(server.id, missing_user_id).await.unwrap_err();
         assert!(matches!(err, sqlx::Error::RowNotFound));
 
         cleanup(&pool, server.id, &[owner_id]).await;
@@ -863,10 +779,7 @@ mod tests {
         insert_user(&pool, owner_id, "repo_owner8", "repo_owner8@example.com").await;
         insert_user(&pool, other_id, "repo_other8", "repo_other8@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo delete test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo delete test").await.unwrap();
 
         let err = repo.delete_server(server.id, other_id).await.unwrap_err();
         assert!(matches!(err, sqlx::Error::RowNotFound));
@@ -900,10 +813,7 @@ mod tests {
         insert_user(&pool, admin_id, "bbb_admin", "bbb_admin@example.com").await;
         insert_user(&pool, member_id, "ccc_member", "ccc_member@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo list members test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo list members test").await.unwrap();
 
         let _ = sqlx::query(
             r#"
@@ -912,11 +822,11 @@ mod tests {
             ON CONFLICT (server_id, user_id) DO NOTHING
             "#,
         )
-        .bind(server.id)
-        .bind(admin_id)
-        .execute(&pool)
-        .await
-        .unwrap();
+            .bind(server.id)
+            .bind(admin_id)
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let _ = sqlx::query(
             r#"
@@ -925,11 +835,11 @@ mod tests {
             ON CONFLICT (server_id, user_id) DO NOTHING
             "#,
         )
-        .bind(server.id)
-        .bind(member_id)
-        .execute(&pool)
-        .await
-        .unwrap();
+            .bind(server.id)
+            .bind(member_id)
+            .execute(&pool)
+            .await
+            .unwrap();
 
         let members = repo.list_members(server.id).await.unwrap();
         assert_eq!(members.len(), 3);
@@ -957,10 +867,7 @@ mod tests {
         let owner_id = Uuid::new_v4();
         insert_user(&pool, owner_id, "repo_owner9", "repo_owner9@example.com").await;
 
-        let server = repo
-            .create_with_owner(owner_id, "repo update test")
-            .await
-            .unwrap();
+        let server = repo.create_with_owner(owner_id, "repo update test").await.unwrap();
 
         let updated = repo
             .update(
