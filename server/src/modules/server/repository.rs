@@ -90,6 +90,7 @@ impl ServerRepository {
             expires_at = EXCLUDED.expires_at,
             created_at = NOW()
         "#,
+<<<<<<< HEAD
             server_id,
             user_id,
             banned_by,
@@ -98,6 +99,16 @@ impl ServerRepository {
         )
         .execute(&mut *tx)
         .await?;
+=======
+        server_id,
+        user_id,
+        banned_by,
+        reason,
+        expires_at.map(|dt| dt.naive_utc())
+    )
+            .execute(&mut *tx)
+            .await?;
+>>>>>>> a93467ee4b139630f454b22b5865b5801e748be8
 
         sqlx::query!(
             r#"
