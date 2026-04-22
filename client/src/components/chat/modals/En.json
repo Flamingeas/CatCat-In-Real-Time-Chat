@@ -1,0 +1,96 @@
+{
+  "modals": {
+    "common": {
+      "cancel": "Cancel",
+      "close": "✕"
+    },
+    "temporaryBan": {
+      "title": "Temporary Ban",
+      "userLabel": "User: {username}",
+      "durationLabel": "Ban duration",
+      "durations": {
+        "5": "5 minutes",
+        "15": "15 minutes",
+        "30": "30 minutes",
+        "60": "1 hour",
+        "180": "3 hours",
+        "720": "12 hours",
+        "1440": "24 hours",
+        "10080": "7 days"
+      },
+      "banButton": "Confirm",
+      "banningButton": "Banning..."
+    },
+    "serverSettings": {
+      "title": "Server Settings",
+      "serverLabel": "Server: {name}",
+      "renameSection": {
+        "title": "Rename Server",
+        "nameLabel": "Name",
+        "saveButton": "Save",
+        "savingButton": "Saving..."
+      },
+      "deleteSection": {
+        "title": "Delete Server",
+        "description": "This action is {highlight}. Even if there are members in it.",
+        "irreversible": "irreversible",
+        "confirmHint": "Type {word} to confirm",
+        "confirmWord": "DELETE",
+        "confirmPlaceholder": "DELETE",
+        "deleteButton": "Delete",
+        "deletingButton": "Deleting..."
+      }
+    },
+    "leaveServer": {
+      "title": "Leave Server",
+      "serverLabel": "Server: {name}",
+      "description": "You are about to leave this server. You will only be able to rejoin with an invitation code.",
+      "leaveButton": "Leave",
+      "leavingButton": "Leaving..."
+    },
+    "joinServer": {
+      "title": "Join a Server",
+      "codeLabel": "Invitation code",
+      "codePlaceholder": "e.g. 7F2K9A1B",
+      "joinButton": "Join",
+      "joiningButton": "Joining..."
+    },
+    "inviteMember": {
+      "title": "Invite a Member",
+      "serverLabel": "Server: {name}",
+      "inviteSection": {
+        "title": "Invitation Code",
+        "description": "Share this code with your friend.",
+        "copyButton": "Copy",
+        "copiedButton": "Copied",
+        "noCodeError": "No invitation code available.",
+        "clipboardError": "Unable to copy. Select the text and press Ctrl+C."
+      },
+      "tip": "Tip: you can also paste this code in \"Join a Server\"."
+    },
+    "createServer": {
+      "title": "Create a Server",
+      "nameLabel": "Server name",
+      "namePlaceholder": "e.g. CatCat Dev Server",
+      "createButton": "Create",
+      "creatingButton": "Creating..."
+    },
+    "channelEdit": {
+      "title": "Rename Channel",
+      "nameLabel": "Channel name",
+      "namePlaceholder": "e.g. general",
+      "saveButton": "Save",
+      "savingButton": "Saving..."
+    },
+    "channelCreate": {
+      "title": "Create a Channel",
+      "nameLabel": "Channel name",
+      "namePlaceholder": "e.g. general",
+      "createButton": "Create",
+      "creatingButton": "Creating..."
+    },
+    "bannedUsers": {
+      "title": "Banned Users"
+    }
+  }
+}
