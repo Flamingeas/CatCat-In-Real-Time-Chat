@@ -94,7 +94,7 @@ impl ServerRepository {
             user_id,
             banned_by,
             reason,
-            expires_at
+            expires_at.map(|dt| dt.naive_utc())
         )
         .execute(&mut *tx)
         .await?;

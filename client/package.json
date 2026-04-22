@@ -13,6 +13,7 @@
     "@giphy/react-components": "^10.1.1",
     "axios": "^1.13.4",
     "emoji-picker-react": "^4.18.0",
+    "lucide-react": "^1.8.0",
     "next": "16.1.4",
     "react": "19.2.3",
     "react-dom": "19.2.3"
@@ -21,9 +22,11 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@types/node": "25.2.0",
     "@types/react": "19.2.10",
+    "autoprefixer": "^10.5.0",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
-    "tailwindcss": "^4.0.0",
+    "postcss": "^8.5.10",
+    "tailwindcss": "^4.2.4",
     "typescript": "5.9.3"
   },
   "optionalDependencies": {
