@@ -140,6 +140,17 @@ impl ServerService {
         server_id: Uuid,
         payload: UpdateServer,
     ) -> Result<Server, String> {
+        let payload = match payload.name {
+            Some(name) => {
+                let name = name.trim().to_string();
+                if name.len() < 3 || name.len() > 50 {
+                    return Err("Server name must be between 3 and 50 characters.".into());
+                }
+                UpdateServer { name: Some(name) }
+            }
+            None => UpdateServer { name: None },
+        };
+
         let server = self.repo.find_by_id(server_id).await.map_err(|e| {
             log::error!("find_by_id error: {:?}", e);
             "Server not found.".to_string()

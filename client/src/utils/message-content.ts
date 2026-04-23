@@ -1,5 +1,14 @@
 export function isGifMessage(content: string) {
     const trimmed = content.trim();
-    if (!/^https?:\/\//i.test(trimmed)) return false;
-    return /giphy\.com\/media|media\.giphy\.com\/media|i\.giphy\.com/i.test(trimmed) || /\.(gif|webp)(\?.*)?$/i.test(trimmed);
+    try {
+        const url = new URL(trimmed);
+        if (url.protocol !== "https:" && url.protocol !== "http:") return false;
+
+        const hostname = url.hostname.toLowerCase();
+        const isGiphyHost = hostname === "giphy.com" || hostname.endsWith(".giphy.com");
+
+        return isGiphyHost && url.pathname.includes("/media/");
+    } catch {
+        return false;
+    }
 }

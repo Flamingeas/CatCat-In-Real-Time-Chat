@@ -495,9 +495,10 @@ mod tests {
             username: "tester".to_string(),
             channel_id,
             server_id,
-            created_at: Utc.with_ymd_and_hms(2026, 2, 8, 12, 0, 0).unwrap(),
+            created_at: Utc::now(),
             updated_at: None,
             deleted_at: None,
+            reactions: Vec::new(),
         }
     }
 
@@ -556,6 +557,24 @@ mod tests {
 
         async fn delete(&self, _message_id: Uuid) -> Result<(), String> {
             self.delete_result.clone().unwrap()
+        }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            Ok(())
         }
     }
 
@@ -689,6 +708,24 @@ mod tests {
         async fn delete(&self, _message_id: Uuid) -> Result<(), String> {
             panic!("delete should not be called in this test");
         }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("add_reaction should not be called in this test");
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("remove_reaction should not be called in this test");
+        }
     }
 
     struct CountingMessageRepository {
@@ -746,6 +783,24 @@ mod tests {
             self.delete_calls.fetch_add(1, Ordering::SeqCst);
             self.delete_result.clone().unwrap()
         }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            Ok(())
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            Ok(())
+        }
     }
 
     struct RecordingUpdateDeleteRepository {
@@ -792,6 +847,24 @@ mod tests {
             let mut call = self.delete_call.lock().unwrap();
             call.message_id = Some(message_id);
             self.delete_result.clone().unwrap()
+        }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("add_reaction should not be called in this test");
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("remove_reaction should not be called in this test");
         }
     }
 
@@ -913,6 +986,7 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 2, 8, 12, 0, 0).unwrap(),
             updated_at: None,
             deleted_at: None,
+            reactions: Vec::new(),
         };
 
         let r = m.to_response();

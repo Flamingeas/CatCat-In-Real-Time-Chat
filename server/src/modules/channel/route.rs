@@ -190,6 +190,7 @@ pub fn config_root(cfg: &mut web::ServiceConfig) {
 mod tests {
     use super::*;
     use crate::models::channel::Channel;
+    use actix::Actor;
     use actix_web::{http::StatusCode, test, App};
     use async_trait::async_trait;
     use chrono::Utc;
@@ -212,7 +213,7 @@ mod tests {
         create_result: Option<Result<Channel, String>>,
         list_result: Option<Result<Vec<Channel>, String>>,
         update_result: Option<Result<Channel, String>>,
-        delete_result: Option<Result<(), String>>,
+        delete_result: Option<Result<Channel, String>>,
     }
 
     #[async_trait]
@@ -256,6 +257,10 @@ mod tests {
         }
     }
 
+    fn ws_server() -> web::Data<Addr<WsServer>> {
+        web::Data::new(WsServer::new().start())
+    }
+
     #[actix_web::test]
     async fn test_create_channel_success() {
         let service: Arc<dyn ChannelServiceTrait> = Arc::new(FakeChannelService {
@@ -268,6 +273,7 @@ mod tests {
         let resp = create_channel(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
             web::Json(CreateChannel {
                 name: "general".into(),
@@ -291,6 +297,7 @@ mod tests {
         let resp = create_channel(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
             web::Json(CreateChannel { name: "".into() }),
         )
@@ -312,6 +319,7 @@ mod tests {
         let resp = create_channel(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
             web::Json(CreateChannel {
                 name: "general".into(),
@@ -395,6 +403,7 @@ mod tests {
         let resp = channel_update(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
             web::Json(UpdateChannel {
                 name: Some("new".into()),
@@ -418,6 +427,7 @@ mod tests {
         let resp = channel_update(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
             web::Json(UpdateChannel {
                 name: Some("".into()),
@@ -441,6 +451,7 @@ mod tests {
         let resp = channel_update(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
             web::Json(UpdateChannel {
                 name: Some("new-name".into()),
@@ -464,6 +475,7 @@ mod tests {
         let resp = channel_update(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
             web::Json(UpdateChannel {
                 name: Some("new-name".into()),
@@ -481,12 +493,13 @@ mod tests {
             create_result: None,
             list_result: None,
             update_result: None,
-            delete_result: Some(Ok(())),
+            delete_result: Some(Ok(sample_channel())),
         });
 
         let resp = channel_delete(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
         )
         .await
@@ -507,6 +520,7 @@ mod tests {
         let resp = channel_delete(
             fake_user(),
             web::Data::new(service),
+            ws_server(),
             web::Path::from(Uuid::new_v4()),
         )
         .await

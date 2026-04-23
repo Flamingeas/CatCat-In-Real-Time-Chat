@@ -151,3 +151,115 @@ pub struct ConversationResponse {
     pub other_username: String,
     pub created_at: DateTime<Utc>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::message::MessageReaction;
+    use chrono::TimeZone;
+
+    #[test]
+    fn test_direct_message_new_sets_defaults_and_fields() {
+        let conversation_id = Uuid::new_v4();
+        let sender_id = Uuid::new_v4();
+        let recipient_id = Uuid::new_v4();
+
+        let dm = DirectMessage::new(
+            conversation_id,
+            sender_id,
+            "alice".to_string(),
+            recipient_id,
+            "hello".to_string(),
+        );
+
+        assert!(dm.id.is_none());
+        assert_eq!(dm.conversation_id, conversation_id);
+        assert_eq!(dm.sender_id, sender_id);
+        assert_eq!(dm.sender_username, "alice");
+        assert_eq!(dm.recipient_id, recipient_id);
+        assert_eq!(dm.content, "hello");
+        assert!(dm.updated_at.is_none());
+        assert!(dm.deleted_at.is_none());
+        assert!(dm.reactions.is_empty());
+    }
+
+    #[test]
+    fn test_direct_message_is_deleted_reflects_deleted_at() {
+        let mut dm = DirectMessage::new(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "alice".to_string(),
+            Uuid::new_v4(),
+            "hello".to_string(),
+        );
+
+        assert!(!dm.is_deleted());
+
+        dm.deleted_at = Some(Utc::now());
+
+        assert!(dm.is_deleted());
+    }
+
+    #[test]
+    fn test_direct_message_response_from_sets_flags_and_preserves_reactions() {
+        let reaction_user = Uuid::new_v4();
+        let updated_at = Utc.with_ymd_and_hms(2026, 4, 22, 10, 0, 0).unwrap();
+        let deleted_at = Utc.with_ymd_and_hms(2026, 4, 22, 11, 0, 0).unwrap();
+        let mut dm = DirectMessage::new(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "alice".to_string(),
+            Uuid::new_v4(),
+            "hello".to_string(),
+        );
+        dm.updated_at = Some(updated_at);
+        dm.deleted_at = Some(deleted_at);
+        dm.reactions = vec![MessageReaction {
+            emoji: "cat".to_string(),
+            users: vec![reaction_user],
+        }];
+
+        let response = DirectMessageResponse::from(dm);
+
+        assert!(response.is_edited);
+        assert!(response.is_deleted);
+        assert_eq!(response.updated_at, Some(updated_at));
+        assert_eq!(response.reactions.len(), 1);
+        assert_eq!(response.reactions[0].users, vec![reaction_user]);
+    }
+
+    #[test]
+    fn test_direct_message_response_from_unedited_active_message() {
+        let dm = DirectMessage::new(
+            Uuid::new_v4(),
+            Uuid::new_v4(),
+            "alice".to_string(),
+            Uuid::new_v4(),
+            "hello".to_string(),
+        );
+
+        let response = DirectMessageResponse::from(dm);
+
+        assert!(!response.is_edited);
+        assert!(!response.is_deleted);
+        assert!(response.updated_at.is_none());
+        assert!(response.reactions.is_empty());
+    }
+
+    #[test]
+    fn test_conversation_response_serializes_expected_shape() {
+        let response = ConversationResponse {
+            id: Uuid::new_v4(),
+            other_user_id: Uuid::new_v4(),
+            other_username: "bob".to_string(),
+            created_at: Utc.with_ymd_and_hms(2026, 4, 22, 12, 0, 0).unwrap(),
+        };
+
+        let value = serde_json::to_value(&response).unwrap();
+
+        assert_eq!(value["id"], response.id.to_string());
+        assert_eq!(value["other_user_id"], response.other_user_id.to_string());
+        assert_eq!(value["other_username"], "bob");
+        assert_eq!(value["created_at"], "2026-04-22T12:00:00Z");
+    }
+}

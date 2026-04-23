@@ -165,25 +165,34 @@ pub struct GetMessagesQueryParams {
     pub before: Option<chrono::DateTime<chrono::Utc>>,
 }
 
-fn validate_send_message_request(data: &SendMessageRequest) -> Result<(), String> {
-    data.validate().map_err(|e| e.to_string())
+fn normalize_message_content(content: &str) -> Result<String, String> {
+    let trimmed = content.trim();
+    let len = trimmed.chars().count();
+
+    if len == 0 || len > 2000 {
+        return Err("Message must be between 1 and 2000 characters".to_string());
+    }
+
+    Ok(trimmed.to_string())
 }
 
-fn validate_update_message_request(data: &UpdateMessageRequest) -> Result<(), String> {
-    data.validate().map_err(|e| e.to_string())
+fn validate_send_message_request(data: &SendMessageRequest) -> Result<String, String> {
+    normalize_message_content(&data.content)
 }
 
-fn build_create_message_payload(channel_id: Uuid, data: &SendMessageRequest) -> CreateMessage {
+fn validate_update_message_request(data: &UpdateMessageRequest) -> Result<String, String> {
+    normalize_message_content(&data.content)
+}
+
+fn build_create_message_payload(channel_id: Uuid, content: String) -> CreateMessage {
     CreateMessage {
-        content: data.content.trim().to_string(),
+        content,
         channel_id,
     }
 }
 
-fn build_update_message_payload(data: &UpdateMessageRequest) -> UpdateMessage {
-    UpdateMessage {
-        content: data.content.trim().to_string(),
-    }
+fn build_update_message_payload(content: String) -> UpdateMessage {
+    UpdateMessage { content }
 }
 
 fn normalize_limit(limit: Option<i64>) -> i64 {
@@ -266,11 +275,12 @@ async fn send_message_with_service(
     channel_id: Uuid,
     data: &SendMessageRequest,
 ) -> HttpResponse {
-    if let Err(error_message) = validate_send_message_request(data) {
-        return bad_request_response(error_message);
-    }
+    let content = match validate_send_message_request(data) {
+        Ok(content) => content,
+        Err(error_message) => return bad_request_response(error_message),
+    };
 
-    let payload = build_create_message_payload(channel_id, data);
+    let payload = build_create_message_payload(channel_id, content);
 
     match service.send_message(user_id, payload).await {
         Ok(message) => {
@@ -326,14 +336,17 @@ async fn update_message_with_service(
 
     log::info!("About to validate");
 
-    if let Err(error_message) = validate_update_message_request(data) {
-        log::error!("Validation failed: {} !!", error_message);
-        return bad_request_response(error_message);
-    }
+    let content = match validate_update_message_request(data) {
+        Ok(content) => content,
+        Err(error_message) => {
+            log::error!("Validation failed: {} !!", error_message);
+            return bad_request_response(error_message);
+        }
+    };
     log::info!("Validation passed");
     log::info!("About to build payload");
 
-    let payload = build_update_message_payload(data);
+    let payload = build_update_message_payload(content);
     log::info!("Payload built");
     log::info!("About to call service.update_message");
 
@@ -522,6 +535,7 @@ mod tests {
             updated_at: None,
             is_edited: false,
             is_deleted: false,
+            reactions: Vec::new(),
         }
     }
 
@@ -636,7 +650,10 @@ mod tests {
             content: "  hello world  ".to_string(),
         };
 
-        let payload = build_create_message_payload(channel_id, &req);
+        let payload = build_create_message_payload(
+            channel_id,
+            normalize_message_content(&req.content).unwrap(),
+        );
 
         assert_eq!(payload.channel_id, channel_id);
         assert_eq!(payload.content, "hello world");
@@ -649,7 +666,10 @@ mod tests {
             content: "  hello   world  ".to_string(),
         };
 
-        let payload = build_create_message_payload(channel_id, &req);
+        let payload = build_create_message_payload(
+            channel_id,
+            normalize_message_content(&req.content).unwrap(),
+        );
 
         assert_eq!(payload.content, "hello   world");
     }
@@ -661,7 +681,10 @@ mod tests {
             content: "hello".to_string(),
         };
 
-        let payload = build_create_message_payload(channel_id, &req);
+        let payload = build_create_message_payload(
+            channel_id,
+            normalize_message_content(&req.content).unwrap(),
+        );
 
         assert_eq!(payload.channel_id, channel_id);
         assert_eq!(payload.content, "hello");
@@ -674,7 +697,7 @@ mod tests {
             content: "   ".to_string(),
         };
 
-        let payload = build_create_message_payload(channel_id, &req);
+        let payload = build_create_message_payload(channel_id, req.content.trim().to_string());
 
         assert_eq!(payload.channel_id, channel_id);
         assert_eq!(payload.content, "");
@@ -686,7 +709,8 @@ mod tests {
             content: "  updated content  ".to_string(),
         };
 
-        let payload = build_update_message_payload(&req);
+        let payload =
+            build_update_message_payload(normalize_message_content(&req.content).unwrap());
 
         assert_eq!(payload.content, "updated content");
     }
@@ -697,7 +721,8 @@ mod tests {
             content: "  updated   content  ".to_string(),
         };
 
-        let payload = build_update_message_payload(&req);
+        let payload =
+            build_update_message_payload(normalize_message_content(&req.content).unwrap());
 
         assert_eq!(payload.content, "updated   content");
     }
@@ -708,7 +733,8 @@ mod tests {
             content: "hello".to_string(),
         };
 
-        let payload = build_update_message_payload(&req);
+        let payload =
+            build_update_message_payload(normalize_message_content(&req.content).unwrap());
 
         assert_eq!(payload.content, "hello");
     }
@@ -719,7 +745,7 @@ mod tests {
             content: "   ".to_string(),
         };
 
-        let payload = build_update_message_payload(&req);
+        let payload = build_update_message_payload(req.content.trim().to_string());
 
         assert_eq!(payload.content, "");
     }

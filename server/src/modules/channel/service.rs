@@ -80,9 +80,17 @@ impl ChannelService {
     pub async fn update_channel(
         &self,
         channel_id: Uuid,
-        payload: UpdateChannel,
+        mut payload: UpdateChannel,
         user_id: Uuid,
     ) -> Result<Channel, String> {
+        if let Some(name) = payload.name.take() {
+            let name = name.trim().to_string();
+            if name.len() < 3 || name.len() > 50 {
+                return Err("Channel name must be between 3 and 50 characters.".into());
+            }
+            payload.name = Some(name);
+        }
+
         if !self
             .repo
             .user_can_manage_channel(channel_id, user_id)
@@ -165,7 +173,7 @@ mod tests {
         list_result: Result<Vec<Channel>, String>,
         can_manage_channel_result: Result<bool, String>,
         update_result: Result<Channel, String>,
-        delete_result: Result<(), String>,
+        delete_result: Result<Channel, String>,
         last_create_name: Mutex<Option<String>>,
     }
 
@@ -178,7 +186,7 @@ mod tests {
                 list_result: Ok(vec![sample_channel()]),
                 can_manage_channel_result: Ok(true),
                 update_result: Ok(sample_channel()),
-                delete_result: Ok(()),
+                delete_result: Ok(sample_channel()),
                 last_create_name: Mutex::new(None),
             }
         }
@@ -203,7 +211,7 @@ mod tests {
             self.update_result.clone()
         }
 
-        async fn delete(&self, _channel_id: Uuid) -> Result<(), String> {
+        async fn delete(&self, _channel_id: Uuid) -> Result<Channel, String> {
             self.delete_result.clone()
         }
 

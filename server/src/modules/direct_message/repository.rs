@@ -1,9 +1,9 @@
 use chrono::DateTime;
 use futures::stream::TryStreamExt;
 use mongodb::{
-    Database,
     bson::spec::BinarySubtype,
-    bson::{Binary, doc},
+    bson::{doc, Binary},
+    Database,
 };
 use uuid::Uuid;
 
@@ -195,5 +195,27 @@ impl<'a> DirectMessageRepository<'a> {
             .update_one(remove_empty_filter, remove_empty_update)
             .await?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_uuid_bin_uses_generic_subtype_and_uuid_bytes() {
+        let id = Uuid::new_v4();
+
+        let binary = uuid_bin(id);
+
+        assert_eq!(binary.subtype, BinarySubtype::Generic);
+        assert_eq!(binary.bytes, id.as_bytes().to_vec());
+    }
+
+    #[test]
+    fn test_uuid_bin_is_stable_for_same_uuid() {
+        let id = Uuid::new_v4();
+
+        assert_eq!(uuid_bin(id), uuid_bin(id));
     }
 }
