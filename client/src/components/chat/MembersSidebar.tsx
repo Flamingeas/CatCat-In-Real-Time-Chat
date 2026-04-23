@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import type { RefObject } from "react";
 import { Member, MemberRole } from "@/features/chat/services/members.service";
 import { MemberActionsMenu } from "@/features/chat/components/member-actions-menu";
@@ -48,17 +51,19 @@ export function MembersSidebar({
     onTransferOwner,
     onShowBans,
 }: MembersSidebarProps) {
+    const t = useTranslations("membersSidebar");
+
     return (
         <div className="w-72 bg-[#0a0605] rounded-[20px] hidden xl:flex flex-col h-full shadow-lg overflow-hidden">
             <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
-                Membres
+                {t("members")}
                 <span className="ml-auto text-xs text-[#DCCBC4]/40 font-normal">{members.length}</span>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
                 {!selectedServerId ? (
-                    <div className="text-sm text-[#DCCBC4]/50 px-2 py-2">Sélectionne un serveur.</div>
+                    <div className="text-sm text-[#DCCBC4]/50 px-2 py-2">{t("selectServer")}</div>
                 ) : members.length === 0 ? (
-                    <div className="text-sm text-[#DCCBC4]/50 px-2 py-2">Aucun membre.</div>
+                    <div className="text-sm text-[#DCCBC4]/50 px-2 py-2">{t("noMembers")}</div>
                 ) : (
                     <>
                         <div className="flex flex-col gap-1">
@@ -105,13 +110,15 @@ export function MembersSidebar({
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-[#DCCBC4]/50">{isTyping ? "Écrit…" : online ? "En ligne" : "Hors ligne"}</span>
+                                            <span className="text-xs text-[#DCCBC4]/50">
+                                                {isTyping ? t("typing") : online ? t("online") : t("offline")}
+                                            </span>
                                         </div>
 
                                         {!isMe && (
                                             <button
                                                 onClick={() => onStartDm(userId)}
-                                                title={`Envoyer un message à @${member.username}`}
+                                                title={t("sendMessageTo", { username: member.username })}
                                                 className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-xl border border-[#ffffff]/10 text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
                                             >
                                                 <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -125,7 +132,7 @@ export function MembersSidebar({
                                                 <button
                                                     onClick={() => onToggleMenu(userId)}
                                                     className="w-9 h-9 rounded-xl border border-[#ffffff]/10 text-[#DCCBC4]/70 hover:bg-[#0F0908] hover:text-white cursor-pointer flex items-center justify-center"
-                                                    title="Actions"
+                                                    title={t("actions")}
                                                 >
                                                     ⋯
                                                 </button>
@@ -155,7 +162,7 @@ export function MembersSidebar({
                                         onClick={onShowBans}
                                         className="text-xs text-[#DCCBC4]/60 hover:text-white cursor-pointer"
                                     >
-                                        Utilisateurs bannis
+                                        {t("bannedUsersButton")}
                                     </button>
                                 </div>
                             </div>

@@ -1,6 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WebSocketProvider } from "@/lib/WebSocketProvider";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale, getMessages, getTranslations } from "next-intl/server";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -12,20 +14,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-export const metadata = {
-  title: "CatCat | Le réseau social qui ronronne",
-  description: "Rejoignez CatCat, l'endroit idéal pour se poser, miauler avec votre bande et partager vos meilleures trouvailles.",
-};
+export async function generateMetadata() {
+  const t = await getTranslations("metadata");
+  return {
+    title: t("title"),
+    description: t("description"),
+  };
+}
 
-export default function RootLayout({ children }) {
+export default async function RootLayout({ children }) {
+  const locale = await getLocale();
+  const messages = await getMessages();
   return (
-    <html lang="en">
+    <html lang={locale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <WebSocketProvider>
-          {children}
-        </WebSocketProvider>
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <WebSocketProvider>
+            {children}
+          </WebSocketProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

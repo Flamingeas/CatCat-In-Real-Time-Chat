@@ -1,5 +1,5 @@
 "use client";
-
+import { useTranslations, useLocale } from "next-intl";
 import { useEffect, useState } from "react";
 import { getServerBans, unbanMember, type ServerBan } from "../services/bans.service";
 
@@ -18,6 +18,8 @@ type WsBanEvent =
     };
 
 export default function BanList({ serverId }: { serverId: string }) {
+  const t = useTranslations("banList");
+  const locale = useLocale();
   const [bans, setBans] = useState<ServerBan[]>([]);
 
   useEffect(() => {
@@ -40,13 +42,11 @@ export default function BanList({ serverId }: { serverId: string }) {
 
       if (msg.type === "server_member_unbanned") {
         if (String(msg.server_id) !== String(serverId)) return;
-
         setBans((prev) => prev.filter((b) => String(b.user_id) !== String(msg.user_id)));
       }
 
       if (msg.type === "server_member_banned") {
         if (String(msg.server_id) !== String(serverId)) return;
-
         getServerBans(serverId).then(setBans);
       }
     };
@@ -62,15 +62,15 @@ export default function BanList({ serverId }: { serverId: string }) {
   }
 
   function getBanLabel(expiresAt?: string | null) {
-    if (!expiresAt) return "Ban permanent";
-    return `Ban temporaire jusqu’au ${new Date(expiresAt).toLocaleString("fr-FR")}`;
+    if (!expiresAt) return t("permanent");
+    return t("temporary", { date: new Date(expiresAt).toLocaleString(locale) });
   }
 
   return (
     <div className="flex flex-col gap-2">
       {bans.length === 0 && (
         <div className="text-sm text-[#DCCBC4]/50">
-          Aucun ban actif.
+          {t("noBans")}
         </div>
       )}
 
@@ -88,7 +88,7 @@ export default function BanList({ serverId }: { serverId: string }) {
 
             {ban.reason && (
               <span className="text-xs text-[#DCCBC4]/40">
-                Raison : {ban.reason}
+                {t("reason")} {ban.reason}
               </span>
             )}
           </div>
@@ -97,7 +97,7 @@ export default function BanList({ serverId }: { serverId: string }) {
             onClick={() => handleUnban(ban.user_id)}
             className="text-red-400 hover:text-red-300 text-sm cursor-pointer"
           >
-            Retirer le bannissement
+            {t("unban")}
           </button>
         </div>
       ))}

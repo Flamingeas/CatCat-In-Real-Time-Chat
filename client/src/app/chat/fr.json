@@ -1,0 +1,215 @@
+{
+  "chatPage": {
+    "toast": {
+      "ownerTransferred": "Propriétaire modifié",
+      "actionDenied": "Action refusée",
+      "memberBannedPermanently": "Membre banni définitivement",
+      "adminAdded": "Admin ajouté",
+      "adminRemoved": "Admin retiré",
+      "memberKicked": "Membre expulsé",
+      "channelDeleted": "Salon supprimé",
+      "deletionDenied": "Suppression refusée",
+      "leftServer": "Tu as quitté le serveur",
+      "channelCreated": "Salon #{name} créé",
+      "channelUpdated": "Salon modifié",
+      "memberJoined": "{username} a rejoint le serveur",
+      "memberLeft": "{username} a quitté le serveur",
+      "memberNowRole": "{username} est maintenant {role}",
+      "kickedSelf": "Tu as été expulsé du serveur",
+      "kickedOther": "{username} a été expulsé",
+      "serverDeleted": "Serveur supprimé",
+      "serverUpdated": "Serveur modifié",
+      "userOnline": "{username} est en ligne",
+      "userOffline": "{username} est hors ligne",
+      "bannedSelf": "Tu as été banni du serveur",
+      "bannedOther": "{username} a été banni",
+      "unbanned": "{username} a été débanni",
+      "tempBannedSelf": "Tu as été exclu temporairement ({duration})",
+      "tempBannedSelfNoDuration": "Tu as été exclu temporairement du serveur",
+      "tempBannedOther": "{username} a été exclu temporairement",
+      "tempBanLiftedSelf": "Ton exclusion temporaire est terminée",
+      "tempBanLiftedOther": "{username} peut à nouveau accéder au serveur"
+    },
+    "errors": {
+      "nameTooShort": "Le nom doit faire au moins 3 caractères.",
+      "nameTooLong": "Le nom doit faire maximum 50 caractères.",
+      "deleteConfirm": "Tape DELETE pour confirmer la suppression."
+    },
+    "typing": {
+      "one": "{user} écrit…",
+      "two": "{user1} et {user2} écrivent…",
+      "many": "{user1}, {user2} et {count} autres écrivent…"
+    },
+    "fallbackUsername": "quelqu'un",
+    "confirmDeleteMessage": "Supprimer ce message ?",
+    "duration": {
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "hours": "{count, plural, one {# heure} other {# heures}}"
+    }
+  },
+  "common": {
+    "cancel": "Annuler",
+    "save": "Sauvegarder",
+    "saving": "Sauvegarde...",
+    "create": "Créer",
+    "creating": "Création...",
+    "delete": "Supprimer",
+    "deleting": "Suppression...",
+    "send": "Envoyer",
+    "loading": "Chargement...",
+    "loadMore": "Charger plus",
+    "loadingMessages": "Chargement des messages...",
+    "noMessages": "Aucun message pour l'instant.",
+    "messageCount": "{count} message(s)",
+    "edited": "• édité",
+    "messageDeleted": "Message supprimé",
+    "deleteAction": "🗑 Supprimer",
+    "editAction": "✏️ Éditer",
+    "edit": "Éditer",
+    "addReactionTitle": "Ajouter une réaction",
+    "addReactionShort": "+ réaction",
+    "removeReaction": "Retirer ta réaction",
+    "reactAlso": "Réagir aussi",
+    "server": "Serveur:"
+  },
+  "channelPanel": {
+    "currentChannel": "Salon actuel:",
+    "noChannelSelected": "Aucun salon sélectionné",
+    "selectServerTitle": "Sélectionne un serveur",
+    "inviteMemberTitle": "Inviter un membre",
+    "inviteOnlyAdmins": "Seuls les proprio/admins peuvent inviter",
+    "invite": "Inviter",
+    "channelCreatedAt": "Créé le {date}",
+    "channelUpdatedAt": "Mis à jour le {date}",
+    "chooseServer": "Choisis un serveur",
+    "selectServerHint": "Sélectionne un serveur à gauche, ou crée-en un avec le bouton +.",
+    "noChannelYet": "Aucun salon pour l'instant",
+    "noChannelHint": "Crée ton premier salon pour commencer à discuter. (ex: général)",
+    "createChannelTitle": "Créer un salon",
+    "createChannelOnlyAdmins": "Seuls les owners/admins peuvent créer un salon",
+    "createFirstChannel": "Créer mon premier salon",
+    "askAdminToCreate": "Demande au(x) proprio/admin de créer un salon.",
+    "chooseChannel": "Choisis un salon",
+    "selectChannelHint": "Sélectionne un salon dans la colonne de gauche.",
+    "messagePlaceholder": "Message dans #{name}…",
+    "chooseChannelPlaceholder": "Choisis un salon pour commencer…"
+  },
+  "channelList": {
+    "channels": "Salons",
+    "noServerForChannel": "Sélectionne / crée un serveur.",
+    "noChannels": "Aucun salon.",
+    "selectServerTitle": "Sélectionne un serveur",
+    "createChannelTitle": "Créer un salon",
+    "onlyOwnerAdmin": "Seuls owner/admin",
+    "renameChannel": "Renommer le salon",
+    "deleteChannel": "Supprimer",
+    "deleteChannelConfirm": "Supprimer le salon #{name} ?"
+  },
+  "serverList": {
+    "directMessages": "Messages directs",
+    "createServer": "Créer un serveur",
+    "joinServer": "Rejoindre un serveur"
+  },
+  "membersSidebar": {
+    "members": "Membres",
+    "selectServer": "Sélectionne un serveur.",
+    "noMembers": "Aucun membre.",
+    "typing": "Écrit…",
+    "online": "En ligne",
+    "offline": "Hors ligne",
+    "sendMessageTo": "Envoyer un message à @{username}",
+    "actions": "Actions",
+    "bannedUsersButton": "Utilisateurs bannis"
+  },
+  "directMessage": {
+    "title": "Messages directs",
+    "noConversations": "Aucune conversation.",
+    "selectConversation": "Sélectionne une conversation",
+    "selectConversationHint": "Choisis une conversation à gauche ou démarre-en une nouvelle avec le bouton +.",
+    "sendPlaceholder": "Envoyer un message…",
+    "selectConvPlaceholder": "Sélectionne une conversation…",
+    "messageSuppressed": "message supprimé"
+  },
+  "createServerModal": {
+    "title": "Créer un serveur",
+    "nameLabel": "Nom du serveur"
+  },
+  "createChannelModal": {
+    "title": "Créer un salon",
+    "nameLabel": "Nom du salon"
+  },
+  "editChannelModal": {
+    "title": "Renommer le salon",
+    "nameLabel": "Nom du salon"
+  },
+  "inviteMemberModal": {
+    "title": "Inviter un membre",
+    "codeTitle": "Code d'invitation",
+    "codeHint": "Partage ce code à ton pote.",
+    "noCode": "Aucun code d'invitation disponible.",
+    "copyFailed": "Impossible de copier. Sélectionne le texte et fais Ctrl+C.",
+    "copied": "Copié",
+    "copy": "Copier",
+    "tip": "Tip: tu peux aussi coller ce code dans \"Rejoindre un serveur\"."
+  },
+  "serverSettingsModal": {
+    "title": "Paramètres du serveur",
+    "renameTitle": "Renommer le serveur",
+    "nameLabel": "Nom",
+    "deleteTitle": "Supprimer le serveur",
+    "deleteWarning": "Cette action est irréversible. Même s'il y a des membres dedans.",
+    "deleteConfirmHint": "Tape DELETE pour confirmer",
+    "deleting": "Suppression..."
+  },
+  "leaveServerModal": {
+    "title": "Quitter le serveur",
+    "warning": "Tu vas quitter ce serveur. Tu pourras le rejoindre de nouveau uniquement avec un code d'invitation.",
+    "leaving": "Quitte...",
+    "leave": "Quitter"
+  },
+  "bannedUsersModal": {
+    "title": "Utilisateurs bannis"
+  },
+  "temporaryBanModal": {
+    "title": "Bannir temporairement",
+    "userLabel": "Utilisateur :",
+    "durationLabel": "Durée du bannissement",
+    "5min": "5 minutes",
+    "15min": "15 minutes",
+    "30min": "30 minutes",
+    "1h": "1 heure",
+    "3h": "3 heures",
+    "12h": "12 heures",
+    "24h": "24 heures",
+    "7d": "7 jours",
+    "banning": "Bannissement...",
+    "confirm": "Confirmer"
+  },
+  "joinServerModal": {
+    "title": "Rejoindre un serveur",
+    "codeLabel": "Code d'invitation",
+    "joining": "Rejoindre...",
+    "join": "Rejoindre",
+    "bannedUntil": "Tu es banni de ce serveur jusqu'au {date}."
+  },
+  "memberActions": {
+    "makeAdmin": "Rendre admin",
+    "removeAdmin": "Retirer admin",
+    "confirmMakeAdmin": "Rendre admin {username} ?",
+    "confirmRemoveAdmin": "Retirer admin {username} ?",
+    "makeOwner": "Rendre propriétaire",
+    "confirmMakeOwner": "Mettre {username} owner ?",
+    "kick": "Expulser",
+    "confirmKick": "Expulser {username} ?",
+    "tempBan": "Bannir temporairement",
+    "permanentBan": "Bannir définitivement",
+    "confirmPermanentBan": "Bannir définitivement {username} ?"
+  },
+  "banList": {
+    "permanent": "Ban permanent",
+    "temporary": "Ban temporaire jusqu'au {date}",
+    "noBans": "Aucun ban actif.",
+    "reason": "Raison :",
+    "unban": "Retirer le bannissement"
+  }
+}

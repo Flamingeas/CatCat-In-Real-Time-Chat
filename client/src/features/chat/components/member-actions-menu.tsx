@@ -1,16 +1,18 @@
-import { MemberRole } from "../services/members.service"
+"use client";
+import { useTranslations } from "next-intl";
+import { MemberRole } from "../services/members.service";
 
 type Props = {
-  username: string
-  userId: string
-  serverId: string
-  role?: MemberRole
-  onKick?: (serverId: string, userId: string) => void
-  onBan?: (serverId: string, userId: string) => void
-  onOpenTemporaryBanModal?: (userId: string, username: string) => void
-  onSetRole?: (serverId: string, userId: string, role: MemberRole) => void
-  onTransferOwner?: (serverId: string, userId: string) => void
-}
+  username: string;
+  userId: string;
+  serverId: string;
+  role?: MemberRole;
+  onKick?: (serverId: string, userId: string) => void;
+  onBan?: (serverId: string, userId: string) => void;
+  onOpenTemporaryBanModal?: (userId: string, username: string) => void;
+  onSetRole?: (serverId: string, userId: string, role: MemberRole) => void;
+  onTransferOwner?: (serverId: string, userId: string) => void;
+};
 
 export function MemberActionsMenu({
   username,
@@ -23,6 +25,8 @@ export function MemberActionsMenu({
   onSetRole,
   onTransferOwner,
 }: Props) {
+  const t = useTranslations("memberActions");
+
   return (
     <div className="absolute right-0 mt-2 w-44 rounded-2xl border border-[#ffffff]/10 bg-[#0a0605] shadow-2xl overflow-hidden z-50">
 
@@ -30,13 +34,16 @@ export function MemberActionsMenu({
         <>
           <button
             onClick={() => {
-              const nextRole = role === "admin" ? "member" : "admin"
-              if (!window.confirm(`${nextRole === "admin" ? "Rendre admin" : "Retirer admin"} ${username} ?`)) return
-              onSetRole(serverId, userId, nextRole)
+              const nextRole = role === "admin" ? "member" : "admin";
+              const confirmMsg = nextRole === "admin"
+                ? t("confirmMakeAdmin", { username })
+                : t("confirmRemoveAdmin", { username });
+              if (!window.confirm(confirmMsg)) return;
+              onSetRole(serverId, userId, nextRole);
             }}
             className="w-full text-left px-4 py-3 text-sm hover:bg-[#0F0908] cursor-pointer"
           >
-            {role === "admin" ? "Retirer admin" : "Rendre admin"}
+            {role === "admin" ? t("removeAdmin") : t("makeAdmin")}
           </button>
 
           <div className="h-px bg-[#ffffff]/10" />
@@ -47,12 +54,12 @@ export function MemberActionsMenu({
         <>
           <button
             onClick={() => {
-              if (!window.confirm(`Mettre ${username} owner ?`)) return
-              onTransferOwner(serverId, userId)
+              if (!window.confirm(t("confirmMakeOwner", { username }))) return;
+              onTransferOwner(serverId, userId);
             }}
             className="w-full text-left px-4 py-3 text-sm hover:bg-[#0F0908] cursor-pointer"
           >
-            Rendre propriétaire
+            {t("makeOwner")}
           </button>
 
           <div className="h-px bg-[#ffffff]/10" />
@@ -61,30 +68,30 @@ export function MemberActionsMenu({
 
       <button
         onClick={() => {
-          if (!window.confirm(`Expulser ${username} ?`)) return
-          onKick(serverId, userId)
+          if (!window.confirm(t("confirmKick", { username }))) return;
+          onKick(serverId, userId);
         }}
         className="w-full text-left px-4 py-3 text-sm text-red-300 hover:bg-[#0F0908] cursor-pointer"
       >
-        Expulser
+        {t("kick")}
       </button>
       <button
         onClick={() => {
-          onOpenTemporaryBanModal?.(userId, username)
+          onOpenTemporaryBanModal?.(userId, username);
         }}
-          className="w-full text-left px-4 py-3 text-sm text-orange-400 hover:bg-[#0F0908] cursor-pointer"
-        >
-        Bannir temporairement
+        className="w-full text-left px-4 py-3 text-sm text-orange-400 hover:bg-[#0F0908] cursor-pointer"
+      >
+        {t("tempBan")}
       </button>
       <button
         onClick={() => {
-          if (!window.confirm(`Bannir définitivement ${username} ?`)) return
-          onBan(serverId, userId)
+          if (!window.confirm(t("confirmPermanentBan", { username }))) return;
+          onBan(serverId, userId);
         }}
         className="w-full text-left px-4 py-3 text-sm text-red-500 hover:bg-[#0F0908] cursor-pointer"
       >
-        Bannir définitivement
+        {t("permanentBan")}
       </button>
     </div>
-  )
+  );
 }

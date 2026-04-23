@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 interface ChannelCreateModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -17,6 +21,9 @@ export function ChannelCreateModal({
     isChannelCreating,
     onCreate,
 }: ChannelCreateModalProps) {
+    const t = useTranslations("createChannelModal");
+    const tCommon = useTranslations("common");
+
     if (!isOpen) return null;
 
     return (
@@ -24,13 +31,13 @@ export function ChannelCreateModal({
             <div className="absolute inset-0 bg-black/70" onClick={() => !isChannelCreating && onClose()} />
             <div className="relative w-full max-w-md rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">Créer un salon</h3>
+                    <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">{t("title")}</h3>
                     <button onClick={() => !isChannelCreating && onClose()} className="text-[#DCCBC4]/60 hover:text-white cursor-pointer">
                         ✕
                     </button>
                 </div>
 
-                <label className="block text-sm text-[#DCCBC4]/70 mb-2">Nom du salon</label>
+                <label className="block text-sm text-[#DCCBC4]/70 mb-2">{t("nameLabel")}</label>
                 <input
                     value={channelName}
                     onChange={(e) => setChannelName(e.target.value)}
@@ -46,14 +53,14 @@ export function ChannelCreateModal({
                         disabled={isChannelCreating}
                         className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
                     >
-                        Annuler
+                        {tCommon("cancel")}
                     </button>
                     <button
                         onClick={onCreate}
                         disabled={isChannelCreating}
                         className="px-4 py-2 rounded-xl bg-[#EB5E28] text-[#1E1211] font-bold hover:bg-white disabled:opacity-50 cursor-pointer"
                     >
-                        {isChannelCreating ? "Création..." : "Créer"}
+                        {isChannelCreating ? tCommon("creating") : tCommon("create")}
                     </button>
                 </div>
             </div>

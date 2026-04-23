@@ -1,0 +1,16 @@
+
+{
+  "nav": {
+    "login": "Connexion / Inscription",
+    "goToChat": "Aller au chat",
+    "logout": "Se déconnecter"
+  },
+  "hero": {
+    "title": "Le coin le plus",
+    "titleHighlight": "chill",
+    "titleEnd": "d'Internet.",
+    "description": "Loin du bruit et de l'agitation des réseaux classiques. CatCat est un espace pensé pour la discussion, le partage authentique et la créativité. Prenez le temps, connectez-vous avec ceux qui vous inspirent et sentez-vous enfin chez vous.",
+    "cta": "Connexion / Inscription",
+    "ctaAuthed": "Aller au chat"
+  }
+}

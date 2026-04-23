@@ -1,0 +1,56 @@
+{
+  "nav": {
+    "login": "Connexion / Inscription",
+    "goToChat": "Aller au chat",
+    "logout": "Se déconnecter"
+  },
+  "hero": {
+    "title": "Le coin le plus",
+    "titleHighlight": "chill",
+    "titleEnd": "d'Internet.",
+    "description": "Loin du bruit et de l'agitation des réseaux classiques. CatCat est un espace pensé pour la discussion, le partage authentique et la créativité. Prenez le temps, connectez-vous avec ceux qui vous inspirent et sentez-vous enfin chez vous.",
+    "cta": "Connexion / Inscription",
+    "ctaAuthed": "Aller au chat"
+  },
+  "metadata": {
+    "title": "CatCat | Le réseau social qui ronronne",
+    "description": "Rejoignez CatCat, l'endroit idéal pour se poser, miauler avec votre bande et partager vos meilleures trouvailles."
+  },
+  "authModal": {
+    "close": "Fermer",
+    "login": {
+      "title": "Bon retour parmi nous !",
+      "subtitle": "Prêt à ronronner ?"
+    },
+    "register": {
+      "title": "Rejoignez la meute !",
+      "subtitle": "Créez votre espace en 2 secondes."
+    },
+    "fields": {
+      "username": {
+        "placeholder": "Votre pseudo",
+        "error": "Le pseudo doit faire au moins 3 caractères."
+      },
+      "email": {
+        "placeholder": "Votre adresse email",
+        "error": "Email invalide (ex: nom@domaine.com)."
+      },
+      "password": {
+        "placeholder": "Votre mot de passe",
+        "error": "Mot de passe trop court (8 caractères minimum)."
+      }
+    },
+    "submit": {
+      "loading": "Chargement...",
+      "login": "Se connecter",
+      "register": "Créer mon compte",
+      "invalidFields": "Vérifie les champs : certains sont invalides."
+    },
+    "footer": {
+      "noAccount": "Pas encore de compte ? ",
+      "signUp": "Inscrivez-vous",
+      "alreadyMember": "Déjà membre ? ",
+      "signIn": "Connectez-vous"
+    }
+  }
+}

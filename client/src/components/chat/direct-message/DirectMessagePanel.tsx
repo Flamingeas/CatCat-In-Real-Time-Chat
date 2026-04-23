@@ -1,10 +1,13 @@
+"use client";
+
+import { useTranslations, useLocale } from "next-intl";
 import { useState } from "react";
 import type { KeyboardEvent, RefObject } from "react";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { GifMessage } from "@/components/chat/GifMessage";
 import { GifPicker } from "@/components/chat/GifPicker";
 import { ConversationItem, DmMessage } from "@/features/direct-message/services/dm.service";
-import { getInitials, formatTimeFR } from "@/utils/chat";
+import { getInitials, formatTime } from "@/utils/chat";
 import { isGifMessage } from "@/utils/message-content";
 
 interface User {
@@ -63,6 +66,9 @@ export function DirectMessagePanel({
     onMessageKeyDown,
     messagesEndRef,
 }: DirectMessagePanelProps) {
+    const t = useTranslations("directMessage");
+    const tCommon = useTranslations("common");
+    const locale = useLocale();
     const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
     const selectedConversation = selectedConvId
@@ -83,7 +89,7 @@ export function DirectMessagePanel({
                         </h2>
                     </>
                 ) : (
-                    <h2 className="font-[family-name:var(--font-nunito)] font-bold text-xl text-white">Messages directs</h2>
+                    <h2 className="font-[family-name:var(--font-nunito)] font-bold text-xl text-white">{t("title")}</h2>
                 )}
             </div>
 
@@ -91,9 +97,9 @@ export function DirectMessagePanel({
                 {!selectedConvId ? (
                     <div className="h-full flex items-center justify-center">
                         <div className="max-w-xl w-full rounded-2xl border border-[#ffffff]/10 bg-[#0a0605] p-6 shadow-lg">
-                            <div className="text-white font-bold text-lg mb-2">Sélectionne une conversation</div>
+                            <div className="text-white font-bold text-lg mb-2">{t("selectConversation")}</div>
                             <div className="text-sm text-[#DCCBC4]/60">
-                                Choisis une conversation à gauche ou démarre-en une nouvelle avec le bouton <span className="text-[#EB5E28] font-bold">+</span>.
+                                {t("selectConversationHint")}
                             </div>
                         </div>
                     </div>
@@ -101,27 +107,29 @@ export function DirectMessagePanel({
                     <div className="h-full flex flex-col">
                         <div className="flex-1 overflow-y-auto pr-2">
                             <div className="flex items-center justify-between mb-3">
-                                <div className="text-xs text-[#DCCBC4]/50">{messagesLoading ? "Chargement..." : `${messages.length} message(s)`}</div>
+                                <div className="text-xs text-[#DCCBC4]/50">
+                                    {messagesLoading ? tCommon("loading") : tCommon("messageCount", { count: messages.length })}
+                                </div>
                                 {hasMore && messages.length > 0 && (
                                     <button
                                         onClick={onLoadMore}
                                         disabled={loadingMore}
                                         className="text-xs px-3 py-1 rounded-full border border-[#ffffff]/10 hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
                                     >
-                                        {loadingMore ? "Chargement..." : "Charger plus"}
+                                        {loadingMore ? tCommon("loading") : tCommon("loadMore")}
                                     </button>
                                 )}
                             </div>
 
                             {messagesLoading ? (
-                                <div className="text-sm text-[#DCCBC4]/50">Chargement des messages...</div>
+                                <div className="text-sm text-[#DCCBC4]/50">{tCommon("loadingMessages")}</div>
                             ) : messages.length === 0 ? (
-                                <div className="text-sm text-[#DCCBC4]/50">Aucun message pour l&apos;instant.</div>
+                                <div className="text-sm text-[#DCCBC4]/50">{tCommon("noMessages")}</div>
                             ) : (
                                 <div className="flex flex-col gap-3">
                                     {messages.map((message) => {
                                         const isMe = me && String(me.id) === String(message.sender_id);
-                                        const time = formatTimeFR(message.created_at);
+                                        const time = formatTime(message.created_at, locale);
                                         const isEditing = editingMessageId === message.message_id;
                                         const canReact = !!me && !message.is_deleted && !isEditing;
 
@@ -140,7 +148,7 @@ export function DirectMessagePanel({
                                                         <div className="flex items-center gap-2 mb-1 px-1 min-w-0">
                                                             <span className="text-xs font-bold text-[#EB5E28] truncate">@{message.sender_username}</span>
                                                             {time && <span className="text-[10px] text-[#DCCBC4]/40">{time}</span>}
-                                                            {message.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">• édité</span>}
+                                                            {message.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">{tCommon("edited")}</span>}
                                                         </div>
                                                     )}
 
@@ -158,13 +166,13 @@ export function DirectMessagePanel({
                                                                     onClick={() => onSaveEdit(message.message_id, editingContent)}
                                                                     className="px-3 py-1 rounded-xl bg-[#EB5E28] text-white text-xs font-bold hover:bg-white hover:text-[#1E1211] transition-colors"
                                                                 >
-                                                                    Sauvegarder
+                                                                    {tCommon("save")}
                                                                 </button>
                                                                 <button
                                                                     onClick={onCancelEdit}
                                                                     className="px-3 py-1 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] text-xs hover:bg-[#1E1211] transition-colors"
                                                                 >
-                                                                    Annuler
+                                                                    {tCommon("cancel")}
                                                                 </button>
                                                             </div>
                                                         </div>
@@ -178,7 +186,7 @@ export function DirectMessagePanel({
                                                                 ].join(" ")}
                                                             >
                                                                 {message.is_deleted ? (
-                                                                    <span className="text-white/60 italic">message supprimé</span>
+                                                                    <span className="text-white/60 italic">{t("messageSuppressed")}</span>
                                                                 ) : isGifMessage(message.content) ? (
                                                                     <GifMessage src={message.content} />
                                                                 ) : (
@@ -200,7 +208,7 @@ export function DirectMessagePanel({
                                                                                         ? "bg-[#EB5E28]/20 border-[#EB5E28] text-[#EB5E28]"
                                                                                         : "bg-[#0F0908] border-[#ffffff]/10 text-[#DCCBC4]/70 hover:border-[#ffffff]/30",
                                                                                 ].join(" ")}
-                                                                                title={hasReacted ? "Retirer ta réaction" : "Réagir aussi"}
+                                                                                title={hasReacted ? tCommon("removeReaction") : tCommon("reactAlso")}
                                                                             >
                                                                                 <span>{reaction.emoji}</span>
                                                                                 <span className="font-bold">{reaction.users.length}</span>
@@ -215,9 +223,9 @@ export function DirectMessagePanel({
                                                                     <button
                                                                         onClick={() => setEmojiPickerFor((current) => (current === message.message_id ? null : message.message_id))}
                                                                         className={`text-[11px] transition-colors cursor-pointer ${isMe ? "text-white/70 hover:text-white" : "text-[#DCCBC4]/50 hover:text-white"}`}
-                                                                        title="Ajouter une réaction"
+                                                                        title={tCommon("addReactionTitle")}
                                                                     >
-                                                                        + réaction
+                                                                        {tCommon("addReactionShort")}
                                                                     </button>
                                                                     {emojiPickerFor === message.message_id && (
                                                                         <div className={`absolute z-30 top-6 ${isMe ? "right-0" : "left-0"}`}>
@@ -246,24 +254,24 @@ export function DirectMessagePanel({
                                                     )}
                                                     <div className={`flex items-center gap-2 mt-1 px-1 ${isMe ? "justify-end" : "justify-start"}`}>
                                                         {time && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>{time}</span>}
-                                                        {message.is_edited && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>• édité</span>}
+                                                        {message.is_edited && <span className={`text-[10px] ${isMe ? "text-white/70" : "text-[#DCCBC4]/40"}`}>{tCommon("edited")}</span>}
 
                                                         {isMe && !message.is_deleted && !isEditing && (
                                                             <button
                                                                 onClick={() => onStartEdit(message.message_id, message.content)}
                                                                 className="text-[10px] text-white/70 hover:text-[#EB5E28] cursor-pointer"
-                                                                title="Éditer"
+                                                                title={tCommon("edit")}
                                                             >
-                                                                ✏️ Éditer
+                                                                {tCommon("editAction")}
                                                             </button>
                                                         )}
                                                         {isMe && !message.is_deleted && (
                                                             <button
                                                                 onClick={() => onDeleteMessage(message.message_id)}
                                                                 className="text-[10px] text-white/70 hover:text-red-200 cursor-pointer"
-                                                                title="Supprimer"
+                                                                title={tCommon("delete")}
                                                             >
-                                                                🗑 Supprimer
+                                                                {tCommon("deleteAction")}
                                                             </button>
                                                         )}
                                                     </div>
@@ -303,7 +311,7 @@ export function DirectMessagePanel({
                         onChange={(e) => setMessageText(e.target.value)}
                         onKeyDown={onMessageKeyDown}
                         disabled={!selectedConvId || isSending}
-                        placeholder={selectedConvId ? "Envoyer un message…" : "Sélectionne une conversation…"}
+                        placeholder={selectedConvId ? t("sendPlaceholder") : t("selectConvPlaceholder")}
                         className="flex-1 bg-transparent text-[#DCCBC4] placeholder-[#DCCBC4]/30 focus:outline-none font-[family-name:var(--font-nunito)]"
                     />
                     <button
@@ -315,7 +323,7 @@ export function DirectMessagePanel({
                                 ? "bg-[#EB5E28] text-[#1E1211] hover:bg-white cursor-pointer"
                                 : "bg-[#2A1A18] text-[#DCCBC4]/30 cursor-not-allowed",
                         ].join(" ")}
-                        title="Envoyer"
+                        title={tCommon("send")}
                     >
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />

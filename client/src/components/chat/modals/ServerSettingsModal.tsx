@@ -1,3 +1,6 @@
+"use client";
+import { useTranslations } from "next-intl";
+
 interface ServerSettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -25,6 +28,9 @@ export function ServerSettingsModal({
     onSave,
     onDelete,
 }: ServerSettingsModalProps) {
+    const t = useTranslations("serverSettingsModal");
+    const tCommon = useTranslations("common");
+
     if (!isOpen || !selectedServer) return null;
 
     return (
@@ -33,16 +39,16 @@ export function ServerSettingsModal({
             <div className="relative w-full max-w-lg rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
                     <div>
-                        <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">Paramètres du serveur</h3>
-                        <div className="text-xs text-[#DCCBC4]/50 mt-1">Serveur: {selectedServer.name}</div>
+                        <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">{t("title")}</h3>
+                        <div className="text-xs text-[#DCCBC4]/50 mt-1">{tCommon("server")} {selectedServer.name}</div>
                     </div>
                     <button onClick={() => !isSavingSettings && onClose()} className="text-[#DCCBC4]/60 hover:text-white">
                         ✕
                     </button>
                 </div>
                 <div className="rounded-2xl border border-[#ffffff]/10 bg-[#0a0605] p-4">
-                    <div className="text-white font-bold mb-2">Renommer le serveur</div>
-                    <label className="block text-sm text-[#DCCBC4]/70 mb-2">Nom</label>
+                    <div className="text-white font-bold mb-2">{t("renameTitle")}</div>
+                    <label className="block text-sm text-[#DCCBC4]/70 mb-2">{t("nameLabel")}</label>
                     <input
                         value={settingsName}
                         onChange={(e) => setSettingsName(e.target.value)}
@@ -54,18 +60,18 @@ export function ServerSettingsModal({
                             disabled={isSavingSettings}
                             className="px-4 py-2 rounded-xl bg-[#EB5E28] text-[#1E1211] font-bold hover:bg-white disabled:opacity-50 cursor-pointer"
                         >
-                            {isSavingSettings ? "Sauvegarde..." : "Sauvegarder"}
+                            {isSavingSettings ? tCommon("saving") : tCommon("save")}
                         </button>
                     </div>
                 </div>
                 <div className="mt-4 rounded-2xl border border-red-500/20 bg-[#0a0605] p-4">
-                    <div className="text-red-300 font-bold mb-1">Supprimer le serveur</div>
+                    <div className="text-red-300 font-bold mb-1">{t("deleteTitle")}</div>
                     <div className="text-sm text-[#DCCBC4]/60">
-                        Cette action est <span className="text-red-300 font-bold">irréversible</span>. Même s’il y a des membres dedans.
+                        {t("deleteWarning")}
                     </div>
                     <div className="mt-3">
                         <div className="text-xs text-[#DCCBC4]/50 mb-2">
-                            Tape <span className="text-red-300 font-bold">DELETE</span> pour confirmer
+                            {t("deleteConfirmHint")}
                         </div>
                         <input
                             value={deleteConfirm}
@@ -80,7 +86,7 @@ export function ServerSettingsModal({
                             disabled={isSavingSettings}
                             className="px-4 py-2 rounded-xl bg-red-500 text-white font-bold hover:bg-red-400 disabled:opacity-50 cursor-pointer"
                         >
-                            {isSavingSettings ? "Suppression..." : "Supprimer"}
+                            {isSavingSettings ? t("deleting") : tCommon("delete")}
                         </button>
                     </div>
                 </div>

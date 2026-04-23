@@ -1,0 +1,215 @@
+{
+  "chatPage": {
+    "toast": {
+      "ownerTransferred": "Owner transferred",
+      "actionDenied": "Action denied",
+      "memberBannedPermanently": "Member permanently banned",
+      "adminAdded": "Admin added",
+      "adminRemoved": "Admin removed",
+      "memberKicked": "Member kicked",
+      "channelDeleted": "Channel deleted",
+      "deletionDenied": "Deletion denied",
+      "leftServer": "You left the server",
+      "channelCreated": "Channel #{name} created",
+      "channelUpdated": "Channel updated",
+      "memberJoined": "{username} joined the server",
+      "memberLeft": "{username} left the server",
+      "memberNowRole": "{username} is now {role}",
+      "kickedSelf": "You have been kicked from the server",
+      "kickedOther": "{username} was kicked",
+      "serverDeleted": "Server deleted",
+      "serverUpdated": "Server updated",
+      "userOnline": "{username} is online",
+      "userOffline": "{username} is offline",
+      "bannedSelf": "You have been banned from the server",
+      "bannedOther": "{username} was banned",
+      "unbanned": "{username} was unbanned",
+      "tempBannedSelf": "You have been temporarily banned ({duration})",
+      "tempBannedSelfNoDuration": "You have been temporarily banned",
+      "tempBannedOther": "{username} was temporarily banned",
+      "tempBanLiftedSelf": "Your temporary ban has been lifted",
+      "tempBanLiftedOther": "{username} can access the server again"
+    },
+    "errors": {
+      "nameTooShort": "Name must be at least 3 characters.",
+      "nameTooLong": "Name must be at most 50 characters.",
+      "deleteConfirm": "Type DELETE to confirm deletion."
+    },
+    "typing": {
+      "one": "{user} is typing…",
+      "two": "{user1} and {user2} are typing…",
+      "many": "{user1}, {user2} and {count} others are typing…"
+    },
+    "fallbackUsername": "someone",
+    "confirmDeleteMessage": "Delete this message?",
+    "duration": {
+      "minutes": "{count, plural, one {# minute} other {# minutes}}",
+      "hours": "{count, plural, one {# hour} other {# hours}}"
+    }
+  },
+  "common": {
+    "cancel": "Cancel",
+    "save": "Save",
+    "saving": "Saving...",
+    "create": "Create",
+    "creating": "Creating...",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "send": "Send",
+    "loading": "Loading...",
+    "loadMore": "Load more",
+    "loadingMessages": "Loading messages...",
+    "noMessages": "No messages yet.",
+    "messageCount": "{count} message(s)",
+    "edited": "• edited",
+    "messageDeleted": "Message deleted",
+    "deleteAction": "🗑 Delete",
+    "editAction": "✏️ Edit",
+    "edit": "Edit",
+    "addReactionTitle": "Add a reaction",
+    "addReactionShort": "+ reaction",
+    "removeReaction": "Remove your reaction",
+    "reactAlso": "React too",
+    "server": "Server:"
+  },
+  "channelPanel": {
+    "currentChannel": "Current channel:",
+    "noChannelSelected": "No channel selected",
+    "selectServerTitle": "Select a server",
+    "inviteMemberTitle": "Invite a member",
+    "inviteOnlyAdmins": "Only owner/admins can invite",
+    "invite": "Invite",
+    "channelCreatedAt": "Created on {date}",
+    "channelUpdatedAt": "Updated on {date}",
+    "chooseServer": "Choose a server",
+    "selectServerHint": "Select a server on the left, or create one with the + button.",
+    "noChannelYet": "No channels yet",
+    "noChannelHint": "Create your first channel to start chatting. (e.g.: general)",
+    "createChannelTitle": "Create a channel",
+    "createChannelOnlyAdmins": "Only owners/admins can create a channel",
+    "createFirstChannel": "Create my first channel",
+    "askAdminToCreate": "Ask the owner/admin to create a channel.",
+    "chooseChannel": "Choose a channel",
+    "selectChannelHint": "Select a channel in the left column.",
+    "messagePlaceholder": "Message in #{name}…",
+    "chooseChannelPlaceholder": "Choose a channel to start…"
+  },
+  "channelList": {
+    "channels": "Channels",
+    "noServerForChannel": "Select or create a server.",
+    "noChannels": "No channels.",
+    "selectServerTitle": "Select a server",
+    "createChannelTitle": "Create a channel",
+    "onlyOwnerAdmin": "Owners/admins only",
+    "renameChannel": "Rename channel",
+    "deleteChannel": "Delete",
+    "deleteChannelConfirm": "Delete channel #{name}?"
+  },
+  "serverList": {
+    "directMessages": "Direct messages",
+    "createServer": "Create a server",
+    "joinServer": "Join a server"
+  },
+  "membersSidebar": {
+    "members": "Members",
+    "selectServer": "Select a server.",
+    "noMembers": "No members.",
+    "typing": "Typing…",
+    "online": "Online",
+    "offline": "Offline",
+    "sendMessageTo": "Send a message to @{username}",
+    "actions": "Actions",
+    "bannedUsersButton": "Banned users"
+  },
+  "directMessage": {
+    "title": "Direct messages",
+    "noConversations": "No conversations.",
+    "selectConversation": "Select a conversation",
+    "selectConversationHint": "Choose a conversation on the left or start a new one with the + button.",
+    "sendPlaceholder": "Send a message…",
+    "selectConvPlaceholder": "Select a conversation…",
+    "messageSuppressed": "message deleted"
+  },
+  "createServerModal": {
+    "title": "Create a server",
+    "nameLabel": "Server name"
+  },
+  "createChannelModal": {
+    "title": "Create a channel",
+    "nameLabel": "Channel name"
+  },
+  "editChannelModal": {
+    "title": "Rename channel",
+    "nameLabel": "Channel name"
+  },
+  "inviteMemberModal": {
+    "title": "Invite a member",
+    "codeTitle": "Invitation code",
+    "codeHint": "Share this code with your friend.",
+    "noCode": "No invitation code available.",
+    "copyFailed": "Cannot copy. Select the text and press Ctrl+C.",
+    "copied": "Copied",
+    "copy": "Copy",
+    "tip": "Tip: you can also paste this code in \"Join a server\"."
+  },
+  "serverSettingsModal": {
+    "title": "Server settings",
+    "renameTitle": "Rename server",
+    "nameLabel": "Name",
+    "deleteTitle": "Delete server",
+    "deleteWarning": "This action is irreversible. Even if there are members in it.",
+    "deleteConfirmHint": "Type DELETE to confirm",
+    "deleting": "Deleting..."
+  },
+  "leaveServerModal": {
+    "title": "Leave server",
+    "warning": "You will leave this server. You can only rejoin with an invitation code.",
+    "leaving": "Leaving...",
+    "leave": "Leave"
+  },
+  "bannedUsersModal": {
+    "title": "Banned users"
+  },
+  "temporaryBanModal": {
+    "title": "Temporarily ban",
+    "userLabel": "User:",
+    "durationLabel": "Ban duration",
+    "5min": "5 minutes",
+    "15min": "15 minutes",
+    "30min": "30 minutes",
+    "1h": "1 hour",
+    "3h": "3 hours",
+    "12h": "12 hours",
+    "24h": "24 hours",
+    "7d": "7 days",
+    "banning": "Banning...",
+    "confirm": "Confirm"
+  },
+  "joinServerModal": {
+    "title": "Join a server",
+    "codeLabel": "Invitation code",
+    "joining": "Joining...",
+    "join": "Join",
+    "bannedUntil": "You are banned from this server until {date}."
+  },
+  "memberActions": {
+    "makeAdmin": "Make admin",
+    "removeAdmin": "Remove admin",
+    "confirmMakeAdmin": "Make {username} admin?",
+    "confirmRemoveAdmin": "Remove admin from {username}?",
+    "makeOwner": "Make owner",
+    "confirmMakeOwner": "Make {username} owner?",
+    "kick": "Kick",
+    "confirmKick": "Kick {username}?",
+    "tempBan": "Temporarily ban",
+    "permanentBan": "Permanently ban",
+    "confirmPermanentBan": "Permanently ban {username}?"
+  },
+  "banList": {
+    "permanent": "Permanent ban",
+    "temporary": "Temporary ban until {date}",
+    "noBans": "No active bans.",
+    "reason": "Reason:",
+    "unban": "Remove ban"
+  }
+}

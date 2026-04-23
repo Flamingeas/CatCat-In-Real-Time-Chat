@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { PencilIcon } from "../icons";
 
 interface Channel {
@@ -30,14 +33,16 @@ export function ChannelList({
     onDeleteChannel,
     selectedServerId,
 }: ChannelListProps) {
+    const t = useTranslations("channelList");
+
     return (
         <div className="flex-1 flex flex-col">
             <div className="px-4 pt-4 pb-2 text-xs uppercase tracking-wider text-[#DCCBC4]/50 font-[family-name:var(--font-nunito)] flex items-center">
-                Salons
+                {t("channels")}
                 <button
                     onClick={onCreateChannel}
                     disabled={!selectedServerId || !canCreateChannel}
-                    title={!selectedServerId ? "Sélectionne un serveur" : canCreateChannel ? "Créer un salon" : "Seuls owner/admin"}
+                    title={!selectedServerId ? t("selectServerTitle") : canCreateChannel ? t("createChannelTitle") : t("onlyOwnerAdmin")}
                     className={[
                         "ml-auto w-8 h-8 rounded-xl border flex items-center justify-center transition-colors cursor-pointer",
                         selectedServerId && canCreateChannel ? "border-[#ffffff]/10 hover:bg-[#1E1211] text-[#EB5E28]" : "border-[#ffffff]/5 text-[#DCCBC4]/30 cursor-not-allowed",
@@ -49,9 +54,9 @@ export function ChannelList({
 
             <div className="flex-1 overflow-y-auto px-2 pb-3">
                 {!selectedServerId ? (
-                    <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Sélectionne / crée un serveur.</div>
+                    <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">{t("noServerForChannel")}</div>
                 ) : channels.length === 0 ? (
-                    <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Aucun salon.</div>
+                    <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">{t("noChannels")}</div>
                 ) : (
                     <div className="flex flex-col gap-1">
                         {channels.map((c) => {
@@ -74,7 +79,7 @@ export function ChannelList({
                                     {active && canEditChannel && (
                                         <button
                                             onClick={onEditChannel}
-                                            title="Renommer le salon"
+                                            title={t("renameChannel")}
                                             className="p-2 rounded-xl border border-[#ffffff]/10 text-[#DCCBC4]/70 hover:bg-[#1E1211] hover:text-white cursor-pointer"
                                         >
                                             <PencilIcon />
@@ -84,10 +89,10 @@ export function ChannelList({
                                     {canCreateChannel && (
                                         <button
                                             onClick={() => {
-                                                if (!window.confirm(`Supprimer le salon #${c.name} ?`)) return;
+                                                if (!window.confirm(t("deleteChannelConfirm", { name: c.name }))) return;
                                                 onDeleteChannel(String(c.id));
                                             }}
-                                            title="Supprimer"
+                                            title={t("deleteChannel")}
                                             className="group-hover:opacity-100 transition-opacity text-red-300 hover:text-red-200 px-2 cursor-pointer"
                                         >
                                             🗑

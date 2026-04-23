@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 interface JoinServerModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -17,6 +21,9 @@ export function JoinServerModal({
     isJoining,
     onJoin,
 }: JoinServerModalProps) {
+    const t = useTranslations("joinServerModal");
+    const tCommon = useTranslations("common");
+
     if (!isOpen) return null;
 
     return (
@@ -24,12 +31,12 @@ export function JoinServerModal({
             <div className="absolute inset-0 bg-black/70" onClick={() => !isJoining && onClose()} />
             <div className="relative w-full max-w-md rounded-2xl bg-[#0F0908] border border-[#ffffff]/10 shadow-2xl p-5">
                 <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">Rejoindre un serveur</h3>
+                    <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">{t("title")}</h3>
                     <button onClick={() => !isJoining && onClose()} className="text-[#DCCBC4]/60 hover:text-white">
                         ✕
                     </button>
                 </div>
-                <label className="block text-sm text-[#DCCBC4]/70 mb-2">Code d’invitation</label>
+                <label className="block text-sm text-[#DCCBC4]/70 mb-2">{t("codeLabel")}</label>
                 <input
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
@@ -48,14 +55,14 @@ export function JoinServerModal({
                         disabled={isJoining}
                         className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
                     >
-                        Annuler
+                        {tCommon("cancel")}
                     </button>
                     <button
                         onClick={onJoin}
                         disabled={isJoining}
                         className="px-4 py-2 rounded-xl bg-[#EB5E28] text-[#1E1211] font-bold hover:bg-white disabled:opacity-50 cursor-pointer"
                     >
-                        {isJoining ? "Rejoindre..." : "Rejoindre"}
+                        {isJoining ? t("joining") : t("join")}
                     </button>
                 </div>
             </div>

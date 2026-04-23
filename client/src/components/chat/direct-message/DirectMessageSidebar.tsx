@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import { ConversationItem } from "@/features/direct-message/services/dm.service";
 import { getInitials } from "@/utils/chat";
 
@@ -14,15 +17,16 @@ export function DirectMessageSidebar({
     onSelectConversation,
     unreadCounts,
 }: DirectMessageSidebarProps) {
+    const t = useTranslations("directMessage");
     return (
         <>
             <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
                 <span className="mr-2 text-[#EB5E28]">✉</span>
-                Messages directs
+                {t("title")}
             </div>
             <div className="flex-1 overflow-y-auto px-2 py-3">
                 {conversations.length === 0 ? (
-                    <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">Aucune conversation.</div>
+                    <div className="px-2 py-2 text-sm text-[#DCCBC4]/50">{t("noConversations")}</div>
                 ) : (
                     <div className="flex flex-col gap-1">
                         {conversations.map((conversation) => {
