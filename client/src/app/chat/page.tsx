@@ -41,6 +41,7 @@ import { useDirectMessages } from "@/hooks/useDirectMessages";
 import { useChannelMessages } from "@/hooks/useChannelMessages";
 import { useWebSocket } from "@/lib/WebSocketProvider";
 import { useTranslations, useLocale } from "next-intl";
+import LanguageSwitcher from "@/app/components/LanguageSwitcher";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
@@ -1167,6 +1168,9 @@ export default function ChatPage() {
     return (
         <div className={`flex h-screen bg-black text-[#DCCBC4] ${miskan.variable} ${nunito.variable} font-sans overflow-hidden p-[8px] gap-[8px]`}>
             <ToastStack toasts={toasts} />
+            <div className="absolute bottom-4 right-4 z-40">
+                <LanguageSwitcher />
+            </div>
 
             <ServerList
                 servers={servers}
