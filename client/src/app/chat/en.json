@@ -123,6 +123,7 @@
   },
   "directMessage": {
     "title": "Direct messages",
+    "noConversations": "No conversations.",
     "selectConversation": "Select a conversation",
     "selectConversationHint": "Choose a conversation on the left or start a new one with the + button.",
     "sendPlaceholder": "Send a message…",
