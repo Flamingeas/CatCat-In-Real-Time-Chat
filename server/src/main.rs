@@ -13,7 +13,6 @@ mod modules;
 mod utils;
 mod websocket;
 
-use config::{AppState, DatabaseConfig, EnvConfig};
 use crate::modules::auth::service::AuthService;
 use crate::modules::auth::AuthMiddleware;
 use crate::modules::channel::repository::{ChannelRepository, ChannelRepositoryTrait};
@@ -22,6 +21,7 @@ use crate::modules::server::repository::ServerRepository;
 use crate::modules::server::service::ServerService;
 use crate::modules::user::repository::UserRepository;
 use crate::websocket::server::WsServer;
+use config::{AppState, DatabaseConfig, EnvConfig};
 
 use utoipa::openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme};
 use utoipa::Modify;
@@ -71,6 +71,14 @@ impl Modify for SecurityAddon {
         crate::modules::message::route::add_reaction,
         crate::modules::message::route::remove_reaction,
 
+        // Messages directs
+        crate::modules::direct_message::route::start_conversation,
+        crate::modules::direct_message::route::list_conversations,
+        crate::modules::direct_message::route::get_messages,
+        crate::modules::direct_message::route::send_message,
+        crate::modules::direct_message::route::update_message,
+        crate::modules::direct_message::route::delete_message,
+
         // Serveurs :
         crate::modules::server::route::create_server,
         crate::modules::server::route::list_servers,
@@ -78,6 +86,14 @@ impl Modify for SecurityAddon {
         crate::modules::server::route::join_server,
         crate::modules::server::route::leave_server,
         crate::modules::server::route::list_members,
+
+        // Member actions :
+        crate::modules::server::route::set_member_role,
+        crate::modules::server::route::transfer_owner,
+        crate::modules::server::route::kick_member,
+        crate::modules::server::route::ban_member,
+        crate::modules::server::route::ban_list,
+        crate::modules::server::route::unban_member,
     ),
     components(
         schemas(
@@ -103,6 +119,14 @@ impl Modify for SecurityAddon {
             crate::models::server::ServerDetailedResponse,
             crate::models::server::JoinServerRequest,
             crate::models::server::Server,
+            crate::modules::server::route::TransferOwnerPayload,
+
+            // messages directs
+            crate::modules::direct_message::route::StartConversationRequest,
+            crate::modules::direct_message::route::SendDirectMessageRequest,
+            crate::modules::direct_message::route::UpdateDirectMessageRequest,
+            crate::models::direct_message::ConversationResponse,
+            crate::models::direct_message::DirectMessageResponse,
         )
     ),
     tags(
@@ -111,6 +135,7 @@ impl Modify for SecurityAddon {
         (name = "Messages", description = "Envoi et historique des messages (MongoDB)"),
         (name = "Servers", description = "Gestion des serveurs"),
         (name = "Server Members", description = "Gestion des rôles et des utilisateurs"),
+        (name = "Direct Messages", description = "Messages privés entre utilisateurs"),
     ),
     modifiers(&SecurityAddon),
 )]
@@ -128,14 +153,13 @@ async fn main() -> std::io::Result<()> {
         &env_config.mongodb_uri,
         &env_config.mongodb_db_name,
     )
-        .await
-        .expect("DB connection failed.");
+    .await
+    .expect("DB connection failed.");
 
     let app_state = web::Data::new(AppState { db: db_config });
 
     let user_repo = UserRepository::new(app_state.db.pg.clone());
-    let auth_service =
-        web::Data::new(AuthService::new(user_repo, env_config.jwt_secret.clone()));
+    let auth_service = web::Data::new(AuthService::new(user_repo, env_config.jwt_secret.clone()));
 
     let ws_server = WsServer::new().start();
 
@@ -185,13 +209,10 @@ async fn main() -> std::io::Result<()> {
             .app_data(web::Data::new(ws_server.clone()))
             .app_data(web::Data::new(pg_pool.clone()))
             .app_data(web::Data::new(mongo_db.clone()))
-            
             // --- NOUVEAU : On ajoute la route visuelle du Swagger ---
             .service(
-                SwaggerUi::new("/swagger-ui/{_:.*}")
-                    .url("/api-docs/openapi.json", openapi.clone()),
+                SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-docs/openapi.json", openapi.clone()),
             )
-
             .route("/ws", web::get().to(websocket::routes::ws_index))
             .configure(modules::auth::route::config)
             .service(
@@ -204,10 +225,11 @@ async fn main() -> std::io::Result<()> {
                             .configure(modules::channel::route::config_in_servers_scope),
                     )
                     .configure(modules::channel::route::config_root)
-                    .configure(modules::message::route::config),
+                    .configure(modules::message::route::config)
+                    .configure(modules::direct_message::route::config),
             )
     })
-        .bind(env_config.server_address())?
-        .run()
-        .await
+    .bind(env_config.server_address())?
+    .run()
+    .await
 }

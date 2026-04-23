@@ -1,0 +1,94 @@
+import Image from "next/image";
+import Link from "next/link";
+import logoImage from "@/app/images/logo_catcat.svg";
+import { EnterIcon } from "../icons";
+
+interface Server {
+    id: string;
+    name: string;
+}
+
+interface ServerListProps {
+    servers: Server[];
+    selectedServerId: string | null;
+    onSelectServer: (id: string) => void;
+    onCreate: () => void;
+    onJoin: () => void;
+    initials: string;
+    view: "servers" | "dm";
+    onToggleView: () => void;
+    unreadDmCount: number;
+}
+
+function formatBadgeCount(count: number) {
+    return count > 99 ? "99+" : String(count);
+}
+
+export function ServerList({ servers, selectedServerId, onSelectServer, onCreate, onJoin, initials, view, onToggleView, unreadDmCount }: ServerListProps) {
+    return (
+        <div className="w-[72px] bg-[#1E1211] rounded-[20px] flex flex-col items-center py-6 gap-4 z-20 h-full shadow-lg">
+            <Link href="/" className="w-12 h-12 flex items-center justify-center hover:rounded-xl transition-all cursor-pointer group">
+                <div className="relative w-12 h-12 transition-transform duration-300 group-hover:rotate-12">
+                    <Image src={logoImage} alt="Logo CatCat" />
+                </div>
+            </Link>
+            <button
+                onClick={onToggleView}
+                title="Messages directs"
+                className={[
+                    "relative w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
+                    view === "dm" ? "bg-[#EB5E28] text-white" : "bg-[#2A1A18] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white",
+                ].join(" ")}
+            >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+                {unreadDmCount > 0 && (
+                    <span className="absolute -right-1 -top-1 min-w-5 h-5 px-1 rounded-full bg-[#bef264] text-[#1E1211] border-2 border-[#1E1211] text-[10px] font-black flex items-center justify-center">
+                        {formatBadgeCount(unreadDmCount)}
+                    </span>
+                )}
+            </button>
+            <div className="w-8 h-[2px] bg-[#ffffff]/10 rounded-full" />
+            <div className="flex flex-col items-center gap-3 w-full px-2">
+                {servers.map((s) => {
+                    const active = view === "servers" && s.id === selectedServerId;
+                    return (
+                        <button
+                            key={s.id}
+                            onClick={() => {
+                                onSelectServer(s.id);
+                            }}
+                            title={s.name}
+                            className={[
+                                "w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
+                                active ? "bg-[#EB5E28] text-white" : "bg-[#2A1A18] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white",
+                            ].join(" ")}
+                        >
+                            <span className="font-bold text-sm">{s.name?.slice(0, 2).toUpperCase() || "SV"}</span>
+                        </button>
+                    );
+                })}
+            </div>
+            <button
+                onClick={onCreate}
+                title="Créer un serveur"
+                className="w-12 h-12 bg-[#2A1A18] rounded-[24px] hover:rounded-[16px] text-[#EB5E28] hover:text-white hover:bg-[#EB5E28] flex items-center justify-center transition-all cursor-pointer"
+            >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                </svg>
+            </button>
+            <button
+                onClick={onJoin}
+                title="Rejoindre un serveur"
+                className="w-12 h-12 bg-[#2A1A18] rounded-[24px] hover:rounded-[16px] text-[#EB5E28] hover:text-white hover:bg-[#EB5E28] flex items-center justify-center transition-all cursor-pointer mt-2"
+            >
+                <EnterIcon />
+            </button>
+            <div className="mt-auto w-10 h-10 bg-[#bef264] rounded-full flex items-center justify-center text-[#1E1211] font-bold text-xs border-2 border-[#1E1211]">
+                {initials}
+            </div>
+        </div>
+    );
+}

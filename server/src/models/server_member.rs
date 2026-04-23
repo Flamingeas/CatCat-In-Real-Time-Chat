@@ -1,7 +1,7 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
-use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, sqlx::Type, Clone, PartialEq, Eq)]
 #[sqlx(type_name = "member_role", rename_all = "lowercase")]
@@ -215,9 +215,18 @@ mod tests {
 
     #[test]
     fn test_try_from_str_role() {
-        assert_eq!(ServerMemberRole::try_from("owner").unwrap(), ServerMemberRole::Owner);
-        assert_eq!(ServerMemberRole::try_from("admin").unwrap(), ServerMemberRole::Admin);
-        assert_eq!(ServerMemberRole::try_from("member").unwrap(), ServerMemberRole::Member);
+        assert_eq!(
+            ServerMemberRole::try_from("owner").unwrap(),
+            ServerMemberRole::Owner
+        );
+        assert_eq!(
+            ServerMemberRole::try_from("admin").unwrap(),
+            ServerMemberRole::Admin
+        );
+        assert_eq!(
+            ServerMemberRole::try_from("member").unwrap(),
+            ServerMemberRole::Member
+        );
 
         let err = ServerMemberRole::try_from("invalid").unwrap_err();
         assert!(err.contains("Invalid role"));
@@ -274,10 +283,7 @@ mod tests {
         let admin = ServerMember::with_role(server_id, user_id, ServerMemberRole::Admin);
         let member = ServerMember::with_role(server_id, user_id, ServerMemberRole::Member);
 
-        for action in [
-            MemberAction::SendMessage,
-            MemberAction::DeleteOwnMessage,
-        ] {
+        for action in [MemberAction::SendMessage, MemberAction::DeleteOwnMessage] {
             assert!(owner.can_perform_action(action));
             assert!(admin.can_perform_action(action));
             assert!(member.can_perform_action(action));

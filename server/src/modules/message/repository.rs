@@ -1,7 +1,7 @@
 use futures::stream::TryStreamExt;
 use mongodb::{
-    bson::{doc, Binary},
     bson::spec::BinarySubtype,
+    bson::{doc, Binary},
     Database,
 };
 use uuid::Uuid;
@@ -88,6 +88,7 @@ impl<'a> MessageRepository<'a> {
             .limit(limit)
             .build();
 
+<<<<<<< HEAD
         println!("Démarrage de la requête GET pour le salon: {}", channel_id);
 
         let mut cursor = self
@@ -95,6 +96,9 @@ impl<'a> MessageRepository<'a> {
             .find(filter)
             .with_options(options)
             .await?;
+=======
+        let mut cursor = self.collection().find(filter).with_options(options).await?;
+>>>>>>> main
 
         let mut messages = Vec::new();
 
@@ -126,7 +130,6 @@ impl<'a> MessageRepository<'a> {
                 "updated_at": BsonDateTime::now()
             }
         };
-
         let options = mongodb::options::FindOneAndUpdateOptions::builder()
             .return_document(mongodb::options::ReturnDocument::After)
             .build();
@@ -134,7 +137,7 @@ impl<'a> MessageRepository<'a> {
         let message = self
             .collection()
             .find_one_and_update(filter, update)
-            .with_options(options)
+            .return_document(mongodb::options::ReturnDocument::After)
             .await?
             .ok_or_else(|| {
                 mongodb::error::Error::from(std::io::Error::new(
@@ -146,16 +149,12 @@ impl<'a> MessageRepository<'a> {
         Ok(message)
     }
 
-    pub async fn delete(
-        &self,
-        message_id: Uuid,
-    ) -> Result<(), mongodb::error::Error> {
+    pub async fn delete(&self, message_id: Uuid) -> Result<(), mongodb::error::Error> {
         use mongodb::bson::DateTime as BsonDateTime;
 
         let filter = doc! {
             "message_id": uuid_bin0(message_id)
         };
-
         let update = doc! {
             "$set": { "deleted_at": BsonDateTime::now() }
         };
@@ -164,10 +163,88 @@ impl<'a> MessageRepository<'a> {
         Ok(())
     }
 
-    pub async fn count_by_channel(
+    pub async fn add_reaction(
         &self,
-        channel_id: Uuid,
-    ) -> Result<u64, mongodb::error::Error> {
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), mongodb::error::Error> {
+        let existing_reaction_filter = doc! {
+            "message_id": uuid_bin0(message_id),
+            "reactions.emoji": emoji
+        };
+        let add_user_update = doc! {
+            "$addToSet": {
+                "reactions.$.users": uuid_bin0(user_id)
+            }
+        };
+
+        let result = self
+            .collection()
+            .update_one(existing_reaction_filter, add_user_update)
+            .await?;
+
+        if result.matched_count > 0 {
+            return Ok(());
+        }
+
+        let new_reaction_filter = doc! {
+            "message_id": uuid_bin0(message_id)
+        };
+        let new_reaction_update = doc! {
+            "$push": {
+                "reactions": {
+                    "emoji": emoji,
+                    "users": [uuid_bin0(user_id)]
+                }
+            }
+        };
+
+        self.collection()
+            .update_one(new_reaction_filter, new_reaction_update)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), mongodb::error::Error> {
+        let remove_user_filter = doc! {
+            "message_id": uuid_bin0(message_id),
+            "reactions.emoji": emoji
+        };
+        let remove_user_update = doc! {
+            "$pull": {
+                "reactions.$.users": uuid_bin0(user_id)
+            }
+        };
+
+        self.collection()
+            .update_one(remove_user_filter, remove_user_update)
+            .await?;
+
+        let remove_empty_filter = doc! {
+            "message_id": uuid_bin0(message_id)
+        };
+        let remove_empty_update = doc! {
+            "$pull": {
+                "reactions": {
+                    "emoji": emoji,
+                    "users": []
+                }
+            }
+        };
+
+        self.collection()
+            .update_one(remove_empty_filter, remove_empty_update)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn count_by_channel(&self, channel_id: Uuid) -> Result<u64, mongodb::error::Error> {
         let filter = doc! {
             "channel_id": uuid_bin0(channel_id),
             "$or": [
@@ -175,7 +252,6 @@ impl<'a> MessageRepository<'a> {
                 { "deleted_at": null }
             ]
         };
-
         self.collection().count_documents(filter).await
     }
 
@@ -275,10 +351,7 @@ mod tests {
         let bi = by_id.get("message_id").unwrap();
 
         match (bc, bi) {
-            (
-                mongodb::bson::Bson::Binary(b1),
-                mongodb::bson::Bson::Binary(b2),
-            ) => {
+            (mongodb::bson::Bson::Binary(b1), mongodb::bson::Bson::Binary(b2)) => {
                 assert_eq!(b1.subtype, BinarySubtype::Generic);
                 assert_eq!(b1.bytes.as_slice(), channel_id.as_bytes());
 

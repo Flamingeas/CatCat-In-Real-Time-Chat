@@ -1,9 +1,9 @@
-use uuid::Uuid;
-
 use crate::models::server::{Server, UpdateServer};
-use crate::models::server_member::{ServerMemberResponse, ServerMemberRole};
 use crate::models::server_ban::ServerBanResponse;
+use crate::models::server_member::{ServerMemberResponse, ServerMemberRole};
 use crate::modules::server::repository::ServerRepository;
+use chrono::{DateTime, Duration, Utc};
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ServerService {
@@ -15,7 +15,7 @@ pub enum JoinServerError {
     InvalidCode,
     NotFound,
     AlreadyMember,
-    Forbidden,
+    Forbidden { expires_at: Option<DateTime<Utc>> },
     Db,
 }
 
@@ -37,10 +37,13 @@ impl ServerService {
             return Err("Server name must be between 3 and 50 characters.".into());
         }
 
-        self.repo.create_with_owner(owner_id, name).await.map_err(|e| {
-            log::error!("create_server error: {:?}", e);
-            "Unable to create server.".to_string()
-        })
+        self.repo
+            .create_with_owner(owner_id, name)
+            .await
+            .map_err(|e| {
+                log::error!("create_server error: {:?}", e);
+                "Unable to create server.".to_string()
+            })
     }
 
     pub async fn list_my_servers(&self, user_id: Uuid) -> Result<Vec<Server>, String> {
@@ -57,7 +60,11 @@ impl ServerService {
         })
     }
 
-    pub async fn join_by_invitation_code(&self, user_id: Uuid, code: &str) -> Result<Server, JoinServerError> {
+    pub async fn join_by_invitation_code(
+        &self,
+        user_id: Uuid,
+        code: &str,
+    ) -> Result<Server, JoinServerError> {
         let code = code.trim().to_uppercase();
         if code.len() != 8 {
             return Err(JoinServerError::InvalidCode);
@@ -72,7 +79,12 @@ impl ServerService {
             }
             Err(sqlx::Error::RowNotFound) => Err(JoinServerError::NotFound),
             Err(sqlx::Error::Protocol(msg)) if msg.contains("User is banned") => {
-                Err(JoinServerError::Forbidden)
+                let expires_at = msg
+                    .strip_prefix("User is banned from this server until ")
+                    .and_then(|value| DateTime::parse_from_rfc3339(value).ok())
+                    .map(|date| date.with_timezone(&Utc));
+
+                Err(JoinServerError::Forbidden { expires_at })
             }
             Err(e) => {
                 log::error!("join_by_invitation_code error: {:?}", e);
@@ -102,7 +114,11 @@ impl ServerService {
         })
     }
 
-    pub async fn leave_server(&self, server_id: Uuid, user_id: Uuid) -> Result<(), LeaveServerError> {
+    pub async fn leave_server(
+        &self,
+        server_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<(), LeaveServerError> {
         match self.repo.leave_server(server_id, user_id).await {
             Ok((_server, deleted)) => {
                 if !deleted {
@@ -118,7 +134,12 @@ impl ServerService {
         }
     }
 
-    pub async fn update_server(&self, user_id: Uuid, server_id: Uuid, payload: UpdateServer) -> Result<Server, String> {
+    pub async fn update_server(
+        &self,
+        user_id: Uuid,
+        server_id: Uuid,
+        payload: UpdateServer,
+    ) -> Result<Server, String> {
         let server = self.repo.find_by_id(server_id).await.map_err(|e| {
             log::error!("find_by_id error: {:?}", e);
             "Server not found.".to_string()
@@ -141,11 +162,19 @@ impl ServerService {
         })
     }
 
-    pub async fn list_members(&self, requester_id: Uuid, server_id: Uuid) -> Result<Vec<ServerMemberResponse>, String> {
-        let is_member = self.repo.is_member(server_id, requester_id).await.map_err(|e| {
-            log::error!("list_members/is_member error: {:?}", e);
-            "Unable to check membership.".to_string()
-        })?;
+    pub async fn list_members(
+        &self,
+        requester_id: Uuid,
+        server_id: Uuid,
+    ) -> Result<Vec<ServerMemberResponse>, String> {
+        let is_member = self
+            .repo
+            .is_member(server_id, requester_id)
+            .await
+            .map_err(|e| {
+                log::error!("list_members/is_member error: {:?}", e);
+                "Unable to check membership.".to_string()
+            })?;
 
         if !is_member {
             return Err("Forbidden".to_string());
@@ -158,10 +187,13 @@ impl ServerService {
     }
 
     pub async fn delete_server(&self, server_id: Uuid, owner_id: Uuid) -> Result<(), String> {
-        self.repo.delete_server(server_id, owner_id).await.map_err(|e| {
-            log::error!("delete_server error: {:?}", e);
-            "Unable to delete server.".to_string()
-        })
+        self.repo
+            .delete_server(server_id, owner_id)
+            .await
+            .map_err(|e| {
+                log::error!("delete_server error: {:?}", e);
+                "Unable to delete server.".to_string()
+            })
     }
 
     pub async fn set_role(
@@ -171,7 +203,11 @@ impl ServerService {
         target_user_id: Uuid,
         role: ServerMemberRole,
     ) -> Result<(), String> {
-        let server = self.repo.find_by_id(server_id).await.map_err(|_| "Server not found".to_string())?;
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
 
         if server.owner_id != requester_id {
             return Err("Forbidden".into());
@@ -208,7 +244,11 @@ impl ServerService {
         server_id: Uuid,
         new_owner_id: Uuid,
     ) -> Result<Server, String> {
-        let server = self.repo.find_by_id(server_id).await.map_err(|_| "Server not found".to_string())?;
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
 
         if server.owner_id != requester_id {
             return Err("Forbidden".into());
@@ -217,10 +257,14 @@ impl ServerService {
         if new_owner_id == server.owner_id {
             return Err("Already owner".into());
         }
-        let is_member = self.repo.is_member(server_id, new_owner_id).await.map_err(|e| {
-            log::error!("transfer_owner/is_member error: {:?}", e);
-            "Unable to check membership".to_string()
-        })?;
+        let is_member = self
+            .repo
+            .is_member(server_id, new_owner_id)
+            .await
+            .map_err(|e| {
+                log::error!("transfer_owner/is_member error: {:?}", e);
+                "Unable to check membership".to_string()
+            })?;
         if !is_member {
             return Err("Target is not a member".into());
         }
@@ -233,8 +277,17 @@ impl ServerService {
             })
     }
 
-    pub async fn kick_member(&self, requester_id: Uuid, server_id: Uuid, target_user_id: Uuid) -> Result<(), String> {
-        let server = self.repo.find_by_id(server_id).await.map_err(|_| "Server not found".to_string())?;
+    pub async fn kick_member(
+        &self,
+        requester_id: Uuid,
+        server_id: Uuid,
+        target_user_id: Uuid,
+    ) -> Result<(), String> {
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
 
         if server.owner_id != requester_id {
             return Err("Forbidden".into());
@@ -244,10 +297,13 @@ impl ServerService {
             return Err("Cannot kick owner".into());
         }
 
-        self.repo.remove_member(server_id, target_user_id).await.map_err(|e| {
-            log::error!("kick_member error: {:?}", e);
-            "Unable to remove member".to_string()
-        })
+        self.repo
+            .remove_member(server_id, target_user_id)
+            .await
+            .map_err(|e| {
+                log::error!("kick_member error: {:?}", e);
+                "Unable to remove member".to_string()
+            })
     }
 
     pub async fn ban_member(
@@ -279,6 +335,49 @@ impl ServerService {
             })
     }
 
+    pub async fn ban_temporary_member(
+        &self,
+        requester_id: Uuid,
+        server_id: Uuid,
+        target_user_id: Uuid,
+        duration_minutes: u32,
+    ) -> Result<DateTime<Utc>, String> {
+        let server = self
+            .repo
+            .find_by_id(server_id)
+            .await
+            .map_err(|_| "Server not found".to_string())?;
+
+        if server.owner_id != requester_id {
+            return Err("Forbidden".into());
+        }
+
+        if target_user_id == server.owner_id {
+            return Err("Cannot ban owner".into());
+        }
+
+        if duration_minutes == 0 {
+            return Err("Duration must be greater than 0".into());
+        }
+
+        let expires_at = Utc::now() + Duration::minutes(duration_minutes as i64);
+        self.repo
+            .ban_member(
+                server_id,
+                target_user_id,
+                requester_id,
+                None,
+                Some(expires_at),
+            )
+            .await
+            .map_err(|e| {
+                log::error!("ban_temporary_member error: {:?}", e);
+                "Unable to ban member temporarily".to_string()
+            })?;
+
+        Ok(expires_at)
+    }
+
     pub async fn unban_member(
         &self,
         requester_id: Uuid,
@@ -295,10 +394,13 @@ impl ServerService {
             return Err("Forbidden".into());
         }
 
-        self.repo.unban_member(server_id, target_user_id).await.map_err(|e| {
-            log::error!("unban_member error: {:?}", e);
-            "Unable to unban member".to_string()
-        })
+        self.repo
+            .unban_member(server_id, target_user_id)
+            .await
+            .map_err(|e| {
+                log::error!("unban_member error: {:?}", e);
+                "Unable to unban member".to_string()
+            })
     }
 }
 
@@ -332,7 +434,10 @@ mod tests {
             Ok(code)
         }
 
-        assert!(matches!(normalize_and_validate("123"), Err(JoinServerError::InvalidCode)));
+        assert!(matches!(
+            normalize_and_validate("123"),
+            Err(JoinServerError::InvalidCode)
+        ));
 
         let c = normalize_and_validate(" abcd1234 ").unwrap();
         assert_eq!(c, "ABCD1234");

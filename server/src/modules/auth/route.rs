@@ -1,9 +1,8 @@
+use crate::models::user::CreateUser;
+use crate::modules::auth::service::AuthService;
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
-use crate::modules::auth::service::AuthService;
-use crate::models::user::CreateUser;
 use utoipa::ToSchema;
-
 
 #[derive(Deserialize, ToSchema)]
 pub struct LoginRequest {
@@ -27,17 +26,13 @@ pub async fn signup(
     data: web::Json<CreateUser>,
 ) -> impl Responder {
     match service.signup(data.into_inner()).await {
-        Ok((user, token)) => {
-            HttpResponse::Created().json(serde_json::json!({
-                "user": user,
-                "token": token
-            }))
-        }
-        Err(e) => {
-            HttpResponse::BadRequest().json(serde_json::json!({
-                "error": e
-            }))
-        }
+        Ok((user, token)) => HttpResponse::Created().json(serde_json::json!({
+            "user": user,
+            "token": token
+        })),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
+            "error": e
+        })),
     }
 }
 
@@ -59,17 +54,13 @@ pub async fn login(
     let request = data.into_inner();
 
     match service.login(request.email, request.password).await {
-        Ok((user, token)) => {
-            HttpResponse::Ok().json(serde_json::json!({
-                "user": user,
-                "token": token
-            }))
-        }
-        Err(e) => {
-            HttpResponse::Unauthorized().json(serde_json::json!({
-                "error": e
-            }))
-        }
+        Ok((user, token)) => HttpResponse::Ok().json(serde_json::json!({
+            "user": user,
+            "token": token
+        })),
+        Err(e) => HttpResponse::Unauthorized().json(serde_json::json!({
+            "error": e
+        })),
     }
 }
 
@@ -82,7 +73,7 @@ pub fn config(cfg: &mut web::ServiceConfig) {
         web::scope("/auth")
             .route("/signup", web::post().to(signup))
             .route("/login", web::post().to(login))
-            .route("/logout", web::post().to(logout))
+            .route("/logout", web::post().to(logout)),
     );
 }
 
@@ -199,7 +190,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post()
             .uri("/auth/signup")
@@ -232,7 +223,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post()
             .uri("/auth/signup")
@@ -260,7 +251,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post()
             .uri("/auth/signup")
@@ -295,7 +286,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post()
             .uri("/auth/login")
@@ -325,7 +316,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post()
             .uri("/auth/login")
@@ -354,7 +345,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post()
             .uri("/auth/login")
@@ -381,7 +372,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post()
             .uri("/auth/login")
@@ -404,7 +395,7 @@ mod tests {
                 .app_data(web::Data::new(service))
                 .configure(config),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::post().uri("/auth/logout").to_request();
         let resp = test::call_service(&app, req).await;

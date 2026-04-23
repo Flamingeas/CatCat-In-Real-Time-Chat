@@ -1,4 +1,4 @@
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -7,6 +7,6 @@ pub struct ServerBanResponse {
     pub user_id: Uuid,
     pub username: String,
     pub reason: Option<String>,
-    pub created_at: NaiveDateTime,
-    pub expires_at: Option<NaiveDateTime>,
+    pub created_at: DateTime<Utc>,
+    pub expires_at: Option<DateTime<Utc>>,
 }

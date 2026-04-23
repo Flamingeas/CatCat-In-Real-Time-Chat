@@ -1,11 +1,11 @@
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 // use sqlx::PgPool; <-- J'ai enlevé ça pour supprimer le warning jaune !
-use uuid::Uuid;
 use chrono::{DateTime, Utc};
-use validator::Validate;
 use rand::Rng;
-use utoipa::ToSchema; // Correction: il y avait un ':' en trop dans votre code original (use:utoipa...)
+use utoipa::ToSchema;
+use uuid::Uuid;
+use validator::Validate; // Correction: il y avait un ':' en trop dans votre code original (use:utoipa...)
 
 #[derive(Debug, Deserialize, Validate, ToSchema)] // <-- Ajout
 pub struct UpdateServer {
@@ -26,7 +26,11 @@ pub struct Server {
 
 #[derive(Debug, Deserialize, Validate, ToSchema)] // <-- Ajout
 pub struct CreateServer {
-    #[validate(length(min = 3, max = 50, message = "Server name must be between 3 and 50 characters."))]
+    #[validate(length(
+        min = 3,
+        max = 50,
+        message = "Server name must be between 3 and 50 characters."
+    ))]
     #[schema(example = "Le serveur des potes")]
     pub name: String,
 }
@@ -87,7 +91,6 @@ impl Server {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -95,40 +98,58 @@ mod tests {
 
     #[test]
     fn test_create_server_validation() {
-        let valid_server = CreateServer { name: "My server test".to_string() };
+        let valid_server = CreateServer {
+            name: "My server test".to_string(),
+        };
         assert!(valid_server.validate().is_ok());
 
-        let invalid_server = CreateServer { name: "ab".to_string() };
+        let invalid_server = CreateServer {
+            name: "ab".to_string(),
+        };
         assert!(invalid_server.validate().is_err());
 
-        let invalid_server = CreateServer { name: "a".repeat(51) };
+        let invalid_server = CreateServer {
+            name: "a".repeat(51),
+        };
         assert!(invalid_server.validate().is_err());
     }
 
     #[test]
     fn test_update_server_validation() {
-        let valid = UpdateServer { name: Some("New server name".to_string()) };
+        let valid = UpdateServer {
+            name: Some("New server name".to_string()),
+        };
         assert!(valid.validate().is_ok());
 
         let valid = UpdateServer { name: None };
         assert!(valid.validate().is_ok());
 
-        let invalid = UpdateServer { name: Some("ab".to_string()) };
+        let invalid = UpdateServer {
+            name: Some("ab".to_string()),
+        };
         assert!(invalid.validate().is_err());
 
-        let invalid = UpdateServer { name: Some("a".repeat(51)) };
+        let invalid = UpdateServer {
+            name: Some("a".repeat(51)),
+        };
         assert!(invalid.validate().is_err());
     }
 
     #[test]
     fn test_join_server_request_validation() {
-        let valid = JoinServerRequest { invitation_code: "AB12CD34".to_string() };
+        let valid = JoinServerRequest {
+            invitation_code: "AB12CD34".to_string(),
+        };
         assert!(valid.validate().is_ok());
 
-        let invalid = JoinServerRequest { invitation_code: "SHORT".to_string() };
+        let invalid = JoinServerRequest {
+            invitation_code: "SHORT".to_string(),
+        };
         assert!(invalid.validate().is_err());
 
-        let invalid = JoinServerRequest { invitation_code: "TOO_LONG_CODE".to_string() };
+        let invalid = JoinServerRequest {
+            invitation_code: "TOO_LONG_CODE".to_string(),
+        };
         assert!(invalid.validate().is_err());
     }
 
@@ -136,7 +157,9 @@ mod tests {
     fn test_generate_invitation_code() {
         let code = Server::generate_invitation_code();
         assert_eq!(code.len(), 8);
-        assert!(code.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
+        assert!(code
+            .chars()
+            .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
     }
 
     #[test]
@@ -145,7 +168,9 @@ mod tests {
         for _ in 0..50 {
             let c = Server::generate_invitation_code();
             assert_eq!(c.len(), 8);
-            assert!(c.chars().all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit()));
+            assert!(c
+                .chars()
+                .all(|ch| ch.is_ascii_uppercase() || ch.is_ascii_digit()));
             codes.push(c);
         }
         let first = &codes[0];

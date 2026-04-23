@@ -16,7 +16,7 @@ pub async fn ws_index(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{test, App, http::StatusCode};
+    use actix_web::{http::StatusCode, test, App};
 
     fn app() -> App<
         impl actix_web::dev::ServiceFactory<
@@ -28,7 +28,9 @@ mod tests {
         >,
     > {
         App::new()
-            .app_data(web::Data::new(String::from("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa")))
+            .app_data(web::Data::new(String::from(
+                "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            )))
             .route("/ws", web::get().to(ws_index))
     }
 
@@ -47,7 +49,10 @@ mod tests {
 
         let req = test::TestRequest::post().uri("/ws").to_request();
         let resp = test::call_service(&app, req).await;
-        assert!(resp.status() == StatusCode::METHOD_NOT_ALLOWED || resp.status() == StatusCode::NOT_FOUND);
+        assert!(
+            resp.status() == StatusCode::METHOD_NOT_ALLOWED
+                || resp.status() == StatusCode::NOT_FOUND
+        );
     }
 
     #[actix_web::test]

@@ -1,4 +1,6 @@
 use actix::{Actor, Context, Handler, Message, Recipient};
+use chrono::{DateTime, Utc};
+use log::debug;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 
@@ -23,8 +25,14 @@ pub struct Disconnect {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub enum ClientMessage {
-    JoinServer { user_id: Uuid, server_id: Uuid },
-    LeaveServer { user_id: Uuid, server_id: Uuid },
+    JoinServer {
+        user_id: Uuid,
+        server_id: Uuid,
+    },
+    LeaveServer {
+        user_id: Uuid,
+        server_id: Uuid,
+    },
 
     ChannelCreated {
         server_id: Uuid,
@@ -32,13 +40,34 @@ pub enum ClientMessage {
         name: String,
         created_at: String,
     },
-    JoinChannel { user_id: Uuid, channel_id: Uuid },
-    LeaveChannel { user_id: Uuid, channel_id: Uuid },
-    ChannelDeleted { server_id: Uuid, channel_id: Uuid },
-    ChannelUpdated { server_id: Uuid, channel_id: Uuid },
-    Typing { user_id: Uuid, username: String, channel_id: Uuid },
+    JoinChannel {
+        user_id: Uuid,
+        channel_id: Uuid,
+    },
+    LeaveChannel {
+        user_id: Uuid,
+        channel_id: Uuid,
+    },
+    ChannelDeleted {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
+    ChannelUpdated {
+        server_id: Uuid,
+        channel_id: Uuid,
+    },
+    Typing {
+        user_id: Uuid,
+        username: String,
+        channel_id: Uuid,
+    },
 
-    SendMessage { user_id: Uuid, username: String, channel_id: Uuid, content: String },
+    SendMessage {
+        user_id: Uuid,
+        username: String,
+        channel_id: Uuid,
+        content: String,
+    },
 
     BroadcastNewMessage {
         server_id: Uuid,
@@ -56,12 +85,82 @@ pub enum ClientMessage {
         message_id: Uuid,
     },
 
-    StatusChange { user_id: Uuid, username: String, status: UserStatus, server_id: Option<Uuid> },
+    BroadcastMessageReactionAdded {
+        channel_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
+
+    BroadcastMessageReactionRemoved {
+        channel_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: String,
+    },
+
+    StatusChange {
+        user_id: Uuid,
+        username: String,
+        status: UserStatus,
+        server_id: Option<Uuid>,
+    },
+
+    BroadcastMessageUpdated {
+        server_id: Uuid,
+        channel_id: Uuid,
+        message_id: Uuid,
+        content: String,
+        updated_at: DateTime<Utc>,
+    },
+
+    BroadcastDirectMessage {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        sender_id: Uuid,
+        sender_username: String,
+        recipient_id: Uuid,
+        content: String,
+        created_at: String,
+    },
+
+    BroadcastDirectMessageUpdated {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        sender_id: Uuid,
+        recipient_id: Uuid,
+        content: String,
+        updated_at: String,
+    },
+
+    BroadcastDirectMessageDeleted {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        sender_id: Uuid,
+        recipient_id: Uuid,
+    },
+
+    BroadcastDirectMessageReactionAdded {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        recipient_id: Uuid,
+        emoji: String,
+    },
+
+    BroadcastDirectMessageReactionRemoved {
+        conversation_id: Uuid,
+        message_id: Uuid,
+        user_id: Uuid,
+        recipient_id: Uuid,
+        emoji: String,
+    },
 }
 
 #[derive(Message)]
 #[rtype(result = "()")]
 pub enum ServerEvent {
+<<<<<<< HEAD
     ServerDeleted { server_id: Uuid },
     ServerUpdated { server_id: Uuid },
     MemberJoined { server_id: Uuid, user_id: Uuid, username: String },
@@ -81,13 +180,56 @@ pub enum ServerEvent {
         channel_id: Uuid,
         user_id: uuid::Uuid,
         emoji: String,
+=======
+    ServerDeleted {
+        server_id: Uuid,
+    },
+    ServerUpdated {
+        server_id: Uuid,
+    },
+    MemberJoined {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
+    MemberLeft {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
+    MemberRoleUpdated {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+        role: String,
+    },
+    MemberKicked {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
+    MemberBanned {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+    },
+    MemberBannedTemporary {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+        until: Option<DateTime<Utc>>,
+    },
+    MemberUnbanned {
+        server_id: Uuid,
+        user_id: Uuid,
+        username: String,
+>>>>>>> main
     },
 }
 
 pub struct WsServer {
     sessions: HashMap<Uuid, HashSet<Recipient<OutgoingMessage>>>,
     usernames: HashMap<Uuid, String>,
-
     server_rooms: HashMap<Uuid, HashSet<Uuid>>,
     channel_rooms: HashMap<Uuid, HashSet<Uuid>>,
 }
@@ -110,7 +252,12 @@ impl WsServer {
         }
     }
 
-    fn broadcast_to_server_except(&self, server_id: Uuid, except_user_id: Uuid, msg: OutgoingMessage) {
+    fn broadcast_to_server_except(
+        &self,
+        server_id: Uuid,
+        except_user_id: Uuid,
+        msg: OutgoingMessage,
+    ) {
         if let Some(members) = self.server_rooms.get(&server_id) {
             for uid in members {
                 if *uid == except_user_id {
@@ -153,11 +300,17 @@ impl Handler<Connect> for WsServer {
     type Result = ();
 
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) {
-        self.sessions.entry(msg.user_id).or_default().insert(msg.addr);
+        self.sessions
+            .entry(msg.user_id)
+            .or_default()
+            .insert(msg.addr);
         self.usernames.insert(msg.user_id, msg.username.clone());
 
         for server_id in msg.server_ids {
-            self.server_rooms.entry(server_id).or_default().insert(msg.user_id);
+            self.server_rooms
+                .entry(server_id)
+                .or_default()
+                .insert(msg.user_id);
         }
 
         self.send_to(
@@ -185,12 +338,22 @@ impl Handler<Disconnect> for WsServer {
         }
 
         if removed_last_session {
-            let username = self.usernames.get(&msg.user_id).cloned().unwrap_or_else(|| "unknown".into());
+            let username = self
+                .usernames
+                .get(&msg.user_id)
+                .cloned()
+                .unwrap_or_else(|| "unknown".into());
 
             let servers_to_notify: Vec<Uuid> = self
                 .server_rooms
                 .iter()
-                .filter_map(|(sid, members)| if members.contains(&msg.user_id) { Some(*sid) } else { None })
+                .filter_map(|(sid, members)| {
+                    if members.contains(&msg.user_id) {
+                        Some(*sid)
+                    } else {
+                        None
+                    }
+                })
                 .collect();
 
             for sid in servers_to_notify {
@@ -223,7 +386,10 @@ impl Handler<ClientMessage> for WsServer {
     fn handle(&mut self, msg: ClientMessage, _: &mut Context<Self>) {
         match msg {
             ClientMessage::JoinServer { user_id, server_id } => {
-                self.server_rooms.entry(server_id).or_default().insert(user_id);
+                self.server_rooms
+                    .entry(server_id)
+                    .or_default()
+                    .insert(user_id);
 
                 let username = self.username_of(user_id);
 
@@ -246,7 +412,10 @@ impl Handler<ClientMessage> for WsServer {
                     .map(|uid| (*uid, self.username_of(*uid)))
                     .collect();
 
-                self.send_to(user_id, OutgoingMessage::PresenceSnapshot { server_id, online });
+                self.send_to(
+                    user_id,
+                    OutgoingMessage::PresenceSnapshot { server_id, online },
+                );
             }
 
             ClientMessage::LeaveServer { user_id, server_id } => {
@@ -267,15 +436,25 @@ impl Handler<ClientMessage> for WsServer {
                 );
             }
 
-            ClientMessage::JoinChannel { user_id, channel_id } => {
-                self.channel_rooms.entry(channel_id).or_default().insert(user_id);
+            ClientMessage::JoinChannel {
+                user_id,
+                channel_id,
+            } => {
+                self.channel_rooms
+                    .entry(channel_id)
+                    .or_default()
+                    .insert(user_id);
             }
 
-            ClientMessage::LeaveChannel { user_id, channel_id } => {
+            ClientMessage::LeaveChannel {
+                user_id,
+                channel_id,
+            } => {
                 if let Some(set) = self.channel_rooms.get_mut(&channel_id) {
                     set.remove(&user_id);
                 }
             }
+
             ClientMessage::ChannelDeleted {
                 server_id,
                 channel_id,
@@ -288,6 +467,7 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
+
             ClientMessage::ChannelUpdated {
                 server_id,
                 channel_id,
@@ -300,7 +480,12 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
-            ClientMessage::Typing { user_id, username, channel_id } => {
+
+            ClientMessage::Typing {
+                user_id,
+                username,
+                channel_id,
+            } => {
                 self.broadcast_to_channel(
                     channel_id,
                     OutgoingMessage::UserTyping {
@@ -311,7 +496,12 @@ impl Handler<ClientMessage> for WsServer {
                 );
             }
 
-            ClientMessage::SendMessage { user_id, username, channel_id, content } => {
+            ClientMessage::SendMessage {
+                user_id,
+                username,
+                channel_id,
+                content,
+            } => {
                 let message_id = Uuid::new_v4();
                 let created_at = chrono::Utc::now().to_rfc3339();
 
@@ -349,6 +539,7 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
+
             ClientMessage::ChannelCreated {
                 server_id,
                 channel_id,
@@ -365,6 +556,7 @@ impl Handler<ClientMessage> for WsServer {
                     },
                 );
             }
+
             ClientMessage::BroadcastMessageDeleted {
                 server_id,
                 channel_id,
@@ -380,7 +572,133 @@ impl Handler<ClientMessage> for WsServer {
                 );
             }
 
-            ClientMessage::StatusChange { user_id, username, status, server_id } => {
+            ClientMessage::BroadcastMessageReactionAdded {
+                channel_id,
+                message_id,
+                user_id,
+                emoji,
+            } => {
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageReactionAdded {
+                        message_id,
+                        channel_id,
+                        user_id,
+                        emoji,
+                    },
+                );
+            }
+
+            ClientMessage::BroadcastMessageReactionRemoved {
+                channel_id,
+                message_id,
+                user_id,
+                emoji,
+            } => {
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageReactionRemoved {
+                        message_id,
+                        channel_id,
+                        user_id,
+                        emoji,
+                    },
+                );
+            }
+
+            ClientMessage::BroadcastDirectMessage {
+                conversation_id,
+                message_id,
+                sender_id,
+                sender_username,
+                recipient_id,
+                content,
+                created_at,
+            } => {
+                let msg = OutgoingMessage::NewDirectMessage {
+                    conversation_id,
+                    message_id,
+                    sender_id,
+                    sender_username,
+                    content,
+                    created_at,
+                };
+                self.send_to(sender_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::BroadcastDirectMessageUpdated {
+                conversation_id,
+                message_id,
+                sender_id,
+                recipient_id,
+                content,
+                updated_at,
+            } => {
+                let msg = OutgoingMessage::DirectMessageUpdated {
+                    conversation_id,
+                    message_id,
+                    content,
+                    updated_at,
+                };
+                self.send_to(sender_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::BroadcastDirectMessageDeleted {
+                conversation_id,
+                message_id,
+                sender_id,
+                recipient_id,
+            } => {
+                let msg = OutgoingMessage::DirectMessageDeleted {
+                    conversation_id,
+                    message_id,
+                };
+                self.send_to(sender_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::BroadcastDirectMessageReactionAdded {
+                conversation_id,
+                message_id,
+                user_id,
+                recipient_id,
+                emoji,
+            } => {
+                let msg = OutgoingMessage::DirectMessageReactionAdded {
+                    conversation_id,
+                    message_id,
+                    user_id,
+                    emoji,
+                };
+                self.send_to(user_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::BroadcastDirectMessageReactionRemoved {
+                conversation_id,
+                message_id,
+                user_id,
+                recipient_id,
+                emoji,
+            } => {
+                let msg = OutgoingMessage::DirectMessageReactionRemoved {
+                    conversation_id,
+                    message_id,
+                    user_id,
+                    emoji,
+                };
+                self.send_to(user_id, msg.clone());
+                self.send_to(recipient_id, msg);
+            }
+
+            ClientMessage::StatusChange {
+                user_id,
+                username,
+                status,
+                server_id,
+            } => {
                 if let Some(server_id) = server_id {
                     self.broadcast_to_server(
                         server_id,
@@ -392,6 +710,31 @@ impl Handler<ClientMessage> for WsServer {
                         },
                     );
                 }
+            }
+
+            ClientMessage::BroadcastMessageUpdated {
+                server_id: _,
+                channel_id,
+                message_id,
+                content,
+                updated_at,
+            } => {
+                debug!(
+                    "Broadcasting message update {} in channel {}",
+                    message_id, channel_id
+                );
+
+                self.broadcast_to_channel(
+                    channel_id,
+                    OutgoingMessage::MessageUpdated {
+                        message_id,
+                        channel_id,
+                        user_id: Default::default(),
+                        username: "".to_string(),
+                        content,
+                        updated_at: updated_at.to_rfc3339(),
+                    },
+                );
             }
         }
     }
@@ -406,13 +749,16 @@ impl Handler<ServerEvent> for WsServer {
                 self.broadcast_to_server(server_id, OutgoingMessage::ServerDeleted { server_id });
                 self.server_rooms.remove(&server_id);
             }
+
             ServerEvent::ServerUpdated { server_id } => {
-                self.broadcast_to_server(
-                    server_id,
-                    OutgoingMessage::ServerUpdated { server_id }
-                );
+                self.broadcast_to_server(server_id, OutgoingMessage::ServerUpdated { server_id });
             }
-            ServerEvent::MemberJoined { server_id, user_id, username } => {
+
+            ServerEvent::MemberJoined {
+                server_id,
+                user_id,
+                username,
+            } => {
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberJoined {
@@ -422,7 +768,12 @@ impl Handler<ServerEvent> for WsServer {
                     },
                 );
             }
-            ServerEvent::MemberLeft { server_id, user_id, username } => {
+
+            ServerEvent::MemberLeft {
+                server_id,
+                user_id,
+                username,
+            } => {
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberLeft {
@@ -432,7 +783,13 @@ impl Handler<ServerEvent> for WsServer {
                     },
                 );
             }
-            ServerEvent::MemberRoleUpdated { server_id, user_id, username, role } => {
+
+            ServerEvent::MemberRoleUpdated {
+                server_id,
+                user_id,
+                username,
+                role,
+            } => {
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberRoleUpdated {
@@ -443,7 +800,12 @@ impl Handler<ServerEvent> for WsServer {
                     },
                 );
             }
-            ServerEvent::MemberKicked { server_id, user_id, username } => {
+
+            ServerEvent::MemberKicked {
+                server_id,
+                user_id,
+                username,
+            } => {
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberKicked {
@@ -457,7 +819,43 @@ impl Handler<ServerEvent> for WsServer {
                     set.remove(&user_id);
                 }
             }
-            ServerEvent::MemberBanned { server_id, user_id, username } => {
+
+            ServerEvent::MemberBannedTemporary {
+                server_id,
+                user_id,
+                username,
+                until,
+            } => {
+                self.send_to(
+                    user_id,
+                    OutgoingMessage::ServerMemberBannedTemporary {
+                        server_id,
+                        user_id,
+                        username: username.clone(),
+                        until,
+                    },
+                );
+
+                if let Some(set) = self.server_rooms.get_mut(&server_id) {
+                    set.remove(&user_id);
+                }
+
+                self.broadcast_to_server(
+                    server_id,
+                    OutgoingMessage::ServerMemberBannedTemporary {
+                        server_id,
+                        user_id,
+                        username,
+                        until,
+                    },
+                );
+            }
+
+            ServerEvent::MemberBanned {
+                server_id,
+                user_id,
+                username,
+            } => {
                 self.send_to(
                     user_id,
                     OutgoingMessage::ServerMemberBanned {
@@ -480,7 +878,12 @@ impl Handler<ServerEvent> for WsServer {
                     },
                 );
             }
-            ServerEvent::MemberUnbanned { server_id, user_id, username } => {
+
+            ServerEvent::MemberUnbanned {
+                server_id,
+                user_id,
+                username,
+            } => {
                 self.broadcast_to_server(
                     server_id,
                     OutgoingMessage::ServerMemberUnbanned {
@@ -515,10 +918,11 @@ impl Handler<ServerEvent> for WsServer {
         }
     }
 }
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix::{Actor, System};
+    use actix::Actor;
     use std::sync::{Arc, Mutex};
 
     struct TestClient {
@@ -539,7 +943,10 @@ mod tests {
 
     fn client() -> (Recipient<OutgoingMessage>, Arc<Mutex<Vec<OutgoingMessage>>>) {
         let inbox = Arc::new(Mutex::new(Vec::<OutgoingMessage>::new()));
-        let addr = TestClient { inbox: inbox.clone() }.start();
+        let addr = TestClient {
+            inbox: inbox.clone(),
+        }
+        .start();
         (addr.recipient(), inbox)
     }
 
@@ -564,7 +971,11 @@ mod tests {
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
 
         let msgs = take(&inbox);
-        assert!(msgs.iter().any(|m| matches!(m, OutgoingMessage::Authed { user_id: uid, username } if *uid == user_id && username == "alice")));
+        assert!(msgs.iter().any(|m| matches!(
+            m,
+            OutgoingMessage::Authed { user_id: uid, username }
+            if *uid == user_id && username == "alice"
+        )));
     }
 
     #[actix::test]
@@ -604,20 +1015,25 @@ mod tests {
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
 
         let alice_msgs = take(&alice_inbox);
-        assert!(
-            alice_msgs.iter().any(|m| matches!(m, OutgoingMessage::PresenceSnapshot { server_id: sid, online } if *sid == server_id && online.iter().any(|(uid, _)| *uid == alice_id)))
-        );
+        assert!(alice_msgs.iter().any(|m| matches!(
+            m,
+            OutgoingMessage::PresenceSnapshot { server_id: sid, online }
+            if *sid == server_id && online.iter().any(|(uid, _)| *uid == alice_id)
+        )));
+
         let bob_msgs = take(&bob_inbox);
-        assert!(
-            bob_msgs.iter().any(|m| matches!(m, OutgoingMessage::UserConnected { server_id: sid, user_id: uid, username, status } if *sid == server_id && *uid == alice_id && username == "alice" && *status == UserStatus::Online))
-        );
+        assert!(bob_msgs.iter().any(|m| matches!(
+            m,
+            OutgoingMessage::UserConnected { server_id: sid, user_id: uid, username, status }
+            if *sid == server_id && *uid == alice_id && username == "alice" && *status == UserStatus::Online
+        )));
     }
+
     #[actix::test]
     async fn test_disconnect_last_session_broadcasts_user_disconnected_and_removes_from_rooms() {
         let ws = WsServer::new().start();
 
         let server_id = Uuid::new_v4();
-
         let alice_id = Uuid::new_v4();
         let bob_id = Uuid::new_v4();
 
@@ -637,6 +1053,7 @@ mod tests {
             addr: bob_addr,
             server_ids: vec![server_id],
         });
+
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
         let _ = take(&alice_inbox);
         let _ = take(&bob_inbox);
@@ -645,11 +1062,15 @@ mod tests {
             user_id: alice_id,
             addr: alice_addr,
         });
+
         actix::clock::sleep(std::time::Duration::from_millis(30)).await;
+
         let bob_msgs = take(&bob_inbox);
-        assert!(
-            bob_msgs.iter().any(|m| matches!(m, OutgoingMessage::UserDisconnected { server_id: sid, user_id: uid, username } if *sid == server_id && *uid == alice_id && username == "alice"))
-        );
+        assert!(bob_msgs.iter().any(|m| matches!(
+            m,
+            OutgoingMessage::UserDisconnected { server_id: sid, user_id: uid, username }
+            if *sid == server_id && *uid == alice_id && username == "alice"
+        )));
     }
 
     #[actix::test]
@@ -657,7 +1078,6 @@ mod tests {
         let ws = WsServer::new().start();
 
         let channel_id = Uuid::new_v4();
-
         let alice_id = Uuid::new_v4();
         let bob_id = Uuid::new_v4();
 
@@ -682,8 +1102,14 @@ mod tests {
         let _ = take(&alice_inbox);
         let _ = take(&bob_inbox);
 
-        ws.do_send(ClientMessage::JoinChannel { user_id: alice_id, channel_id });
-        ws.do_send(ClientMessage::JoinChannel { user_id: bob_id, channel_id });
+        ws.do_send(ClientMessage::JoinChannel {
+            user_id: alice_id,
+            channel_id,
+        });
+        ws.do_send(ClientMessage::JoinChannel {
+            user_id: bob_id,
+            channel_id,
+        });
 
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
 
@@ -704,9 +1130,15 @@ mod tests {
         let bob_msgs = take(&bob_inbox);
 
         let assert_new = |msgs: &[OutgoingMessage]| {
-            assert!(msgs.iter().any(|m| matches!(m,
+            assert!(msgs.iter().any(|m| matches!(
+                m,
                 OutgoingMessage::NewMessage { message_id: mid, channel_id: cid, user_id: uid, username, content, created_at }
-                if *mid == message_id && *cid == channel_id && *uid == alice_id && username == "alice" && content == "hello" && created_at == "now"
+                if *mid == message_id
+                    && *cid == channel_id
+                    && *uid == alice_id
+                    && username == "alice"
+                    && content == "hello"
+                    && created_at == "now"
             )));
         };
 
@@ -735,7 +1167,10 @@ mod tests {
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
         let _ = take(&inbox);
 
-        ws.do_send(ClientMessage::JoinChannel { user_id, channel_id });
+        ws.do_send(ClientMessage::JoinChannel {
+            user_id,
+            channel_id,
+        });
         actix::clock::sleep(std::time::Duration::from_millis(10)).await;
 
         ws.do_send(ClientMessage::BroadcastMessageDeleted {
@@ -747,11 +1182,13 @@ mod tests {
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
 
         let msgs = take(&inbox);
-        assert!(msgs.iter().any(|m| matches!(m,
+        assert!(msgs.iter().any(|m| matches!(
+            m,
             OutgoingMessage::MessageDeleted { server_id: sid, channel_id: cid, message_id: mid }
             if *sid == server_id && *cid == channel_id && *mid == message_id
         )));
     }
+
     #[actix::test]
     async fn test_server_deleted_broadcasts_and_removes_room() {
         let ws = WsServer::new().start();
@@ -775,6 +1212,9 @@ mod tests {
         actix::clock::sleep(std::time::Duration::from_millis(20)).await;
 
         let msgs = take(&inbox);
-        assert!(msgs.iter().any(|m| matches!(m, OutgoingMessage::ServerDeleted { server_id: sid } if *sid == server_id)));
+        assert!(msgs.iter().any(|m| matches!(
+            m,
+            OutgoingMessage::ServerDeleted { server_id: sid } if *sid == server_id
+        )));
     }
 }

@@ -1,11 +1,11 @@
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use sqlx::PgPool;
-use validator::Validate;
-use uuid::Uuid;
 use utoipa::IntoParams;
+use uuid::Uuid;
+use validator::Validate;
 
-use crate::models::user::{UpdateUser, UserResponse, UserPublicResponse};
+use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::modules::user::repository::UserRepository;
 
@@ -79,8 +79,15 @@ pub async fn get_user(pool: web::Data<PgPool>, path: web::Path<Uuid>) -> impl Re
         (status = 401, description = "Non authentifié")
     )
 )]
-pub async fn list_users(pool: web::Data<PgPool>, query: web::Query<PaginationQuery>) -> impl Responder {
-    log::debug!("GET /users - page: {}, per_page: {}", query.page, query.per_page);
+pub async fn list_users(
+    pool: web::Data<PgPool>,
+    query: web::Query<PaginationQuery>,
+) -> impl Responder {
+    log::debug!(
+        "GET /users - page: {}, per_page: {}",
+        query.page,
+        query.per_page
+    );
 
     let service = user_service(&pool);
     match service.list_users(query.page, query.per_page).await {
@@ -118,7 +125,10 @@ pub async fn update_me(
     }
 
     let service = user_service(&pool);
-    match service.update_profile(user.user_id, data.into_inner()).await {
+    match service
+        .update_profile(user.user_id, data.into_inner())
+        .await
+    {
         Ok(profile) => HttpResponse::Ok().json(profile),
         Err(e) => handle_service_error(e),
     }
@@ -164,15 +174,21 @@ fn default_per_page() -> i64 {
 
 fn handle_service_error(error: ServiceError) -> HttpResponse {
     match error {
-        ServiceError::NotFound(msg) => HttpResponse::NotFound().json(serde_json::json!({ "error": msg })),
-        ServiceError::Conflict(msg) => HttpResponse::Conflict().json(serde_json::json!({ "error": msg })),
+        ServiceError::NotFound(msg) => {
+            HttpResponse::NotFound().json(serde_json::json!({ "error": msg }))
+        }
+        ServiceError::Conflict(msg) => {
+            HttpResponse::Conflict().json(serde_json::json!({ "error": msg }))
+        }
         ServiceError::Database(e) => {
             log::error!("Database error: {}", e);
-            HttpResponse::InternalServerError().json(serde_json::json!({ "error": "Internal server error" }))
+            HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "Internal server error" }))
         }
         ServiceError::Internal(msg) => {
             log::error!("Internal error: {}", msg);
-            HttpResponse::InternalServerError().json(serde_json::json!({ "error": "Internal server error" }))
+            HttpResponse::InternalServerError()
+                .json(serde_json::json!({ "error": "Internal server error" }))
         }
     }
 }
@@ -210,7 +226,7 @@ mod tests {
                 .app_data(web::Data::new(pool))
                 .service(web::scope("/users").configure(config)),
         )
-            .await;
+        .await;
 
         let req = test::TestRequest::get().uri("/users").to_request();
         let resp = test::call_service(&app, req).await;

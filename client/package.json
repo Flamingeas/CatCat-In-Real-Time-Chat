@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@giphy/js-fetch-api": "^5.7.0",
+    "@giphy/react-components": "^10.1.1",
     "axios": "^1.13.4",
     "emoji-picker-react": "^4.18.0",
     "next": "16.1.4",
@@ -22,7 +24,15 @@
     "autoprefixer": "^10.4.27",
     "eslint": "^9",
     "eslint-config-next": "16.1.4",
+<<<<<<< HEAD
     "postcss": "^8.5.9",
     "tailwindcss": "^4.2.2"
+=======
+    "tailwindcss": "^4.0.0",
+    "typescript": "5.9.3"
+  },
+  "optionalDependencies": {
+    "@tailwindcss/oxide-linux-x64-gnu": "^4.2.1"
+>>>>>>> main
   }
 }

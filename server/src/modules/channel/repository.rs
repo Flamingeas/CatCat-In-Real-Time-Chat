@@ -11,8 +11,16 @@ pub trait ChannelRepositoryTrait: Send + Sync {
     async fn update(&self, channel_id: Uuid, payload: UpdateChannel) -> Result<Channel, String>;
     async fn delete(&self, channel_id: Uuid) -> Result<Channel, String>;
     async fn user_is_member(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String>;
-    async fn user_can_manage_channels(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String>;
-    async fn user_can_manage_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<bool, String>;
+    async fn user_can_manage_channels(
+        &self,
+        server_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, String>;
+    async fn user_can_manage_channel(
+        &self,
+        channel_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, String>;
 }
 
 pub struct ChannelRepository {
@@ -32,10 +40,10 @@ impl ChannelRepository {
             RETURNING id, name, server_id, created_at, updated_at
             "#,
         )
-            .bind(name)
-            .bind(server_id)
-            .fetch_one(&self.pool)
-            .await
+        .bind(name)
+        .bind(server_id)
+        .fetch_one(&self.pool)
+        .await
     }
 
     pub async fn list_for_server(&self, server_id: Uuid) -> Result<Vec<Channel>, sqlx::Error> {
@@ -47,12 +55,16 @@ impl ChannelRepository {
             ORDER BY created_at ASC
             "#,
         )
-            .bind(server_id)
-            .fetch_all(&self.pool)
-            .await
+        .bind(server_id)
+        .fetch_all(&self.pool)
+        .await
     }
 
-    pub async fn update(&self, channel_id: Uuid, payload: UpdateChannel) -> Result<Channel, sqlx::Error> {
+    pub async fn update(
+        &self,
+        channel_id: Uuid,
+        payload: UpdateChannel,
+    ) -> Result<Channel, sqlx::Error> {
         let name = payload.name.map(|n| n.trim().to_string());
 
         sqlx::query_as::<_, Channel>(
@@ -65,24 +77,24 @@ impl ChannelRepository {
             RETURNING id, name, server_id, created_at, updated_at
             "#,
         )
-            .bind(channel_id)
-            .bind(name)
-            .fetch_one(&self.pool)
-            .await
+        .bind(channel_id)
+        .bind(name)
+        .fetch_one(&self.pool)
+        .await
     }
 
     pub async fn delete(&self, channel_id: Uuid) -> Result<Channel, sqlx::Error> {
         let channel = sqlx::query_as!(
-        Channel,
-        r#"
+            Channel,
+            r#"
         DELETE FROM channels
         WHERE id = $1
         RETURNING id, name, server_id, created_at, updated_at
         "#,
-        channel_id
-    )
-            .fetch_optional(&self.pool)
-            .await?;
+            channel_id
+        )
+        .fetch_optional(&self.pool)
+        .await?;
 
         match channel {
             Some(channel) => Ok(channel),
@@ -103,17 +115,21 @@ impl ChannelRepository {
             server_id,
             user_id
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| {
-                log::error!("user_is_member error: {:?}", e);
-                "DB error".to_string()
-            })?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            log::error!("user_is_member error: {:?}", e);
+            "DB error".to_string()
+        })?;
 
         Ok(exists.unwrap_or(false))
     }
 
-    pub async fn user_can_manage_channels(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String> {
+    pub async fn user_can_manage_channels(
+        &self,
+        server_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, String> {
         let allowed = sqlx::query_scalar!(
             r#"
             SELECT EXISTS (
@@ -127,17 +143,21 @@ impl ChannelRepository {
             server_id,
             user_id
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| {
-                log::error!("user_can_manage_channels error: {:?}", e);
-                "DB error".to_string()
-            })?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            log::error!("user_can_manage_channels error: {:?}", e);
+            "DB error".to_string()
+        })?;
 
         Ok(allowed.unwrap_or(false))
     }
 
-    pub async fn user_can_manage_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<bool, String> {
+    pub async fn user_can_manage_channel(
+        &self,
+        channel_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, String> {
         let allowed = sqlx::query_scalar!(
             r#"
             SELECT EXISTS (
@@ -153,12 +173,12 @@ impl ChannelRepository {
             channel_id,
             user_id
         )
-            .fetch_one(&self.pool)
-            .await
-            .map_err(|e| {
-                log::error!("user_can_manage_channel error: {:?}", e);
-                "DB error".to_string()
-            })?;
+        .fetch_one(&self.pool)
+        .await
+        .map_err(|e| {
+            log::error!("user_can_manage_channel error: {:?}", e);
+            "DB error".to_string()
+        })?;
 
         Ok(allowed.unwrap_or(false))
     }
@@ -194,11 +214,19 @@ impl ChannelRepositoryTrait for ChannelRepository {
         ChannelRepository::user_is_member(self, server_id, user_id).await
     }
 
-    async fn user_can_manage_channels(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String> {
+    async fn user_can_manage_channels(
+        &self,
+        server_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, String> {
         ChannelRepository::user_can_manage_channels(self, server_id, user_id).await
     }
 
-    async fn user_can_manage_channel(&self, channel_id: Uuid, user_id: Uuid) -> Result<bool, String> {
+    async fn user_can_manage_channel(
+        &self,
+        channel_id: Uuid,
+        user_id: Uuid,
+    ) -> Result<bool, String> {
         ChannelRepository::user_can_manage_channel(self, channel_id, user_id).await
     }
 }
@@ -222,7 +250,11 @@ mod tests {
             .max_connections(1)
             .connect(&database_url)
             .await
-            .unwrap_or_else(|e| panic!("failed to connect with TEST_DATABASE_URL/DATABASE_URL={database_url:?}: {e}"))
+            .unwrap_or_else(|e| {
+                panic!(
+                    "failed to connect with TEST_DATABASE_URL/DATABASE_URL={database_url:?}: {e}"
+                )
+            })
     }
 
     async fn cleanup_db(pool: &PgPool) {
@@ -260,9 +292,9 @@ mod tests {
             format!("{}@example.com", id),
             "hashed_password"
         )
-            .execute(pool)
-            .await
-            .unwrap();
+        .execute(pool)
+        .await
+        .unwrap();
 
         id
     }
@@ -281,9 +313,9 @@ mod tests {
             owner_id,
             format!("invite-{}", &id.to_string()[..8])
         )
-            .execute(pool)
-            .await
-            .unwrap();
+        .execute(pool)
+        .await
+        .unwrap();
 
         id
     }
@@ -298,9 +330,9 @@ mod tests {
             user_id,
             role
         )
-            .execute(pool)
-            .await
-            .unwrap();
+        .execute(pool)
+        .await
+        .unwrap();
     }
 
     async fn insert_channel(pool: &PgPool, server_id: Uuid, name: &str) -> Channel {
@@ -311,11 +343,11 @@ mod tests {
             RETURNING id, name, server_id, created_at, updated_at
             "#,
         )
-            .bind(name)
-            .bind(server_id)
-            .fetch_one(pool)
-            .await
-            .unwrap()
+        .bind(name)
+        .bind(server_id)
+        .fetch_one(pool)
+        .await
+        .unwrap()
     }
 
     #[actix_web::test]
@@ -523,12 +555,7 @@ mod tests {
         let channel = insert_channel(&pool, server_id, "general").await;
 
         let updated = repo
-            .update(
-                channel.id,
-                UpdateChannel {
-                    name: None,
-                },
-            )
+            .update(channel.id, UpdateChannel { name: None })
             .await
             .unwrap();
 
@@ -607,9 +634,9 @@ mod tests {
             "#,
             channel.id
         )
-            .fetch_optional(&pool)
-            .await
-            .unwrap();
+        .fetch_optional(&pool)
+        .await
+        .unwrap();
 
         assert!(fetched.is_none());
 
@@ -675,7 +702,10 @@ mod tests {
 
         let repo = ChannelRepository::new(pool.clone());
 
-        let is_member = repo.user_is_member(Uuid::new_v4(), Uuid::new_v4()).await.unwrap();
+        let is_member = repo
+            .user_is_member(Uuid::new_v4(), Uuid::new_v4())
+            .await
+            .unwrap();
 
         assert!(!is_member);
 
@@ -693,7 +723,10 @@ mod tests {
 
         insert_member(&pool, server_id, user_id, "owner").await;
 
-        let allowed = repo.user_can_manage_channels(server_id, user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channels(server_id, user_id)
+            .await
+            .unwrap();
 
         assert!(allowed);
 
@@ -711,7 +744,10 @@ mod tests {
 
         insert_member(&pool, server_id, user_id, "admin").await;
 
-        let allowed = repo.user_can_manage_channels(server_id, user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channels(server_id, user_id)
+            .await
+            .unwrap();
 
         assert!(allowed);
 
@@ -729,7 +765,10 @@ mod tests {
 
         insert_member(&pool, server_id, user_id, "member").await;
 
-        let allowed = repo.user_can_manage_channels(server_id, user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channels(server_id, user_id)
+            .await
+            .unwrap();
 
         assert!(!allowed);
 
@@ -765,7 +804,10 @@ mod tests {
 
         insert_member(&pool, server_id, user_id, "admin").await;
 
-        let allowed = repo.user_can_manage_channel(channel.id, user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channel(channel.id, user_id)
+            .await
+            .unwrap();
 
         assert!(allowed);
 
@@ -784,7 +826,10 @@ mod tests {
 
         insert_member(&pool, server_id, user_id, "owner").await;
 
-        let allowed = repo.user_can_manage_channel(channel.id, user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channel(channel.id, user_id)
+            .await
+            .unwrap();
 
         assert!(allowed);
 
@@ -803,7 +848,10 @@ mod tests {
 
         insert_member(&pool, server_id, user_id, "member").await;
 
-        let allowed = repo.user_can_manage_channel(channel.id, user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channel(channel.id, user_id)
+            .await
+            .unwrap();
 
         assert!(!allowed);
 
@@ -823,7 +871,10 @@ mod tests {
 
         insert_member(&pool, server_2, user_id, "admin").await;
 
-        let allowed = repo.user_can_manage_channel(channel.id, user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channel(channel.id, user_id)
+            .await
+            .unwrap();
 
         assert!(!allowed);
 
@@ -839,7 +890,10 @@ mod tests {
         let _server_id = insert_server(&pool).await;
         let user_id = insert_user(&pool).await;
 
-        let allowed = repo.user_can_manage_channel(Uuid::new_v4(), user_id).await.unwrap();
+        let allowed = repo
+            .user_can_manage_channel(Uuid::new_v4(), user_id)
+            .await
+            .unwrap();
 
         assert!(!allowed);
 

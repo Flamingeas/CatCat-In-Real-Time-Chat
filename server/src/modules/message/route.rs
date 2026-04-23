@@ -4,15 +4,20 @@ use actix_web::{web, HttpResponse, Responder};
 use mongodb::Database;
 use sqlx::Error;
 use sqlx::PgPool;
+use utoipa::{IntoParams, ToSchema};
 use uuid::Uuid;
 use validator::Validate;
+<<<<<<< HEAD
 use utoipa::{ToSchema, IntoParams};
+=======
+>>>>>>> main
 
+use super::service::{MessageService, ServiceError};
 use crate::models::message::{CreateMessage, MessageResponse, UpdateMessage};
 use crate::models::message_reactions::ReactionPayload;
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::websocket::server::{ClientMessage, WsServer};
-use super::service::{MessageService, ServiceError};
+use crate::websocket::session::OutgoingMessage;
 
 #[utoipa::path(
     post,
@@ -38,7 +43,14 @@ pub async fn send_message(
 ) -> impl Responder {
     let channel_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-    send_message_with_service(&service, ws_server.get_ref(), user.user_id, channel_id, &data).await
+    send_message_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        channel_id,
+        &data,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -84,12 +96,28 @@ pub async fn update_message(
     pg_pool: web::Data<PgPool>,
     mongo_db: web::Data<Database>,
     user: AuthenticatedUser,
+    ws_server: web::Data<Addr<WsServer>>,
     path: web::Path<Uuid>,
     data: web::Json<UpdateMessageRequest>,
 ) -> impl Responder {
+    log::info!("update_message route called");
+    log::info!("User: {}", user.user_id);
+    log::info!("Message ID: {}", path);
+    log::info!("Data: {:?}", data);
+
     let message_id = path.into_inner();
     let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
-    update_message_with_service(&service, user.user_id, message_id, &data).await
+
+    log::info!("Calling update_message_with_service");
+
+    update_message_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        message_id,
+        &data,
+    )
+    .await
 }
 
 #[utoipa::path(
@@ -131,7 +159,17 @@ pub struct UpdateMessageRequest {
     pub content: String,
 }
 
+<<<<<<< HEAD
 #[derive(Debug, serde::Deserialize, IntoParams)]
+=======
+#[derive(Debug, serde::Deserialize, ToSchema)]
+pub struct ReactionRequest {
+    #[schema(example = "😺")]
+    pub emoji: String,
+}
+
+#[derive(Debug, serde::Deserialize, IntoParams)] // <-- Ajout de IntoParams pour les query
+>>>>>>> main
 pub struct GetMessagesQueryParams {
     pub limit: Option<i64>,
     pub before: Option<chrono::DateTime<chrono::Utc>>,
@@ -183,7 +221,6 @@ fn ok_messages_response(messages: Vec<MessageResponse>) -> HttpResponse {
 fn no_content_response() -> HttpResponse {
     HttpResponse::NoContent().finish()
 }
-
 fn build_new_message_event(message: &MessageResponse) -> ClientMessage {
     ClientMessage::BroadcastNewMessage {
         server_id: message.server_id,
@@ -205,6 +242,30 @@ fn build_deleted_message_event(
         server_id,
         channel_id,
         message_id,
+    }
+}
+
+fn build_reaction_event(
+    added: bool,
+    channel_id: Uuid,
+    message_id: Uuid,
+    user_id: Uuid,
+    emoji: String,
+) -> ClientMessage {
+    if added {
+        ClientMessage::BroadcastMessageReactionAdded {
+            channel_id,
+            message_id,
+            user_id,
+            emoji,
+        }
+    } else {
+        ClientMessage::BroadcastMessageReactionRemoved {
+            channel_id,
+            message_id,
+            user_id,
+            emoji,
+        }
     }
 }
 
@@ -247,21 +308,55 @@ async fn get_messages_with_service(
     }
 }
 
+fn build_updated_message_event(message: &MessageResponse) -> ClientMessage {
+    ClientMessage::BroadcastMessageUpdated {
+        server_id: message.server_id,
+        channel_id: message.channel_id,
+        message_id: message.message_id,
+        content: message.content.clone(),
+        updated_at: message
+            .updated_at
+            .unwrap_or(message.created_at)
+            .to_rfc3339()
+            .parse()
+            .unwrap(),
+    }
+}
 async fn update_message_with_service(
     service: &MessageService,
+    ws_server: &Addr<WsServer>,
     user_id: Uuid,
     message_id: Uuid,
     data: &UpdateMessageRequest,
 ) -> HttpResponse {
+    log::info!("update_message_with_service START");
+    log::info!("user_id: {}", user_id);
+    log::info!("message_id: {}", message_id);
+    log::info!("data.content: {}", data.content);
+
+    log::info!("About to validate");
+
     if let Err(error_message) = validate_update_message_request(data) {
+        log::error!("Validation failed: {} !!", error_message);
         return bad_request_response(error_message);
     }
+    log::info!("Validation passed");
+    log::info!("About to build payload");
 
     let payload = build_update_message_payload(data);
+    log::info!("Payload built");
+    log::info!("About to call service.update_message");
 
     match service.update_message(user_id, message_id, payload).await {
-        Ok(message) => ok_message_response(message),
-        Err(e) => handle_service_error(e),
+        Ok(message) => {
+            log::info!("Service returned success");
+            ws_server.do_send(build_updated_message_event(&message));
+            ok_message_response(message)
+        }
+        Err(e) => {
+            log::error!("Service error: {:?}", e);
+            handle_service_error(e)
+        }
     }
 }
 
@@ -273,11 +368,114 @@ async fn delete_message_with_service(
 ) -> HttpResponse {
     match service.delete_message(user_id, message_id).await {
         Ok((server_id, channel_id, message_id)) => {
-            ws_server.do_send(build_deleted_message_event(server_id, channel_id, message_id));
+            ws_server.do_send(build_deleted_message_event(
+                server_id, channel_id, message_id,
+            ));
             no_content_response()
         }
         Err(e) => handle_service_error(e),
     }
+}
+
+fn validate_reaction_request(data: &ReactionRequest) -> Result<String, String> {
+    let emoji = data.emoji.trim();
+    if emoji.is_empty() || emoji.chars().count() > 16 {
+        return Err("Emoji reaction is not valid".to_string());
+    }
+
+    Ok(emoji.to_string())
+}
+
+async fn add_reaction_with_service(
+    service: &MessageService,
+    ws_server: &Addr<WsServer>,
+    user_id: Uuid,
+    message_id: Uuid,
+    data: &ReactionRequest,
+) -> HttpResponse {
+    let emoji = match validate_reaction_request(data) {
+        Ok(emoji) => emoji,
+        Err(error_message) => return bad_request_response(error_message),
+    };
+
+    match service
+        .add_reaction(user_id, message_id, emoji.clone())
+        .await
+    {
+        Ok((_server_id, channel_id, message_id)) => {
+            ws_server.do_send(build_reaction_event(
+                true, channel_id, message_id, user_id, emoji,
+            ));
+            no_content_response()
+        }
+        Err(e) => handle_service_error(e),
+    }
+}
+
+async fn remove_reaction_with_service(
+    service: &MessageService,
+    ws_server: &Addr<WsServer>,
+    user_id: Uuid,
+    message_id: Uuid,
+    data: &ReactionRequest,
+) -> HttpResponse {
+    let emoji = match validate_reaction_request(data) {
+        Ok(emoji) => emoji,
+        Err(error_message) => return bad_request_response(error_message),
+    };
+
+    match service
+        .remove_reaction(user_id, message_id, emoji.clone())
+        .await
+    {
+        Ok((_server_id, channel_id, message_id)) => {
+            ws_server.do_send(build_reaction_event(
+                false, channel_id, message_id, user_id, emoji,
+            ));
+            no_content_response()
+        }
+        Err(e) => handle_service_error(e),
+    }
+}
+
+pub async fn add_reaction(
+    pg_pool: web::Data<PgPool>,
+    mongo_db: web::Data<Database>,
+    ws_server: web::Data<Addr<WsServer>>,
+    user: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    data: web::Json<ReactionRequest>,
+) -> impl Responder {
+    let message_id = path.into_inner();
+    let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
+    add_reaction_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        message_id,
+        &data,
+    )
+    .await
+}
+
+pub async fn remove_reaction(
+    pg_pool: web::Data<PgPool>,
+    mongo_db: web::Data<Database>,
+    ws_server: web::Data<Addr<WsServer>>,
+    user: AuthenticatedUser,
+    path: web::Path<Uuid>,
+    data: web::Json<ReactionRequest>,
+) -> impl Responder {
+    let message_id = path.into_inner();
+    let service = MessageService::new(mongo_db.get_ref(), pg_pool.get_ref());
+    remove_reaction_with_service(
+        &service,
+        ws_server.get_ref(),
+        user.user_id,
+        message_id,
+        &data,
+    )
+    .await
 }
 
 fn handle_service_error(error: ServiceError) -> HttpResponse {
@@ -309,7 +507,9 @@ pub fn config(cfg: &mut web::ServiceConfig) {
             .route("/{id}/reactions", web::post().to(add_reaction))
             .route("/{id}/reactions", web::delete().to(remove_reaction))
             .route("/{id}", web::put().to(update_message))
-            .route("/{id}", web::delete().to(delete_message)),
+            .route("/{id}", web::delete().to(delete_message))
+            .route("/{id}/reactions", web::post().to(add_reaction))
+            .route("/{id}/reactions", web::delete().to(remove_reaction)),
     );
 }
 

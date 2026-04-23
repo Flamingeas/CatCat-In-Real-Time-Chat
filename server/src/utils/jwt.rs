@@ -1,7 +1,7 @@
+use chrono::{Duration, Utc};
 use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use chrono::{Duration, Utc};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Claims {

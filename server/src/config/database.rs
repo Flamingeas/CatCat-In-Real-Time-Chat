@@ -17,7 +17,7 @@ impl DatabaseConfig {
             .max_connections(5)
             .min_connections(2)
             .acquire_timeout(Duration::from_secs(30))
-            .connect(database_url) 
+            .connect(database_url)
             .await?;
 
         let client = MongoClient::with_uri_str(mongodb_uri).await?;
@@ -29,7 +29,8 @@ impl DatabaseConfig {
     pub async fn setup_mongodb_indexes(&self) -> Result<(), anyhow::Error> {
         Ok(())
     }
-}#[cfg(test)]
+}
+#[cfg(test)]
 mod tests {
     use super::*;
 
@@ -40,7 +41,7 @@ mod tests {
             "mongodb://localhost:27017",
             "test",
         )
-            .await;
+        .await;
 
         assert!(res.is_err());
     }

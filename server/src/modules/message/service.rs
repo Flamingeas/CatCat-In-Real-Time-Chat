@@ -5,12 +5,18 @@ use chrono::{DateTime, Utc};
 use mongodb::Database;
 use sqlx::PgPool;
 use uuid::Uuid;
+<<<<<<< HEAD
 use actix_web::web;
 use actix::Addr;
 use crate::websocket::server::ServerEvent;
 use crate::models::message::{CreateMessage, Message, MessageResponse, UpdateMessage};
 use super::repository::MessageRepository;
 use crate::WsServer;
+=======
+
+use super::repository::MessageRepository;
+use crate::models::message::{CreateMessage, Message, MessageResponse, UpdateMessage};
+>>>>>>> main
 
 #[async_trait]
 pub trait MessageRepositoryTrait: Send + Sync {
@@ -35,16 +41,29 @@ pub trait MessageRepositoryTrait: Send + Sync {
 
     async fn delete(&self, message_id: Uuid) -> Result<(), String>;
 
+<<<<<<< HEAD
     async fn add_reaction(&self, message_id: Uuid, user_id: Uuid, emoji: String) -> Result<(), mongodb::error::Error>;
     async fn remove_reaction(&self, message_id: Uuid, user_id: Uuid, emoji: String) -> Result<(), mongodb::error::Error>;
+=======
+    async fn add_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String>;
+
+    async fn remove_reaction(
+        &self,
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String>;
+>>>>>>> main
 }
 
 #[async_trait]
 pub trait MessageAccessTrait: Send + Sync {
-    async fn get_channel_server(
-        &self,
-        channel_id: Uuid,
-    ) -> Result<Option<Uuid>, sqlx::Error>;
+    async fn get_channel_server(&self, channel_id: Uuid) -> Result<Option<Uuid>, sqlx::Error>;
 
     async fn get_membership_and_username(
         &self,
@@ -52,11 +71,7 @@ pub trait MessageAccessTrait: Send + Sync {
         user_id: Uuid,
     ) -> Result<(bool, Option<String>), sqlx::Error>;
 
-    async fn is_server_member(
-        &self,
-        server_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<bool, sqlx::Error>;
+    async fn is_server_member(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Error>;
 
     async fn get_server_role(
         &self,
@@ -125,6 +140,7 @@ impl MessageRepositoryTrait for MongoMessageRepository {
 
     async fn add_reaction(
         &self,
+<<<<<<< HEAD
         message_id: uuid::Uuid,
         user_id: uuid::Uuid,
         emoji: String,
@@ -133,10 +149,21 @@ impl MessageRepositoryTrait for MongoMessageRepository {
         MessageRepository::new(&self.db)
             .add_reaction(message_id, user_id, emoji)
             .await
+=======
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String> {
+        MessageRepository::new(&self.db)
+            .add_reaction(message_id, user_id, emoji)
+            .await
+            .map_err(|e| e.to_string())
+>>>>>>> main
     }
 
     async fn remove_reaction(
         &self,
+<<<<<<< HEAD
         message_id: uuid::Uuid,
         user_id: uuid::Uuid,
         emoji: String,
@@ -145,6 +172,16 @@ impl MessageRepositoryTrait for MongoMessageRepository {
         MessageRepository::new(&self.db)
             .remove_reaction(message_id, user_id, emoji)
             .await
+=======
+        message_id: Uuid,
+        user_id: Uuid,
+        emoji: &str,
+    ) -> Result<(), String> {
+        MessageRepository::new(&self.db)
+            .remove_reaction(message_id, user_id, emoji)
+            .await
+            .map_err(|e| e.to_string())
+>>>>>>> main
     }
 }
 
@@ -160,10 +197,7 @@ impl PgMessageAccess {
 
 #[async_trait]
 impl MessageAccessTrait for PgMessageAccess {
-    async fn get_channel_server(
-        &self,
-        channel_id: Uuid,
-    ) -> Result<Option<Uuid>, sqlx::Error> {
+    async fn get_channel_server(&self, channel_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
         sqlx::query_scalar::<_, Option<Uuid>>("SELECT server_id FROM channels WHERE id = $1")
             .bind(channel_id)
             .fetch_one(&self.pg_pool)
@@ -180,24 +214,20 @@ impl MessageAccessTrait for PgMessageAccess {
                 EXISTS(SELECT 1 FROM server_members WHERE server_id = $1 AND user_id = $2),
                 (SELECT username FROM users WHERE id = $2)",
         )
-            .bind(server_id)
-            .bind(user_id)
-            .fetch_one(&self.pg_pool)
-            .await
+        .bind(server_id)
+        .bind(user_id)
+        .fetch_one(&self.pg_pool)
+        .await
     }
 
-    async fn is_server_member(
-        &self,
-        server_id: Uuid,
-        user_id: Uuid,
-    ) -> Result<bool, sqlx::Error> {
+    async fn is_server_member(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, sqlx::Error> {
         sqlx::query_scalar::<_, bool>(
             "SELECT EXISTS(SELECT 1 FROM server_members WHERE server_id = $1 AND user_id = $2)",
         )
-            .bind(server_id)
-            .bind(user_id)
-            .fetch_one(&self.pg_pool)
-            .await
+        .bind(server_id)
+        .bind(user_id)
+        .fetch_one(&self.pg_pool)
+        .await
     }
 
     async fn get_server_role(
@@ -208,10 +238,10 @@ impl MessageAccessTrait for PgMessageAccess {
         sqlx::query_scalar(
             "SELECT role::text FROM server_members WHERE server_id = $1 AND user_id = $2",
         )
-            .bind(server_id)
-            .bind(user_id)
-            .fetch_optional(&self.pg_pool)
-            .await
+        .bind(server_id)
+        .bind(user_id)
+        .fetch_optional(&self.pg_pool)
+        .await
     }
 }
 
@@ -326,6 +356,19 @@ impl MessageService {
             ));
         }
 
+        const EDIT_TIME_LIMIT_MINUTES: i64 = 5;
+
+        let elapsed = Utc::now()
+            .signed_duration_since(message.created_at)
+            .num_minutes();
+
+        if elapsed > EDIT_TIME_LIMIT_MINUTES {
+            return Err(ServiceError::Forbidden(format!(
+                "Messages can only be edited within {} minutes",
+                EDIT_TIME_LIMIT_MINUTES
+            )));
+        }
+
         if message.is_deleted() {
             return Err(ServiceError::Forbidden(
                 "Cannot edit a deleted message".to_string(),
@@ -384,6 +427,7 @@ impl MessageService {
 
         Ok((message.server_id, message.channel_id, message.message_id))
     }
+<<<<<<< HEAD
     pub async fn add_reaction(
         &self,
         message_id: Uuid,
@@ -408,10 +452,51 @@ impl MessageService {
         });
 
         Ok(())
+=======
+
+    pub async fn add_reaction(
+        &self,
+        user_id: Uuid,
+        message_id: Uuid,
+        emoji: String,
+    ) -> Result<(Uuid, Uuid, Uuid), ServiceError> {
+        let message = self
+            .repository
+            .find_by_id(message_id)
+            .await
+            .map_err(ServiceError::Internal)?
+            .ok_or(ServiceError::NotFound("Message not found".to_string()))?;
+
+        if message.is_deleted() {
+            return Err(ServiceError::Forbidden(
+                "Cannot react to a deleted message".to_string(),
+            ));
+        }
+
+        let is_member = self
+            .access
+            .is_server_member(message.server_id, user_id)
+            .await
+            .map_err(ServiceError::Database)?;
+
+        if !is_member {
+            return Err(ServiceError::Forbidden(
+                "You are not a member of this server".to_string(),
+            ));
+        }
+
+        self.repository
+            .add_reaction(message_id, user_id, &emoji)
+            .await
+            .map_err(ServiceError::Internal)?;
+
+        Ok((message.server_id, message.channel_id, message.message_id))
+>>>>>>> main
     }
 
     pub async fn remove_reaction(
         &self,
+<<<<<<< HEAD
         message_id: Uuid,
         channel_id: Uuid,
         user_id: Uuid,
@@ -433,6 +518,37 @@ impl MessageService {
         });
 
         Ok(())
+=======
+        user_id: Uuid,
+        message_id: Uuid,
+        emoji: String,
+    ) -> Result<(Uuid, Uuid, Uuid), ServiceError> {
+        let message = self
+            .repository
+            .find_by_id(message_id)
+            .await
+            .map_err(ServiceError::Internal)?
+            .ok_or(ServiceError::NotFound("Message not found".to_string()))?;
+
+        let is_member = self
+            .access
+            .is_server_member(message.server_id, user_id)
+            .await
+            .map_err(ServiceError::Database)?;
+
+        if !is_member {
+            return Err(ServiceError::Forbidden(
+                "You are not a member of this server".to_string(),
+            ));
+        }
+
+        self.repository
+            .remove_reaction(message_id, user_id, &emoji)
+            .await
+            .map_err(ServiceError::Internal)?;
+
+        Ok((message.server_id, message.channel_id, message.message_id))
+>>>>>>> main
     }
 }
 
@@ -517,7 +633,11 @@ mod tests {
             self.find_by_channel_result.clone().unwrap()
         }
 
-        async fn update(&self, _message_id: Uuid, _data: &UpdateMessage) -> Result<Message, String> {
+        async fn update(
+            &self,
+            _message_id: Uuid,
+            _data: &UpdateMessage,
+        ) -> Result<Message, String> {
             self.update_result.clone().unwrap()
         }
 
@@ -535,10 +655,7 @@ mod tests {
 
     #[async_trait]
     impl MessageAccessTrait for FakeMessageAccess {
-        async fn get_channel_server(
-            &self,
-            _channel_id: Uuid,
-        ) -> Result<Option<Uuid>, sqlx::Error> {
+        async fn get_channel_server(&self, _channel_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
             match self.channel_server_result.clone().unwrap() {
                 Ok(v) => Ok(v),
                 Err(()) => Err(sqlx::Error::RowNotFound),
@@ -648,7 +765,11 @@ mod tests {
             self.find_by_channel_result.clone()
         }
 
-        async fn update(&self, _message_id: Uuid, _data: &UpdateMessage) -> Result<Message, String> {
+        async fn update(
+            &self,
+            _message_id: Uuid,
+            _data: &UpdateMessage,
+        ) -> Result<Message, String> {
             panic!("update should not be called in this test");
         }
 
@@ -699,7 +820,11 @@ mod tests {
             self.find_by_channel_result.clone().unwrap()
         }
 
-        async fn update(&self, _message_id: Uuid, _data: &UpdateMessage) -> Result<Message, String> {
+        async fn update(
+            &self,
+            _message_id: Uuid,
+            _data: &UpdateMessage,
+        ) -> Result<Message, String> {
             self.update_calls.fetch_add(1, Ordering::SeqCst);
             self.update_result.clone().unwrap()
         }
@@ -771,10 +896,7 @@ mod tests {
 
     #[async_trait]
     impl MessageAccessTrait for CountingAccess {
-        async fn get_channel_server(
-            &self,
-            _channel_id: Uuid,
-        ) -> Result<Option<Uuid>, sqlx::Error> {
+        async fn get_channel_server(&self, _channel_id: Uuid) -> Result<Option<Uuid>, sqlx::Error> {
             self.get_channel_server_calls.fetch_add(1, Ordering::SeqCst);
             match self.channel_server_result.clone().unwrap() {
                 Ok(v) => Ok(v),
@@ -973,7 +1095,10 @@ mod tests {
         assert_eq!(call.username.as_deref(), Some("tester"));
         assert_eq!(call.server_id, Some(server_id));
 
-        let data = call.data.as_ref().expect("expected CreateMessage to be recorded");
+        let data = call
+            .data
+            .as_ref()
+            .expect("expected CreateMessage to be recorded");
         assert_eq!(data.channel_id, channel_id);
         assert_eq!(data.content, "hello world");
     }
@@ -1088,7 +1213,9 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, ServiceError::Forbidden(msg) if msg == "You are not a member of this server"));
+        assert!(
+            matches!(err, ServiceError::Forbidden(msg) if msg == "You are not a member of this server")
+        );
     }
 
     #[actix_web::test]
@@ -1679,7 +1806,9 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, ServiceError::Forbidden(msg) if msg == "You are not a member of this server"));
+        assert!(
+            matches!(err, ServiceError::Forbidden(msg) if msg == "You are not a member of this server")
+        );
     }
 
     #[actix_web::test]
@@ -1996,7 +2125,9 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, ServiceError::Forbidden(msg) if msg == "You can only edit your own messages"));
+        assert!(
+            matches!(err, ServiceError::Forbidden(msg) if msg == "You can only edit your own messages")
+        );
     }
 
     #[actix_web::test]
@@ -2076,7 +2207,9 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, ServiceError::Forbidden(msg) if msg == "Cannot edit a deleted message"));
+        assert!(
+            matches!(err, ServiceError::Forbidden(msg) if msg == "Cannot edit a deleted message")
+        );
     }
 
     #[actix_web::test]
@@ -2217,7 +2350,10 @@ mod tests {
 
         let service = make_service(repo, access);
 
-        let result = service.delete_message(user_id, Uuid::new_v4()).await.unwrap();
+        let result = service
+            .delete_message(user_id, Uuid::new_v4())
+            .await
+            .unwrap();
 
         assert_eq!(result, (server_id, channel_id, expected_message_id));
     }
@@ -2262,7 +2398,10 @@ mod tests {
 
         let service = make_service(repo, access);
 
-        let _ = service.delete_message(owner_id, Uuid::new_v4()).await.unwrap();
+        let _ = service
+            .delete_message(owner_id, Uuid::new_v4())
+            .await
+            .unwrap();
 
         assert_eq!(role_calls.load(Ordering::SeqCst), 0);
     }
@@ -2294,7 +2433,10 @@ mod tests {
 
         let service = make_service(repo, access);
 
-        let result = service.delete_message(admin_id, Uuid::new_v4()).await.unwrap();
+        let result = service
+            .delete_message(admin_id, Uuid::new_v4())
+            .await
+            .unwrap();
 
         assert_eq!(result, (server_id, channel_id, expected_message_id));
     }
@@ -2330,7 +2472,10 @@ mod tests {
 
         let service = make_service(repo, access);
 
-        let _ = service.delete_message(other_user_id, Uuid::new_v4()).await.unwrap();
+        let _ = service
+            .delete_message(other_user_id, Uuid::new_v4())
+            .await
+            .unwrap();
 
         assert_eq!(role_calls.load(Ordering::SeqCst), 1);
     }
@@ -2361,7 +2506,10 @@ mod tests {
 
         let service = make_service(repo, access);
 
-        let result = service.delete_message(moderator_id, Uuid::new_v4()).await.unwrap();
+        let result = service
+            .delete_message(moderator_id, Uuid::new_v4())
+            .await
+            .unwrap();
 
         assert_eq!(result, (server_id, channel_id, expected_message_id));
     }
@@ -2487,7 +2635,9 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, ServiceError::Forbidden(msg) if msg == "Cannot delete a deleted message"));
+        assert!(
+            matches!(err, ServiceError::Forbidden(msg) if msg == "Cannot delete a deleted message")
+        );
     }
 
     #[actix_web::test]
@@ -2555,7 +2705,9 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(err, ServiceError::Forbidden(msg) if msg == "You don't have permission to delete this message"));
+        assert!(
+            matches!(err, ServiceError::Forbidden(msg) if msg == "You don't have permission to delete this message")
+        );
     }
 
     #[actix_web::test]
