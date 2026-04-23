@@ -189,7 +189,8 @@
     "title": "Rejoindre un serveur",
     "codeLabel": "Code d'invitation",
     "joining": "Rejoindre...",
-    "join": "Rejoindre"
+    "join": "Rejoindre",
+    "bannedUntil": "Tu es banni de ce serveur jusqu'au {date}."
   },
   "memberActions": {
     "makeAdmin": "Rendre admin",

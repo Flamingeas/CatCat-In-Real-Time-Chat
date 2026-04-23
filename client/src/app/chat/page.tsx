@@ -33,14 +33,14 @@ import { BannedUsersModal } from "@/components/chat/modals/BannedUsersModal";
 import { DirectMessageSidebar } from "@/components/chat/direct-message/DirectMessageSidebar";
 import { DirectMessagePanel } from "@/components/chat/direct-message/DirectMessagePanel";
 import { Server, Channel, WsEvent, Toast } from "@/types/chat";
-import { getInitials, formatDateTimeFR } from "@/utils/chat";
+import { getInitials, formatDateTime } from "@/utils/chat";
 import { getFriendlyErrorMessage } from "@/utils/errors";
 import { useServers } from "@/hooks/useServers";
 import { useChannels } from "@/hooks/useChannels";
 import { useDirectMessages } from "@/hooks/useDirectMessages";
 import { useChannelMessages } from "@/hooks/useChannelMessages";
 import { useWebSocket } from "@/lib/WebSocketProvider";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
@@ -49,6 +49,7 @@ const WS_URL = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws") as s
 
 export default function ChatPage() {
     const t = useTranslations("chatPage");
+    const locale = useLocale();
     const [initials, setInitials] = useState("??");
     const [me, setMe] = useState<{ id: string; username: string } | null>(null);
     const serversData = useServers();
@@ -126,8 +127,8 @@ export default function ChatPage() {
     const selectedServer = useMemo(() => servers.find((s) => s.id === selectedServerId) ?? null, [servers, selectedServerId]);
     const selectedChannel = useMemo(() => channels.find((c) => String(c.id) === String(selectedChannelId)) ?? null, [channels, selectedChannelId]);
 
-    const channelCreatedLabel = useMemo(() => formatDateTimeFR(selectedChannel?.created_at), [selectedChannel?.created_at]);
-    const channelUpdatedLabel = useMemo(() => formatDateTimeFR(selectedChannel?.updated_at), [selectedChannel?.updated_at]);
+    const channelCreatedLabel = useMemo(() => formatDateTime(selectedChannel?.created_at, locale), [selectedChannel?.created_at, locale]);
+    const channelUpdatedLabel = useMemo(() => formatDateTime(selectedChannel?.updated_at, locale), [selectedChannel?.updated_at, locale]);
     const [showBans, setShowBans] = useState(false);
 
     const myRole: MemberRole = useMemo(() => {

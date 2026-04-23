@@ -1,11 +1,11 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useState } from "react";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { GifMessage } from "@/components/chat/GifMessage";
 import { Message } from "@/types/chat";
-import { getInitials, formatTimeFR } from "@/utils/chat";
+import { getInitials, formatTime } from "@/utils/chat";
 import { isGifMessage } from "@/utils/message-content";
 
 interface User {
@@ -53,6 +53,7 @@ export function MessageList({
     selectedChannelId,
 }: MessageListProps) {
     const t = useTranslations("common");
+    const locale = useLocale();
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
 
     return (
@@ -86,7 +87,7 @@ export function MessageList({
                     <div className="flex flex-col gap-3">
                         {messages.map((m) => {
                             const isMe = me && String(me.id) === String(m.user_id);
-                            const time = formatTimeFR(m.created_at);
+                            const time = formatTime(m.created_at, locale);
                             const canDeleteThis = !m.is_deleted && (isMe || canModerateMessages);
                             const canEditThis = isMe && !m.is_deleted;
                             const isEditing = editingMessageId === m.message_id;

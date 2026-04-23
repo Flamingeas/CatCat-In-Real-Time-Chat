@@ -1,13 +1,13 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useState } from "react";
 import type { KeyboardEvent, RefObject } from "react";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { GifMessage } from "@/components/chat/GifMessage";
 import { GifPicker } from "@/components/chat/GifPicker";
 import { ConversationItem, DmMessage } from "@/features/direct-message/services/dm.service";
-import { getInitials, formatTimeFR } from "@/utils/chat";
+import { getInitials, formatTime } from "@/utils/chat";
 import { isGifMessage } from "@/utils/message-content";
 
 interface User {
@@ -68,6 +68,7 @@ export function DirectMessagePanel({
 }: DirectMessagePanelProps) {
     const t = useTranslations("directMessage");
     const tCommon = useTranslations("common");
+    const locale = useLocale();
     const [isGifPickerOpen, setIsGifPickerOpen] = useState(false);
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
     const selectedConversation = selectedConvId
@@ -128,7 +129,7 @@ export function DirectMessagePanel({
                                 <div className="flex flex-col gap-3">
                                     {messages.map((message) => {
                                         const isMe = me && String(me.id) === String(message.sender_id);
-                                        const time = formatTimeFR(message.created_at);
+                                        const time = formatTime(message.created_at, locale);
                                         const isEditing = editingMessageId === message.message_id;
                                         const canReact = !!me && !message.is_deleted && !isEditing;
 

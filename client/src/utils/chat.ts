@@ -5,19 +5,19 @@ export function getInitials(username?: string) {
     return `${first}${last}`;
 }
 
-export function formatDateTimeFR(input?: string) {
+export function formatDateTime(input?: string, locale = "fr-FR") {
     if (!input) return null;
     const d = new Date(input);
     if (Number.isNaN(d.getTime())) return input;
-    return new Intl.DateTimeFormat("fr-FR", {
+    return new Intl.DateTimeFormat(locale, {
         dateStyle: "medium",
         timeStyle: "short",
     }).format(d);
 }
 
-export function formatTimeFR(input?: string) {
+export function formatTime(input?: string, locale = "fr-FR") {
     if (!input) return null;
     const d = new Date(input);
     if (Number.isNaN(d.getTime())) return input;
-    return new Intl.DateTimeFormat("fr-FR", { hour: "2-digit", minute: "2-digit" }).format(d);
+    return new Intl.DateTimeFormat(locale, { hour: "2-digit", minute: "2-digit" }).format(d);
 }

@@ -1,5 +1,5 @@
 "use client";
-import { useTranslations } from "next-intl";
+import { useTranslations, useLocale } from "next-intl";
 import { useEffect, useState } from "react";
 import { getServerBans, unbanMember, type ServerBan } from "../services/bans.service";
 
@@ -19,6 +19,7 @@ type WsBanEvent =
 
 export default function BanList({ serverId }: { serverId: string }) {
   const t = useTranslations("banList");
+  const locale = useLocale();
   const [bans, setBans] = useState<ServerBan[]>([]);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export default function BanList({ serverId }: { serverId: string }) {
 
   function getBanLabel(expiresAt?: string | null) {
     if (!expiresAt) return t("permanent");
-    return t("temporary", { date: new Date(expiresAt).toLocaleString() });
+    return t("temporary", { date: new Date(expiresAt).toLocaleString(locale) });
   }
 
   return (

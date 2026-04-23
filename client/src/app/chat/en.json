@@ -189,7 +189,8 @@
     "title": "Join a server",
     "codeLabel": "Invitation code",
     "joining": "Joining...",
-    "join": "Join"
+    "join": "Join",
+    "bannedUntil": "You are banned from this server until {date}."
   },
   "memberActions": {
     "makeAdmin": "Make admin",

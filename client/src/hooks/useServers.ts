@@ -2,10 +2,13 @@ import { useState } from "react";
 import { Server } from "@/types/chat";
 import { api } from "@/lib/api";
 import { joinServerByCode } from "@/features/chat/services/members.service";
-import { formatDateTimeFR } from "@/utils/chat";
+import { formatDateTime } from "@/utils/chat";
 import { getFriendlyErrorMessage, getTemporaryBanUntilFromError } from "@/utils/errors";
+import { useTranslations, useLocale } from "next-intl";
 
 export function useServers() {
+    const t = useTranslations("joinServerModal");
+    const locale = useLocale();
     const [servers, setServers] = useState<Server[]>([]);
     const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
 
@@ -72,7 +75,7 @@ export function useServers() {
         } catch (e) {
             const temporaryBanUntil = getTemporaryBanUntilFromError(e);
             if (temporaryBanUntil) {
-                setJoinError(`Tu es banni de ce serveur jusqu’au ${formatDateTimeFR(temporaryBanUntil) ?? temporaryBanUntil}.`);
+                setJoinError(t("bannedUntil", { date: formatDateTime(temporaryBanUntil, locale) ?? temporaryBanUntil }));
             } else {
                 setJoinError(getFriendlyErrorMessage(e, "joinServer"));
             }
