@@ -1,3 +1,6 @@
+"use client";
+import { useTranslations } from "next-intl";
+
 interface TemporaryBanModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -19,6 +22,9 @@ export function TemporaryBanModal({
     isBanning,
     onBan,
 }: TemporaryBanModalProps) {
+    const t = useTranslations("temporaryBanModal");
+    const tCommon = useTranslations("common");
+
     if (!isOpen) return null;
 
     return (
@@ -32,10 +38,10 @@ export function TemporaryBanModal({
                 <div className="flex items-center justify-between mb-4">
                     <div>
                         <h3 className="text-white font-bold font-[family-name:var(--font-nunito)] text-lg">
-                            Bannir temporairement
+                            {t("title")}
                         </h3>
                         <div className="text-xs text-[#DCCBC4]/50 mt-1">
-                            Utilisateur : {username}
+                            {t("userLabel")} {username}
                         </div>
                     </div>
 
@@ -48,7 +54,7 @@ export function TemporaryBanModal({
                 </div>
 
                 <label className="block text-sm text-[#DCCBC4]/70 mb-2">
-                    Durée du bannissement
+                    {t("durationLabel")}
                 </label>
 
                 <select
@@ -57,14 +63,14 @@ export function TemporaryBanModal({
                     disabled={isBanning}
                     className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
                 >
-                    <option value="5">5 minutes</option>
-                    <option value="15">15 minutes</option>
-                    <option value="30">30 minutes</option>
-                    <option value="60">1 heure</option>
-                    <option value="180">3 heures</option>
-                    <option value="720">12 heures</option>
-                    <option value="1440">24 heures</option>
-                    <option value="10080">7 jours</option>
+                    <option value="5">{t("5min")}</option>
+                    <option value="15">{t("15min")}</option>
+                    <option value="30">{t("30min")}</option>
+                    <option value="60">{t("1h")}</option>
+                    <option value="180">{t("3h")}</option>
+                    <option value="720">{t("12h")}</option>
+                    <option value="1440">{t("24h")}</option>
+                    <option value="10080">{t("7d")}</option>
                 </select>
 
                 {error && (
@@ -77,7 +83,7 @@ export function TemporaryBanModal({
                         disabled={isBanning}
                         className="px-4 py-2 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
                     >
-                        Annuler
+                        {tCommon("cancel")}
                     </button>
 
                     <button
@@ -85,7 +91,7 @@ export function TemporaryBanModal({
                         disabled={isBanning}
                         className="px-4 py-2 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-400 disabled:opacity-50 cursor-pointer"
                     >
-                        {isBanning ? "Bannissement..." : "Confirmer"}
+                        {isBanning ? t("banning") : t("confirm")}
                     </button>
                 </div>
             </div>

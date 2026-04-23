@@ -143,7 +143,7 @@ export function ChannelChatPanel({
                         <div className="max-w-xl w-full rounded-2xl border border-[#ffffff]/10 bg-[#0a0605] p-6 shadow-lg">
                             <div className="text-white font-bold text-lg mb-2">{t("chooseServer")}</div>
                             <div className="text-sm text-[#DCCBC4]/60">
-                                {t("selectServerHint", { plus: <span className="text-[#EB5E28] font-bold">+</span> })}
+                                {t("selectServerHint")}
                             </div>
                         </div>
                     </div>
