@@ -34,7 +34,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
         <div className="w-[72px] bg-[#1E1211] rounded-[20px] flex flex-col items-center py-6 gap-4 z-20 h-full shadow-lg">
             <Link href="/" className="w-12 h-12 flex items-center justify-center hover:rounded-xl transition-all cursor-pointer group">
                 <div className="relative w-12 h-12 transition-transform duration-300 group-hover:rotate-12">
-                    <Image src={logoImage} alt="Logo CatCat" />
+                    <Image src={logoImage} alt={t("logoAlt")} />
                 </div>
             </Link>
             <button

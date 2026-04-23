@@ -8,6 +8,7 @@ import { useTranslations, useLocale } from "next-intl";
 
 export function useServers() {
     const t = useTranslations("joinServerModal");
+    const tChat = useTranslations("chatPage");
     const locale = useLocale();
     const [servers, setServers] = useState<Server[]>([]);
     const [selectedServerId, setSelectedServerId] = useState<string | null>(null);
@@ -34,11 +35,11 @@ export function useServers() {
         const name = serverName.trim();
 
         if (name.length < 3) {
-            setCreateError("Le nom doit faire au moins 3 caractères.");
+            setCreateError(tChat("errors.nameTooShort"));
             return;
         }
         if (name.length > 50) {
-            setCreateError("Le nom doit faire maximum 50 caractères.");
+            setCreateError(tChat("errors.nameTooLong"));
             return;
         }
 
@@ -62,7 +63,7 @@ export function useServers() {
         setJoinError(null);
         const code = joinCode.trim().toUpperCase();
         if (code.length !== 8) {
-            setJoinError("Le code d’invitation doit faire 8 caractères.");
+            setJoinError(t("invalidLength"));
             return;
         }
 

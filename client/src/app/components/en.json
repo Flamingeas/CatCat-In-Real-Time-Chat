@@ -10,7 +10,9 @@
     "titleEnd": "corner of the Internet.",
     "description": "Far from the noise and hustle of classic social networks. CatCat is a space designed for genuine discussion, authentic sharing, and creativity. Take your time, connect with those who inspire you, and finally feel at home.",
     "cta": "Sign in / Sign up",
-    "ctaAuthed": "Go to chat"
+    "ctaAuthed": "Go to chat",
+    "logoAlt": "CatCat logo",
+    "imageAlt": "CatCat hero illustration"
   },
   "metadata": {
     "title": "CatCat | The social network that purrs",

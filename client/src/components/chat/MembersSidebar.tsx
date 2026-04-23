@@ -100,13 +100,13 @@ export function MembersSidebar({
                                             <div className="flex items-center gap-2 min-w-0">
                                                 <span className="text-white font-bold text-sm truncate">@{member.username}</span>
                                                 {isOwnerMember && (
-                                                    <span title="Owner" className="text-[#FBBF24]">
+                                                    <span title={t("ownerTitle")} className="text-[#FBBF24]">
                                                         <CrownIcon />
                                                     </span>
                                                 )}
                                                 {member.role === "admin" && !isOwnerMember && (
                                                     <span className="text-xs px-2 py-0.5 rounded-full bg-[#1E1211] border border-[#ffffff]/10 text-[#DCCBC4]/70">
-                                                        admin
+                                                        {t("adminRole")}
                                                     </span>
                                                 )}
                                             </div>

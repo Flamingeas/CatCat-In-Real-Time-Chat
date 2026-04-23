@@ -27,15 +27,15 @@ impl ServerRepository {
 
         let server = self.insert_server_retrying_code(&mut tx, owner_id, name).await?;
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             INSERT INTO server_members (server_id, user_id, role)
             VALUES ($1, $2, 'owner')
             ON CONFLICT (server_id, user_id) DO NOTHING
             "#,
-            server.id,
-            owner_id
         )
+            .bind(server.id)
+            .bind(owner_id)
             .execute(&mut *tx)
             .await?;
 
@@ -73,7 +73,7 @@ impl ServerRepository {
     ) -> Result<(), sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 
-        sqlx::query!(
+        sqlx::query(
         r#"
         INSERT INTO server_bans (server_id, user_id, banned_by, reason, expires_at)
         VALUES ($1, $2, $3, $4, $5)
@@ -84,23 +84,23 @@ impl ServerRepository {
             expires_at = EXCLUDED.expires_at,
             created_at = NOW()
         "#,
-        server_id,
-        user_id,
-        banned_by,
-        reason,
-        expires_at.map(|dt| dt.naive_utc())
     )
+            .bind(server_id)
+            .bind(user_id)
+            .bind(banned_by)
+            .bind(reason)
+            .bind(expires_at.map(|dt| dt.naive_utc()))
             .execute(&mut *tx)
             .await?;
 
-        sqlx::query!(
+        sqlx::query(
         r#"
         DELETE FROM server_members
         WHERE server_id = $1 AND user_id = $2
         "#,
-        server_id,
-        user_id
     )
+            .bind(server_id)
+            .bind(user_id)
             .execute(&mut *tx)
             .await?;
 
@@ -132,14 +132,14 @@ impl ServerRepository {
     }
 
     pub async fn unban_member(&self, server_id: Uuid, user_id: Uuid) -> Result<(), sqlx::Error> {
-        let res = sqlx::query!(
+        let res = sqlx::query(
         r#"
         DELETE FROM server_bans
         WHERE server_id = $1 AND user_id = $2
         "#,
-        server_id,
-        user_id
     )
+            .bind(server_id)
+            .bind(user_id)
             .execute(&self.pool)
             .await?;
 
@@ -276,14 +276,14 @@ impl ServerRepository {
             return Err(sqlx::Error::Protocol("Owner cannot leave their own server".into()));
         }
 
-        let affected = sqlx::query!(
+        let affected = sqlx::query(
             r#"
             DELETE FROM server_members
             WHERE server_id = $1 AND user_id = $2
             "#,
-            server_id,
-            user_id
         )
+            .bind(server_id)
+            .bind(user_id)
             .execute(&mut *tx)
             .await?
             .rows_affected();
@@ -384,7 +384,7 @@ impl ServerRepository {
         user_id: Uuid,
         role: ServerMemberRole,
     ) -> Result<(), sqlx::Error> {
-        let res = sqlx::query!(
+        let res = sqlx::query(
             r#"
             UPDATE server_members
             SET role = $3
@@ -392,10 +392,10 @@ impl ServerRepository {
               AND user_id = $2
               AND role != 'owner'
             "#,
-            server_id,
-            user_id,
-            role.as_str()
         )
+            .bind(server_id)
+            .bind(user_id)
+            .bind(role.as_str())
             .execute(&self.pool)
             .await?;
 
@@ -428,27 +428,27 @@ impl ServerRepository {
             .fetch_one(&mut *tx)
             .await?;
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE server_members
             SET role = 'owner'
             WHERE server_id = $1 AND user_id = $2
             "#,
-            server_id,
-            new_owner_id
         )
+            .bind(server_id)
+            .bind(new_owner_id)
             .execute(&mut *tx)
             .await?;
 
-        sqlx::query!(
+        sqlx::query(
             r#"
             UPDATE server_members
             SET role = 'member'
             WHERE server_id = $1 AND user_id = $2
             "#,
-            server_id,
-            old_owner_id
         )
+            .bind(server_id)
+            .bind(old_owner_id)
             .execute(&mut *tx)
             .await?;
 
@@ -457,14 +457,14 @@ impl ServerRepository {
     }
 
     pub async fn remove_member(&self, server_id: Uuid, user_id: Uuid) -> Result<(), sqlx::Error> {
-        let res = sqlx::query!(
+        let res = sqlx::query(
             r#"
             DELETE FROM server_members
             WHERE server_id = $1 AND user_id = $2
             "#,
-            server_id,
-            user_id
         )
+            .bind(server_id)
+            .bind(user_id)
             .execute(&self.pool)
             .await?;
 
@@ -510,18 +510,19 @@ impl ServerRepository {
     pub async fn delete_server(&self, server_id: Uuid, owner_id: Uuid) -> Result<(), sqlx::Error> {
         let mut tx: Transaction<'_, Postgres> = self.pool.begin().await?;
 
-        sqlx::query!(r#"DELETE FROM server_members WHERE server_id = $1"#, server_id)
+        sqlx::query(r#"DELETE FROM server_members WHERE server_id = $1"#)
+            .bind(server_id)
             .execute(&mut *tx)
             .await?;
 
-        let res = sqlx::query!(
+        let res = sqlx::query(
             r#"
             DELETE FROM servers
             WHERE id = $1 AND owner_id = $2
             "#,
-            server_id,
-            owner_id
         )
+            .bind(server_id)
+            .bind(owner_id)
             .execute(&mut *tx)
             .await?;
 

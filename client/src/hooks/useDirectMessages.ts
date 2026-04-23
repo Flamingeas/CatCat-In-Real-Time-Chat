@@ -8,6 +8,7 @@ import {
     startConversation as startDmConversation,
 } from "@/features/direct-message/services/dm.service";
 import { Toast, WsEvent } from "@/types/chat";
+import { useTranslations } from "next-intl";
 
 interface UseDirectMessagesOptions {
     myIdRef: { current: string | null };
@@ -50,6 +51,7 @@ function getInitialUnreadCounts(): Record<string, number> {
 }
 
 export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptions) {
+    const t = useTranslations("directMessages");
     const [view, setView] = useState<"servers" | "dm">(getInitialView);
     const [conversations, setConversations] = useState<ConversationItem[]>([]);
     const [selectedConvId, setSelectedConvId] = useState<string | null>(getInitialSelectedConversationId);
@@ -153,7 +155,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, 0);
         } catch {
-            pushToast("Envoi refusé", "warn");
+            pushToast(t("sendDenied"), "warn");
         } finally {
             setIsSending(false);
         }
@@ -176,7 +178,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, 0);
         } catch {
-            pushToast("Envoi du GIF refusé", "warn");
+            pushToast(t("gifDenied"), "warn");
         } finally {
             setIsSending(false);
         }
@@ -194,9 +196,9 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             );
             setEditingMessageId(null);
             setEditingContent("");
-            pushToast("Message modifié", "success");
+            pushToast(t("updated"), "success");
         } catch {
-            pushToast("Édition refusée", "warn");
+            pushToast(t("editDenied"), "warn");
         }
     }
 
@@ -206,9 +208,9 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             setMessages((prev) =>
                 prev.map((message) => message.message_id === messageId ? { ...message, is_deleted: true, content: "" } : message)
             );
-            pushToast("Message supprimé", "warn");
+            pushToast(t("deleted"), "warn");
         } catch {
-            pushToast("Suppression refusée", "warn");
+            pushToast(t("deleteDenied"), "warn");
         }
     }
 
@@ -219,7 +221,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             const oldest = messages[0];
             await loadMessages(selectedConvId, { before: oldest.created_at, append: true });
         } catch {
-            pushToast("Impossible de charger plus", "warn");
+            pushToast(t("loadMoreDenied"), "warn");
         } finally {
             setLoadingMore(false);
         }
@@ -283,7 +285,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             });
         } catch (e) {
             applyReaction(messageId, emoji, currentUserId, hasReacted ? "add" : "remove");
-            pushToast("Erreur de synchronisation de la réaction", "warn");
+            pushToast(t("reactionSyncDenied"), "warn");
             console.error(e);
         }
     }
@@ -298,7 +300,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             setView("dm");
             setSelectedConvId(conv.id);
         } catch {
-            pushToast("Impossible de démarrer la conversation.", "warn");
+            pushToast(t("startConversationDenied"), "warn");
         }
     }
 
@@ -337,9 +339,9 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             }
 
             if (!isActiveConversationOpen) {
-                const senderName = String(msg.sender_username ?? "quelqu’un");
+                const senderName = String(msg.sender_username ?? t("fallbackUser"));
                 if (!isOwnMessage) {
-                    pushToast(`Nouveau message de ${senderName}`, "info");
+                    pushToast(t("newMessageFrom", { username: senderName }), "info");
                 }
             }
             return true;

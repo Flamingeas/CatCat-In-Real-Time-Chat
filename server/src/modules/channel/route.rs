@@ -9,6 +9,7 @@ use validator::Validate;
 use crate::models::channel::{ChannelResponse, CreateChannel, UpdateChannel};
 use crate::modules::auth::AuthenticatedUser;
 use crate::modules::channel::service::ChannelServiceTrait;
+use crate::utils::errors::{json_error, json_message};
 use crate::websocket::server::{ClientMessage, WsServer};
 
 #[utoipa::path(
@@ -35,7 +36,7 @@ pub async fn create_channel(
     payload: web::Json<CreateChannel>,
 ) -> impl Responder {
     if let Err(e) = payload.validate() {
-        return HttpResponse::BadRequest().json(json!({ "error": e.to_string() }));
+        return json_error(actix_web::http::StatusCode::BAD_REQUEST, "VALIDATION_ERROR", e.to_string());
     }
 
     let server_id = path.into_inner();
@@ -54,7 +55,7 @@ pub async fn create_channel(
 
             HttpResponse::Created().json(ChannelResponse::from(channel))
         }
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "CHANNEL_CREATE_FAILED", e),
     }
 }
 
@@ -83,10 +84,8 @@ pub async fn channel_list(
 
     match service.list_channel(server_id, user.user_id).await {
         Ok(channels) => HttpResponse::Ok().json(channels),
-        Err(e) if e == "Forbidden" => {
-            HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
-        }
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
+        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "CHANNELS_LIST_FAILED", e),
     }
 }
 
@@ -115,7 +114,7 @@ pub async fn channel_update(
     payload: web::Json<UpdateChannel>,
 ) -> impl Responder {
     if let Err(e) = payload.validate() {
-        return HttpResponse::BadRequest().json(json!({ "error": e.to_string() }));
+        return json_error(actix_web::http::StatusCode::BAD_REQUEST, "VALIDATION_ERROR", e.to_string());
     }
 
     let channel_id = path.into_inner();
@@ -131,10 +130,8 @@ pub async fn channel_update(
             });
             HttpResponse::Ok().json(ChannelResponse::from(channel))
         }
-        Err(e) if e == "Forbidden" => {
-            HttpResponse::Forbidden().json(json!({ "error": "Forbidden" }))
-        }
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
+        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "CHANNEL_UPDATE_FAILED", e),
     }
 }
 
@@ -168,11 +165,9 @@ pub async fn channel_delete(
                 channel_id: channel.id,
             });
 
-            HttpResponse::Ok().json(json!({
-                "message": "Channel supprimé avec succès"
-            }))
+            json_message(actix_web::http::StatusCode::OK, "CHANNEL_DELETED", "Channel deleted successfully")
         }
-        Err(e) => HttpResponse::BadRequest().json(json!({ "error": e })),
+        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "CHANNEL_DELETE_FAILED", e),
     }
 }
 

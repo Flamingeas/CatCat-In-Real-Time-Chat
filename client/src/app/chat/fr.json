@@ -47,6 +47,30 @@
       "hours": "{count, plural, one {# heure} other {# heures}}"
     }
   },
+  "channelMessages": {
+    "loadMoreDenied": "Impossible de charger plus de messages.",
+    "sendDenied": "Envoi refusé.",
+    "gifDenied": "Envoi du GIF refusé.",
+    "emptyEdit": "Le message ne peut pas être vide.",
+    "updated": "Message modifié",
+    "editDenied": "Édition refusée.",
+    "deleted": "Message supprimé",
+    "deleteDenied": "Suppression refusée.",
+    "reactionSyncDenied": "Erreur de synchronisation de la réaction."
+  },
+  "directMessages": {
+    "loadMoreDenied": "Impossible de charger plus de messages.",
+    "sendDenied": "Envoi refusé.",
+    "gifDenied": "Envoi du GIF refusé.",
+    "updated": "Message modifié",
+    "editDenied": "Édition refusée.",
+    "deleted": "Message supprimé",
+    "deleteDenied": "Suppression refusée.",
+    "reactionSyncDenied": "Erreur de synchronisation de la réaction.",
+    "startConversationDenied": "Impossible de démarrer la conversation.",
+    "newMessageFrom": "Nouveau message de {username}",
+    "fallbackUser": "quelqu’un"
+  },
   "common": {
     "cancel": "Annuler",
     "save": "Sauvegarder",
@@ -70,7 +94,18 @@
     "addReactionShort": "+ réaction",
     "removeReaction": "Retirer ta réaction",
     "reactAlso": "Réagir aussi",
-    "server": "Serveur:"
+    "server": "Serveur:",
+    "gifAlt": "GIF",
+    "gifSearchPlaceholder": "Rechercher un GIF...",
+    "gifNoResults": "Aucun GIF trouvé",
+    "gifCategoryTrending": "Tendances",
+    "gifCategoryReactions": "Réactions",
+    "gifCategoryMemes": "Mèmes",
+    "gifCategoryAnime": "Anime",
+    "gifCategoryFail": "Fail",
+    "owner": "Propriétaire",
+    "admin": "Admin",
+    "noServer": "Aucun serveur"
   },
   "channelPanel": {
     "currentChannel": "Salon actuel:",
@@ -108,7 +143,8 @@
   "serverList": {
     "directMessages": "Messages directs",
     "createServer": "Créer un serveur",
-    "joinServer": "Rejoindre un serveur"
+    "joinServer": "Rejoindre un serveur",
+    "logoAlt": "Logo CatCat"
   },
   "membersSidebar": {
     "members": "Membres",
@@ -119,7 +155,9 @@
     "offline": "Hors ligne",
     "sendMessageTo": "Envoyer un message à @{username}",
     "actions": "Actions",
-    "bannedUsersButton": "Utilisateurs bannis"
+    "bannedUsersButton": "Utilisateurs bannis",
+    "ownerTitle": "Propriétaire",
+    "adminRole": "Admin"
   },
   "directMessage": {
     "title": "Messages directs",
@@ -132,15 +170,18 @@
   },
   "createServerModal": {
     "title": "Créer un serveur",
-    "nameLabel": "Nom du serveur"
+    "nameLabel": "Nom du serveur",
+    "namePlaceholder": "ex: CatCat Dev Server"
   },
   "createChannelModal": {
     "title": "Créer un salon",
-    "nameLabel": "Nom du salon"
+    "nameLabel": "Nom du salon",
+    "namePlaceholder": "ex: general"
   },
   "editChannelModal": {
     "title": "Renommer le salon",
-    "nameLabel": "Nom du salon"
+    "nameLabel": "Nom du salon",
+    "namePlaceholder": "ex: general"
   },
   "inviteMemberModal": {
     "title": "Inviter un membre",
@@ -188,9 +229,15 @@
   "joinServerModal": {
     "title": "Rejoindre un serveur",
     "codeLabel": "Code d'invitation",
+    "invalidLength": "Le code d’invitation doit faire 8 caractères.",
+    "codePlaceholder": "ex: 7F2K9A1B",
     "joining": "Rejoindre...",
     "join": "Rejoindre",
     "bannedUntil": "Tu es banni de ce serveur jusqu'au {date}."
+  },
+  "serverSidebar": {
+    "settings": "Paramètres du serveur",
+    "leave": "Quitter le serveur"
   },
   "memberActions": {
     "makeAdmin": "Rendre admin",

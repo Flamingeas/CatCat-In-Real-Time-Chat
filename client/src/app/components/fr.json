@@ -10,7 +10,9 @@
     "titleEnd": "d'Internet.",
     "description": "Loin du bruit et de l'agitation des réseaux classiques. CatCat est un espace pensé pour la discussion, le partage authentique et la créativité. Prenez le temps, connectez-vous avec ceux qui vous inspirent et sentez-vous enfin chez vous.",
     "cta": "Connexion / Inscription",
-    "ctaAuthed": "Aller au chat"
+    "ctaAuthed": "Aller au chat",
+    "logoAlt": "Logo CatCat",
+    "imageAlt": "Illustration principale CatCat"
   },
   "metadata": {
     "title": "CatCat | Le réseau social qui ronronne",

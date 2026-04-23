@@ -40,7 +40,7 @@ export function JoinServerModal({
                 <input
                     value={joinCode}
                     onChange={(e) => setJoinCode(e.target.value.toUpperCase().replace(/\s/g, ""))}
-                    placeholder="ex: 7F2K9A1B"
+                    placeholder={t("codePlaceholder")}
                     maxLength={8}
                     className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
                 />

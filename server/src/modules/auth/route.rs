@@ -1,5 +1,6 @@
 use crate::models::user::CreateUser;
 use crate::modules::auth::service::AuthService;
+use crate::utils::errors::json_error;
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -30,9 +31,7 @@ pub async fn signup(
             "user": user,
             "token": token
         })),
-        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({
-            "error": e
-        })),
+        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "AUTH_SIGNUP_FAILED", e),
     }
 }
 
@@ -58,9 +57,7 @@ pub async fn login(
             "user": user,
             "token": token
         })),
-        Err(e) => HttpResponse::Unauthorized().json(serde_json::json!({
-            "error": e
-        })),
+        Err(e) => json_error(actix_web::http::StatusCode::UNAUTHORIZED, "AUTH_LOGIN_FAILED", e),
     }
 }
 

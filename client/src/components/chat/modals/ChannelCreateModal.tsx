@@ -41,7 +41,7 @@ export function ChannelCreateModal({
                 <input
                     value={channelName}
                     onChange={(e) => setChannelName(e.target.value)}
-                    placeholder="ex: general"
+                    placeholder={t("namePlaceholder")}
                     className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
                 />
 

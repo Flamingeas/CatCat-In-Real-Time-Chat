@@ -3,6 +3,7 @@ import type { KeyboardEvent } from "react";
 import { api } from "@/lib/api";
 import { Message, Toast, WsEvent } from "@/types/chat";
 import { getFriendlyErrorMessage } from "@/utils/errors";
+import { useTranslations } from "next-intl";
 
 interface UseChannelMessagesOptions {
     selectedServerId: string | null;
@@ -17,6 +18,7 @@ export function useChannelMessages({
     currentUserId,
     pushToast,
 }: UseChannelMessagesOptions) {
+    const t = useTranslations("channelMessages");
     const [messages, setMessages] = useState<Message[]>([]);
     const [messagesLoading, setMessagesLoading] = useState(false);
     const [messagesError, setMessagesError] = useState<string | null>(null);
@@ -68,7 +70,7 @@ export function useChannelMessages({
             const oldest = messages[0];
             await fetchMessages(String(selectedChannelId), { before: oldest.created_at, append: true });
         } catch {
-            pushToast("Impossible de charger plus", "warn");
+            pushToast(t("loadMoreDenied"), "warn");
         } finally {
             setLoadingMore(false);
         }
@@ -95,7 +97,7 @@ export function useChannelMessages({
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, 0);
         } catch {
-            pushToast("Envoi refusé", "warn");
+            pushToast(t("sendDenied"), "warn");
         } finally {
             setIsSending(false);
         }
@@ -120,7 +122,7 @@ export function useChannelMessages({
                 messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
             }, 0);
         } catch {
-            pushToast("Envoi du GIF refusé", "warn");
+            pushToast(t("gifDenied"), "warn");
         } finally {
             setIsSending(false);
         }
@@ -128,7 +130,7 @@ export function useChannelMessages({
 
     async function editMessage(messageId: string, newContent: string) {
         if (!newContent.trim()) {
-            alert("Le message ne peut pas être vide");
+            alert(t("emptyEdit"));
             return;
         }
         try {
@@ -145,9 +147,9 @@ export function useChannelMessages({
             );
             setEditingMessageId(null);
             setEditingContent("");
-            pushToast("Message modifié", "success");
+            pushToast(t("updated"), "success");
         } catch (err) {
-            pushToast("Édition refusée", "warn");
+            pushToast(t("editDenied"), "warn");
             console.error("Edit error:", err);
         }
     }
@@ -163,9 +165,9 @@ export function useChannelMessages({
                         : message
                 )
             );
-            pushToast("Message supprimé", "warn");
+            pushToast(t("deleted"), "warn");
         } catch (e) {
-            pushToast("Suppression refusée", "warn");
+            pushToast(t("deleteDenied"), "warn");
             console.error(e);
         }
     }
@@ -227,7 +229,7 @@ export function useChannelMessages({
             });
         } catch (e) {
             applyReaction(messageId, emoji, currentUserId, hasReacted ? "add" : "remove");
-            pushToast("Erreur de synchronisation de la réaction", "warn");
+            pushToast(t("reactionSyncDenied"), "warn");
             console.error(e);
         }
     }

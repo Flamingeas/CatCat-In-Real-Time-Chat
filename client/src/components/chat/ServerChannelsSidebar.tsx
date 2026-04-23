@@ -1,6 +1,9 @@
+"use client";
+
 import { ChannelList } from "@/components/chat/ChannelList";
 import { GearIcon, LeaveIcon } from "@/components/icons";
 import { Channel, Server } from "@/types/chat";
+import { useTranslations } from "next-intl";
 
 interface ServerChannelsSidebarProps {
     selectedServer: Server | null;
@@ -33,16 +36,18 @@ export function ServerChannelsSidebar({
     onEditChannel,
     onDeleteChannel,
 }: ServerChannelsSidebarProps) {
+    const t = useTranslations("serverSidebar");
+    const tCommon = useTranslations("common");
     return (
         <>
             <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
                 <span className="mr-2 text-[#EB5E28]">&gt;</span>
-                {selectedServer ? selectedServer.name : "Aucun serveur"}
+                {selectedServer ? selectedServer.name : tCommon("noServer")}
                 {selectedServer &&
                     (isOwner ? (
                         <button
                             onClick={onOpenServerSettings}
-                            title="Paramètres du serveur"
+                            title={t("settings")}
                             className="ml-auto p-2 rounded-xl hover:bg-[#1E1211] border border-transparent hover:border-[#ffffff]/10 transition-colors text-[#DCCBC4]/70 hover:text-white cursor-pointer"
                         >
                             <GearIcon />
@@ -50,7 +55,7 @@ export function ServerChannelsSidebar({
                     ) : (
                         <button
                             onClick={onOpenLeaveServer}
-                            title="Quitter le serveur"
+                            title={t("leave")}
                             className="ml-auto p-2 rounded-xl hover:bg-[#1E1211] border border-transparent hover:border-red-500/30 transition-colors text-red-300 hover:text-red-200 cursor-pointer"
                         >
                             <LeaveIcon />

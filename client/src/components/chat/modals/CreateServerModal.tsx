@@ -40,7 +40,7 @@ export function CreateServerModal({
                 <input
                     value={serverName}
                     onChange={(e) => setServerName(e.target.value)}
-                    placeholder="ex: CatCat Dev Server"
+                    placeholder={t("namePlaceholder")}
                     className="w-full bg-[#1E1211] text-[#DCCBC4] rounded-xl px-4 py-3 border border-[#ffffff]/10 focus:outline-none focus:ring-1 focus:ring-[#EB5E28]"
                 />
                 {createError && <div className="mt-3 text-sm text-red-400">{createError}</div>}

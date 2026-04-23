@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Grid } from "@giphy/react-components";
 import { GiphyFetch } from "@giphy/js-fetch-api";
+import { useTranslations } from "next-intl";
 
 interface GifPickerProps {
     isOpen: boolean;
@@ -11,11 +12,17 @@ interface GifPickerProps {
 }
 
 const GIPHY_API_KEY = process.env.NEXT_PUBLIC_GIPHY_API_KEY ?? "ENOkgZEpFQKApnReETozPZEGXXeJUQ4l";
-const GIF_CATEGORIES = ["Tendances", "Réactions", "Mèmes", "Anime", "Fail"];
-
 export function GifPicker({ isOpen, onClose, onSelectGif }: GifPickerProps) {
+    const t = useTranslations("common");
     const [gifSearch, setGifSearch] = useState("");
     const giphy = useMemo(() => new GiphyFetch(GIPHY_API_KEY), []);
+    const gifCategories = [
+        t("gifCategoryTrending"),
+        t("gifCategoryReactions"),
+        t("gifCategoryMemes"),
+        t("gifCategoryAnime"),
+        t("gifCategoryFail"),
+    ];
 
     if (!isOpen) return null;
 
@@ -30,7 +37,7 @@ export function GifPicker({ isOpen, onClose, onSelectGif }: GifPickerProps) {
             <div className="p-2 border-b border-[#ffffff]/5">
                 <input
                     type="text"
-                    placeholder="Rechercher un GIF..."
+                    placeholder={t("gifSearchPlaceholder")}
                     value={gifSearch}
                     onChange={(event) => setGifSearch(event.target.value)}
                     className="w-full bg-[#1E1211] text-sm text-[#DCCBC4] rounded-lg px-3 py-2 border border-[#ffffff]/5 focus:outline-none focus:border-[#EB5E28] transition-colors"
@@ -38,8 +45,8 @@ export function GifPicker({ isOpen, onClose, onSelectGif }: GifPickerProps) {
             </div>
 
             <div className="flex gap-2 p-2 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: "none" }}>
-                {GIF_CATEGORIES.map((category) => {
-                    const isTrending = category === "Tendances";
+                {gifCategories.map((category) => {
+                    const isTrending = category === gifCategories[0];
                     const active = (isTrending && gifSearch === "") || gifSearch === category;
 
                     return (
@@ -68,7 +75,7 @@ export function GifPicker({ isOpen, onClose, onSelectGif }: GifPickerProps) {
                     gutter={4}
                     borderRadius={6}
                     fetchGifs={fetchGifs}
-                    noResultsMessage={<div className="text-center text-sm text-[#DCCBC4]/50 mt-4">Aucun GIF trouvé</div>}
+                    noResultsMessage={<div className="text-center text-sm text-[#DCCBC4]/50 mt-4">{t("gifNoResults")}</div>}
                     onGifClick={(gif, event) => {
                         event.preventDefault();
                         onSelectGif(gif.images.original.url);

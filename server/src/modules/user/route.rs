@@ -8,6 +8,7 @@ use validator::Validate;
 use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::modules::user::repository::UserRepository;
+use crate::utils::errors::{json_error, json_error_with_details};
 
 use super::service::{ServiceError, UserService};
 
@@ -118,10 +119,12 @@ pub async fn update_me(
     log::debug!("PUT /me - User ID: {}", user.user_id);
 
     if let Err(e) = data.validate() {
-        return HttpResponse::BadRequest().json(serde_json::json!({
-            "error": "Validation failed",
-            "details": e.to_string()
-        }));
+        return json_error_with_details(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "VALIDATION_ERROR",
+            "Validation failed",
+            e.to_string(),
+        );
     }
 
     let service = user_service(&pool);
@@ -174,21 +177,15 @@ fn default_per_page() -> i64 {
 
 fn handle_service_error(error: ServiceError) -> HttpResponse {
     match error {
-        ServiceError::NotFound(msg) => {
-            HttpResponse::NotFound().json(serde_json::json!({ "error": msg }))
-        }
-        ServiceError::Conflict(msg) => {
-            HttpResponse::Conflict().json(serde_json::json!({ "error": msg }))
-        }
+        ServiceError::NotFound(msg) => json_error(actix_web::http::StatusCode::NOT_FOUND, "USER_NOT_FOUND", msg),
+        ServiceError::Conflict(msg) => json_error(actix_web::http::StatusCode::CONFLICT, "USER_CONFLICT", msg),
         ServiceError::Database(e) => {
             log::error!("Database error: {}", e);
-            HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "Internal server error" }))
+            json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error")
         }
         ServiceError::Internal(msg) => {
             log::error!("Internal error: {}", msg);
-            HttpResponse::InternalServerError()
-                .json(serde_json::json!({ "error": "Internal server error" }))
+            json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error")
         }
     }
 }

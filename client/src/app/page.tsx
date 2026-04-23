@@ -102,7 +102,7 @@ export default function Home() {
         <nav className="relative z-30 w-full px-4 md:px-6 py-6 flex justify-center sm:justify-between items-center h-[100px]">
           <div className="flex items-center gap-3 group cursor-[url('/paw.png'),_pointer] transition-transform duration-300 ease-in-out hover:scale-110">
             <div className="relative w-12 h-12 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12">
-              <Image src={logoImage} alt="Logo CatCat" fill className="object-contain" />
+              <Image src={logoImage} alt={t("hero.logoAlt")} fill className="object-contain" />
             </div>
             <span className="font-[family-name:var(--font-dunkin)] text-3xl pt-1 text-[#FFF8F0] transition-colors duration-300 group-hover:text-[#FF7F50]">
             CatCat
@@ -173,7 +173,7 @@ export default function Home() {
         <div className="absolute bottom-0 right-0 h-full w-[160%] lg:w-[65%] z-0 pointer-events-none">
           <Image
               src={heroImage}
-              alt="Illustration Hero CatCat"
+              alt={t("hero.imageAlt")}
               fill
               priority
               className="object-cover object-center lg:object-contain lg:object-bottom-right drop-shadow-2xl"

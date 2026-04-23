@@ -2,8 +2,10 @@ import { useState } from "react";
 import { Channel } from "@/types/chat";
 import { api } from "@/lib/api";
 import { getFriendlyErrorMessage } from "@/utils/errors";
+import { useTranslations } from "next-intl";
 
 export function useChannels() {
+    const t = useTranslations("chatPage.errors");
     const [channels, setChannels] = useState<Channel[]>([]);
 
     const [isChannelCreateOpen, setIsChannelCreateOpen] = useState(false);
@@ -22,11 +24,11 @@ export function useChannels() {
         const name = channelName.trim();
 
         if (name.length < 3) {
-            setChannelCreateError("Le nom doit faire au moins 3 caractères.");
+            setChannelCreateError(t("nameTooShort"));
             return null;
         }
         if (name.length > 50) {
-            setChannelCreateError("Le nom doit faire maximum 50 caractères.");
+            setChannelCreateError(t("nameTooLong"));
             return null;
         }
 
@@ -53,11 +55,11 @@ export function useChannels() {
         const name = channelEditName.trim();
 
         if (name.length < 3) {
-            setChannelEditError("Le nom doit faire au moins 3 caractères.");
+            setChannelEditError(t("nameTooShort"));
             return;
         }
         if (name.length > 50) {
-            setChannelEditError("Le nom doit faire maximum 50 caractères.");
+            setChannelEditError(t("nameTooLong"));
             return;
         }
 

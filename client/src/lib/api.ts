@@ -1,6 +1,31 @@
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 
+export class ApiError extends Error {
+  status: number;
+  statusText: string;
+  code?: string;
+  details?: string;
+  payload?: unknown;
+
+  constructor(params: {
+    status: number;
+    statusText: string;
+    message: string;
+    code?: string;
+    details?: string;
+    payload?: unknown;
+  }) {
+    super(params.message);
+    this.name = "ApiError";
+    this.status = params.status;
+    this.statusText = params.statusText;
+    this.code = params.code;
+    this.details = params.details;
+    this.payload = params.payload;
+  }
+}
+
 export async function api<T>(
   path: string,
   init?: RequestInit
@@ -25,12 +50,35 @@ export async function api<T>(
       localStorage.removeItem("user");
       window.location.replace("/");
     }
-    throw new Error("401 Unauthorized");
+    throw new ApiError({
+      status: 401,
+      statusText: response.statusText,
+      message: "Unauthorized",
+      code: "UNAUTHORIZED",
+    });
   }
 
   if (!response.ok) {
     const text = await response.text().catch(() => "");
-    throw new Error(`${response.status} ${response.statusText} - ${text}`);
+    let payload: any = null;
+
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch {}
+
+    const message =
+      payload?.message ??
+      payload?.error ??
+      (text || `${response.status} ${response.statusText}`);
+
+    throw new ApiError({
+      status: response.status,
+      statusText: response.statusText,
+      message,
+      code: payload?.code,
+      details: payload?.details,
+      payload,
+    });
   }
 
   if (response.status === 204) {

@@ -237,6 +237,34 @@ impl From<jsonwebtoken::errors::Error> for AppError {
 }
 pub type Result<T> = std::result::Result<T, AppError>;
 
+pub fn json_error(
+    status: StatusCode,
+    code: impl Into<String>,
+    message: impl Into<String>,
+) -> HttpResponse {
+    HttpResponse::build(status).json(ErrorResponse::new(code, message))
+}
+
+pub fn json_error_with_details(
+    status: StatusCode,
+    code: impl Into<String>,
+    message: impl Into<String>,
+    details: impl Into<String>,
+) -> HttpResponse {
+    HttpResponse::build(status).json(ErrorResponse::new(code, message).with_details(details))
+}
+
+pub fn json_message(
+    status: StatusCode,
+    code: impl Into<String>,
+    message: impl Into<String>,
+) -> HttpResponse {
+    HttpResponse::build(status).json(serde_json::json!({
+        "code": code.into(),
+        "message": message.into(),
+    }))
+}
+
 #[macro_export]
 macro_rules! not_found {
     ($($arg:tt)*) => {

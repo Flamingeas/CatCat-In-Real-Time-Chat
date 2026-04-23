@@ -84,15 +84,14 @@ impl ChannelRepository {
     }
 
     pub async fn delete(&self, channel_id: Uuid) -> Result<Channel, sqlx::Error> {
-        let channel = sqlx::query_as!(
-            Channel,
+        let channel = sqlx::query_as::<_, Channel>(
             r#"
         DELETE FROM channels
         WHERE id = $1
         RETURNING id, name, server_id, created_at, updated_at
         "#,
-            channel_id
         )
+        .bind(channel_id)
         .fetch_optional(&self.pool)
         .await?;
 
@@ -103,7 +102,7 @@ impl ChannelRepository {
     }
 
     pub async fn user_is_member(&self, server_id: Uuid, user_id: Uuid) -> Result<bool, String> {
-        let exists = sqlx::query_scalar!(
+        let exists = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT EXISTS (
                 SELECT 1
@@ -112,9 +111,9 @@ impl ChannelRepository {
                   AND user_id = $2
             )
             "#,
-            server_id,
-            user_id
         )
+        .bind(server_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -122,7 +121,7 @@ impl ChannelRepository {
             "DB error".to_string()
         })?;
 
-        Ok(exists.unwrap_or(false))
+        Ok(exists)
     }
 
     pub async fn user_can_manage_channels(
@@ -130,7 +129,7 @@ impl ChannelRepository {
         server_id: Uuid,
         user_id: Uuid,
     ) -> Result<bool, String> {
-        let allowed = sqlx::query_scalar!(
+        let allowed = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT EXISTS (
                 SELECT 1
@@ -140,9 +139,9 @@ impl ChannelRepository {
                   AND role IN ('owner', 'admin')
             )
             "#,
-            server_id,
-            user_id
         )
+        .bind(server_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -150,7 +149,7 @@ impl ChannelRepository {
             "DB error".to_string()
         })?;
 
-        Ok(allowed.unwrap_or(false))
+        Ok(allowed)
     }
 
     pub async fn user_can_manage_channel(
@@ -158,7 +157,7 @@ impl ChannelRepository {
         channel_id: Uuid,
         user_id: Uuid,
     ) -> Result<bool, String> {
-        let allowed = sqlx::query_scalar!(
+        let allowed = sqlx::query_scalar::<_, bool>(
             r#"
             SELECT EXISTS (
                 SELECT 1
@@ -170,9 +169,9 @@ impl ChannelRepository {
                   AND sm.role IN ('owner', 'admin')
             )
             "#,
-            channel_id,
-            user_id
         )
+        .bind(channel_id)
+        .bind(user_id)
         .fetch_one(&self.pool)
         .await
         .map_err(|e| {
@@ -180,7 +179,7 @@ impl ChannelRepository {
             "DB error".to_string()
         })?;
 
-        Ok(allowed.unwrap_or(false))
+        Ok(allowed)
     }
 }
 
