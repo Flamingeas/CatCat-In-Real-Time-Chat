@@ -515,6 +515,7 @@ mod tests {
             updated_at: None,
             is_edited: false,
             is_deleted: false,
+            reactions: Vec::new(),
         }
     }
 
@@ -783,7 +784,8 @@ mod tests {
 
         let bytes = body::to_bytes(resp.into_body()).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(v["error"], "bad input");
+        assert_eq!(v["code"], "BAD_REQUEST");
+        assert_eq!(v["message"], "bad input");
     }
 
     #[actix_web::test]
@@ -883,25 +885,29 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND);
         let bytes = body::to_bytes(resp.into_body()).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(v["error"], "x");
+        assert_eq!(v["code"], "MESSAGE_NOT_FOUND");
+        assert_eq!(v["message"], "x");
 
         let resp = handle_service_error(ServiceError::Forbidden("no".to_string()));
         assert_eq!(resp.status(), StatusCode::FORBIDDEN);
         let bytes = body::to_bytes(resp.into_body()).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(v["error"], "no");
+        assert_eq!(v["code"], "PERMISSION_DENIED");
+        assert_eq!(v["message"], "no");
 
         let resp = handle_service_error(ServiceError::Database(Error::RowNotFound));
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let bytes = body::to_bytes(resp.into_body()).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(v["error"], "Database error");
+        assert_eq!(v["code"], "DATABASE_ERROR");
+        assert_eq!(v["message"], "Database error");
 
         let resp = handle_service_error(ServiceError::Internal("oops".to_string()));
         assert_eq!(resp.status(), StatusCode::INTERNAL_SERVER_ERROR);
         let bytes = body::to_bytes(resp.into_body()).await.unwrap();
         let v: Value = serde_json::from_slice(&bytes).unwrap();
-        assert_eq!(v["error"], "Internal error");
+        assert_eq!(v["code"], "INTERNAL_ERROR");
+        assert_eq!(v["message"], "Internal error");
     }
 
     #[actix_web::test]

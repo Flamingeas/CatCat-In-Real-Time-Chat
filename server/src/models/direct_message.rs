@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::models::message::MessageReaction;
+use crate::models::message_reactions::Reaction;
 
 mod chrono_as_bson_datetime {
     use chrono::{DateTime, Utc};
@@ -69,7 +69,7 @@ pub struct DirectMessage {
     )]
     pub deleted_at: Option<DateTime<Utc>>,
     #[serde(default)]
-    pub reactions: Vec<MessageReaction>,
+    pub reactions: Vec<Reaction>,
 }
 
 impl DirectMessage {
@@ -112,7 +112,7 @@ pub struct DirectMessageResponse {
     pub updated_at: Option<DateTime<Utc>>,
     pub is_edited: bool,
     pub is_deleted: bool,
-    pub reactions: Vec<MessageReaction>,
+    pub reactions: Vec<Reaction>,
 }
 
 impl From<DirectMessage> for DirectMessageResponse {
@@ -150,4 +150,106 @@ pub struct ConversationResponse {
     pub other_user_id: Uuid,
     pub other_username: String,
     pub created_at: DateTime<Utc>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::TimeZone;
+
+    #[test]
+    fn direct_message_new_sets_expected_defaults() {
+        let conversation_id = Uuid::new_v4();
+        let sender_id = Uuid::new_v4();
+        let recipient_id = Uuid::new_v4();
+
+        let message = DirectMessage::new(
+            conversation_id,
+            sender_id,
+            "alice".to_string(),
+            recipient_id,
+            "hello".to_string(),
+        );
+
+        assert!(message.id.is_none());
+        assert_eq!(message.conversation_id, conversation_id);
+        assert_eq!(message.sender_id, sender_id);
+        assert_eq!(message.sender_username, "alice");
+        assert_eq!(message.recipient_id, recipient_id);
+        assert_eq!(message.content, "hello");
+        assert!(message.updated_at.is_none());
+        assert!(message.deleted_at.is_none());
+        assert!(message.reactions.is_empty());
+    }
+
+    #[test]
+    fn direct_message_is_deleted_reflects_deleted_at_presence() {
+        let created_at = Utc.with_ymd_and_hms(2026, 4, 24, 10, 0, 0).unwrap();
+        let deleted_at = Utc.with_ymd_and_hms(2026, 4, 24, 10, 5, 0).unwrap();
+
+        let active = DirectMessage {
+            id: None,
+            message_id: Uuid::new_v4(),
+            conversation_id: Uuid::new_v4(),
+            sender_id: Uuid::new_v4(),
+            sender_username: "alice".to_string(),
+            recipient_id: Uuid::new_v4(),
+            content: "hello".to_string(),
+            created_at,
+            updated_at: None,
+            deleted_at: None,
+            reactions: Vec::new(),
+        };
+
+        let deleted = DirectMessage {
+            deleted_at: Some(deleted_at),
+            ..active.clone()
+        };
+
+        assert!(!active.is_deleted());
+        assert!(deleted.is_deleted());
+    }
+
+    #[test]
+    fn direct_message_response_from_sets_flags_and_fields() {
+        let created_at = Utc.with_ymd_and_hms(2026, 4, 24, 10, 0, 0).unwrap();
+        let updated_at = Utc.with_ymd_and_hms(2026, 4, 24, 10, 1, 0).unwrap();
+        let deleted_at = Utc.with_ymd_and_hms(2026, 4, 24, 10, 2, 0).unwrap();
+        let message_id = Uuid::new_v4();
+        let conversation_id = Uuid::new_v4();
+        let sender_id = Uuid::new_v4();
+        let recipient_id = Uuid::new_v4();
+        let reactions = vec![Reaction {
+            emoji: ":+1:".to_string(),
+            users: vec!["alice".to_string(), "bob".to_string()],
+        }];
+
+        let response: DirectMessageResponse = DirectMessage {
+            id: None,
+            message_id,
+            conversation_id,
+            sender_id,
+            sender_username: "alice".to_string(),
+            recipient_id,
+            content: "hello".to_string(),
+            created_at,
+            updated_at: Some(updated_at),
+            deleted_at: Some(deleted_at),
+            reactions: reactions.clone(),
+        }
+        .into();
+
+        assert_eq!(response.message_id, message_id);
+        assert_eq!(response.conversation_id, conversation_id);
+        assert_eq!(response.sender_id, sender_id);
+        assert_eq!(response.sender_username, "alice");
+        assert_eq!(response.recipient_id, recipient_id);
+        assert_eq!(response.content, "hello");
+        assert_eq!(response.created_at, created_at);
+        assert_eq!(response.updated_at, Some(updated_at));
+        assert!(response.is_edited);
+        assert!(response.is_deleted);
+        assert_eq!(response.reactions.len(), reactions.len());
+        assert_eq!(response.reactions[0].emoji, reactions[0].emoji);
+    }
 }

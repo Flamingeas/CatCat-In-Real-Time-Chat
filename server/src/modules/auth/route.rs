@@ -235,7 +235,11 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::BAD_REQUEST);
 
         let body: serde_json::Value = test::read_body_json(resp).await;
-        assert!(body["error"].as_str().is_some());
+        assert_eq!(body["code"], "AUTH_SIGNUP_FAILED");
+        assert!(body["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("Database error:"));
     }
 
     #[actix_web::test]
@@ -327,7 +331,8 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 
         let body: serde_json::Value = test::read_body_json(resp).await;
-        assert_eq!(body["error"], "Invalid credentials");
+        assert_eq!(body["code"], "AUTH_LOGIN_FAILED");
+        assert_eq!(body["message"], "Invalid credentials");
     }
 
     #[actix_web::test]
@@ -356,7 +361,11 @@ mod tests {
         assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 
         let body: serde_json::Value = test::read_body_json(resp).await;
-        assert!(body["error"].as_str().unwrap().contains("Database error:"));
+        assert_eq!(body["code"], "AUTH_LOGIN_FAILED");
+        assert!(body["message"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("Database error:"));
     }
 
     #[actix_web::test]

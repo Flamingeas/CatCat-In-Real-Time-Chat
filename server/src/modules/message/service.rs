@@ -498,6 +498,7 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 2, 8, 12, 0, 0).unwrap(),
             updated_at: None,
             deleted_at: None,
+            reactions: Vec::new(),
         }
     }
 
@@ -556,6 +557,24 @@ mod tests {
 
         async fn delete(&self, _message_id: Uuid) -> Result<(), String> {
             self.delete_result.clone().unwrap()
+        }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("add_reaction should not be called in this test");
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("remove_reaction should not be called in this test");
         }
     }
 
@@ -689,6 +708,24 @@ mod tests {
         async fn delete(&self, _message_id: Uuid) -> Result<(), String> {
             panic!("delete should not be called in this test");
         }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("add_reaction should not be called in this test");
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("remove_reaction should not be called in this test");
+        }
     }
 
     struct CountingMessageRepository {
@@ -746,6 +783,24 @@ mod tests {
             self.delete_calls.fetch_add(1, Ordering::SeqCst);
             self.delete_result.clone().unwrap()
         }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("add_reaction should not be called in this test");
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("remove_reaction should not be called in this test");
+        }
     }
 
     struct RecordingUpdateDeleteRepository {
@@ -792,6 +847,24 @@ mod tests {
             let mut call = self.delete_call.lock().unwrap();
             call.message_id = Some(message_id);
             self.delete_result.clone().unwrap()
+        }
+
+        async fn add_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("add_reaction should not be called in this test");
+        }
+
+        async fn remove_reaction(
+            &self,
+            _message_id: Uuid,
+            _user_id: Uuid,
+            _emoji: &str,
+        ) -> Result<(), String> {
+            panic!("remove_reaction should not be called in this test");
         }
     }
 
@@ -913,6 +986,7 @@ mod tests {
             created_at: Utc.with_ymd_and_hms(2026, 2, 8, 12, 0, 0).unwrap(),
             updated_at: None,
             deleted_at: None,
+            reactions: Vec::new(),
         };
 
         let r = m.to_response();
@@ -1849,7 +1923,8 @@ mod tests {
         let channel_id = Uuid::new_v4();
         let server_id = Uuid::new_v4();
 
-        let original = sample_message(user_id, channel_id, server_id);
+        let mut original = sample_message(user_id, channel_id, server_id);
+        original.created_at = Utc::now();
         let mut updated = original.clone();
         updated.content = "edited".to_string();
         updated.updated_at = Some(Utc::now());
@@ -1890,7 +1965,8 @@ mod tests {
     async fn test_update_message_passes_expected_arguments_to_repository() {
         let user_id = Uuid::new_v4();
         let message_id = Uuid::new_v4();
-        let original = sample_message(user_id, Uuid::new_v4(), Uuid::new_v4());
+        let mut original = sample_message(user_id, Uuid::new_v4(), Uuid::new_v4());
+        original.created_at = Utc::now();
 
         let update_call = Arc::new(Mutex::new(RecordedUpdateCall::default()));
         let delete_call = Arc::new(Mutex::new(RecordedDeleteCall::default()));
@@ -2090,6 +2166,7 @@ mod tests {
     async fn test_update_message_forbidden_when_deleted() {
         let user_id = Uuid::new_v4();
         let mut message = sample_message(user_id, Uuid::new_v4(), Uuid::new_v4());
+        message.created_at = Utc::now();
         message.deleted_at = Some(Utc::now());
 
         let repo: Arc<dyn MessageRepositoryTrait> = Arc::new(FakeMessageRepository {
@@ -2204,7 +2281,8 @@ mod tests {
     #[actix_web::test]
     async fn test_update_message_repository_update_error_maps_to_internal() {
         let user_id = Uuid::new_v4();
-        let message = sample_message(user_id, Uuid::new_v4(), Uuid::new_v4());
+        let mut message = sample_message(user_id, Uuid::new_v4(), Uuid::new_v4());
+        message.created_at = Utc::now();
 
         let repo: Arc<dyn MessageRepositoryTrait> = Arc::new(FakeMessageRepository {
             create_result: None,

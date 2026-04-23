@@ -165,7 +165,7 @@ mod tests {
         list_result: Result<Vec<Channel>, String>,
         can_manage_channel_result: Result<bool, String>,
         update_result: Result<Channel, String>,
-        delete_result: Result<(), String>,
+        delete_result: Result<Channel, String>,
         last_create_name: Mutex<Option<String>>,
     }
 
@@ -178,7 +178,7 @@ mod tests {
                 list_result: Ok(vec![sample_channel()]),
                 can_manage_channel_result: Ok(true),
                 update_result: Ok(sample_channel()),
-                delete_result: Ok(()),
+                delete_result: Ok(sample_channel()),
                 last_create_name: Mutex::new(None),
             }
         }
@@ -203,7 +203,7 @@ mod tests {
             self.update_result.clone()
         }
 
-        async fn delete(&self, _channel_id: Uuid) -> Result<(), String> {
+        async fn delete(&self, _channel_id: Uuid) -> Result<Channel, String> {
             self.delete_result.clone()
         }
 
