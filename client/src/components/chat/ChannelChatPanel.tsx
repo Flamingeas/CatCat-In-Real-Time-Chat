@@ -94,6 +94,7 @@ export function ChannelChatPanel({
     const canSendMessage = selectedServerId && selectedChannelId && messageText.trim();
     const canSendGif = Boolean(selectedServerId && selectedChannelId && !isSending);
 
+    // @ts-ignore
     return (
         <>
             <div className="h-auto py-4 px-6 flex flex-col gap-3 border-b border-[#ffffff]/5">

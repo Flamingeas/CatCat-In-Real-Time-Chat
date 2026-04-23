@@ -1,3 +1,6 @@
+"use client";
+
+import { useTranslations } from "next-intl";
 import Image from "next/image";
 import Link from "next/link";
 import logoImage from "@/app/images/logo_catcat.svg";
@@ -25,6 +28,8 @@ function formatBadgeCount(count: number) {
 }
 
 export function ServerList({ servers, selectedServerId, onSelectServer, onCreate, onJoin, initials, view, onToggleView, unreadDmCount }: ServerListProps) {
+    const t = useTranslations("serverList");
+
     return (
         <div className="w-[72px] bg-[#1E1211] rounded-[20px] flex flex-col items-center py-6 gap-4 z-20 h-full shadow-lg">
             <Link href="/" className="w-12 h-12 flex items-center justify-center hover:rounded-xl transition-all cursor-pointer group">
@@ -34,7 +39,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
             </Link>
             <button
                 onClick={onToggleView}
-                title="Messages directs"
+                title={t("directMessages")}
                 className={[
                     "relative w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
                     view === "dm" ? "bg-[#EB5E28] text-white" : "bg-[#2A1A18] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white",
@@ -72,7 +77,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
             </div>
             <button
                 onClick={onCreate}
-                title="Créer un serveur"
+                title={t("createServer")}
                 className="w-12 h-12 bg-[#2A1A18] rounded-[24px] hover:rounded-[16px] text-[#EB5E28] hover:text-white hover:bg-[#EB5E28] flex items-center justify-center transition-all cursor-pointer"
             >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
@@ -81,7 +86,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
             </button>
             <button
                 onClick={onJoin}
-                title="Rejoindre un serveur"
+                title={t("joinServer")}
                 className="w-12 h-12 bg-[#2A1A18] rounded-[24px] hover:rounded-[16px] text-[#EB5E28] hover:text-white hover:bg-[#EB5E28] flex items-center justify-center transition-all cursor-pointer mt-2"
             >
                 <EnterIcon />

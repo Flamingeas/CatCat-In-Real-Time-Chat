@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import EmojiPicker, { EmojiClickData, Theme } from "emoji-picker-react";
 import { GifMessage } from "@/components/chat/GifMessage";
@@ -51,13 +52,16 @@ export function MessageList({
     onCancelEdit,
     selectedChannelId,
 }: MessageListProps) {
+    const t = useTranslations("common");
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
 
     return (
         <div className="h-full flex flex-col">
             <div className="flex-1 overflow-y-auto pr-2">
                 <div className="flex items-center justify-between mb-3">
-                    <div className="text-xs text-[#DCCBC4]/50">{messagesLoading ? "Chargement..." : `${messages.length} message(s)`}</div>
+                    <div className="text-xs text-[#DCCBC4]/50">
+                        {messagesLoading ? t("loading") : t("messageCount", { count: messages.length })}
+                    </div>
 
                     {hasMoreMessages && messages.length > 0 && (
                         <button
@@ -65,7 +69,7 @@ export function MessageList({
                             disabled={loadingMore}
                             className="text-xs px-3 py-1 rounded-full border border-[#ffffff]/10 hover:bg-[#1E1211] disabled:opacity-50 cursor-pointer"
                         >
-                            {loadingMore ? "Chargement..." : "Charger plus"}
+                            {loadingMore ? t("loading") : t("loadMore")}
                         </button>
                     )}
                 </div>
@@ -73,11 +77,11 @@ export function MessageList({
                 {messagesError && <div className="text-sm text-red-400 mb-3">{messagesError}</div>}
 
                 {!selectedChannelId ? (
-                    <div className="text-sm text-[#DCCBC4]/50">Choisis un salon.</div>
+                    <div className="text-sm text-[#DCCBC4]/50">{t("noMessages")}</div>
                 ) : messagesLoading ? (
-                    <div className="text-sm text-[#DCCBC4]/50">Chargement des messages...</div>
+                    <div className="text-sm text-[#DCCBC4]/50">{t("loadingMessages")}</div>
                 ) : messages.length === 0 ? (
-                    <div className="text-sm text-[#DCCBC4]/50">Aucun message pour l’instant.</div>
+                    <div className="text-sm text-[#DCCBC4]/50">{t("noMessages")}</div>
                 ) : (
                     <div className="flex flex-col gap-3">
                         {messages.map((m) => {
@@ -103,18 +107,18 @@ export function MessageList({
                                             <div className="flex items-center gap-2 mb-1 px-1 min-w-0">
                                                 <span className="text-xs font-bold text-[#EB5E28] truncate">@{m.username}</span>
                                                 {time && <span className="text-[10px] text-[#DCCBC4]/40">{time}</span>}
-                                                {m.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">• édité</span>}
+                                                {m.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">{t("edited")}</span>}
 
                                                 {canDeleteThis && (
                                                     <button
                                                         onClick={() => {
-                                                            if (!window.confirm("Supprimer ce message ?")) return;
+                                                            if (!window.confirm(t("messageDeleted"))) return;
                                                             onDeleteMessage(String(m.message_id));
                                                         }}
                                                         className="ml-auto text-[10px] text-[#DCCBC4]/60 hover:text-red-200 cursor-pointer"
-                                                        title="Supprimer"
+                                                        title={t("delete")}
                                                     >
-                                                        🗑 Supprimer
+                                                        {t("deleteAction")}
                                                     </button>
                                                 )}
                                             </div>
@@ -134,13 +138,13 @@ export function MessageList({
                                                         onClick={() => onSaveEdit(m.message_id, editingContent)}
                                                         className="px-3 py-1 rounded-xl bg-[#EB5E28] text-white text-xs font-bold hover:bg-white hover:text-[#1E1211] transition-colors"
                                                     >
-                                                        Sauvegarder
+                                                        {t("save")}
                                                     </button>
                                                     <button
                                                         onClick={onCancelEdit}
                                                         className="px-3 py-1 rounded-xl bg-transparent border border-[#ffffff]/10 text-[#DCCBC4] text-xs hover:bg-[#1E1211] transition-colors"
                                                     >
-                                                        Annuler
+                                                        {t("cancel")}
                                                     </button>
                                                 </div>
                                             </div>
@@ -154,7 +158,7 @@ export function MessageList({
                                                     }`}
                                                 >
                                                     {m.is_deleted ? (
-                                                        <span className="text-[#DCCBC4]/50 italic">Message supprimé</span>
+                                                        <span className="text-[#DCCBC4]/50 italic">{t("messageDeleted")}</span>
                                                     ) : isGifMessage(m.content) ? (
                                                         <GifMessage src={m.content} />
                                                     ) : (
@@ -176,7 +180,7 @@ export function MessageList({
                                                                             ? "bg-[#EB5E28]/20 border-[#EB5E28] text-[#EB5E28]"
                                                                             : "bg-[#0F0908] border-[#ffffff]/10 text-[#DCCBC4]/70 hover:border-[#ffffff]/30",
                                                                     ].join(" ")}
-                                                                    title={hasReacted ? "Retirer ta réaction" : "Réagir aussi"}
+                                                                    title={hasReacted ? t("removeReaction") : t("reactAlso")}
                                                                 >
                                                                     <span>{reaction.emoji}</span>
                                                                     <span className="font-bold">{reaction.users.length}</span>
@@ -191,9 +195,9 @@ export function MessageList({
                                                         <button
                                                             onClick={() => setEmojiPickerFor((current) => (current === m.message_id ? null : m.message_id))}
                                                             className="text-[11px] text-[#DCCBC4]/50 hover:text-white transition-colors cursor-pointer"
-                                                            title="Ajouter une réaction"
+                                                            title={t("addReactionTitle")}
                                                         >
-                                                            + réaction
+                                                            {t("addReactionShort")}
                                                         </button>
                                                         {emojiPickerFor === m.message_id && (
                                                             <div className={`absolute z-30 top-6 ${isMe ? "right-0" : "left-0"}`}>
@@ -224,26 +228,26 @@ export function MessageList({
                                         {isMe && time && (
                                             <div className="flex items-center gap-2 mt-1 px-1">
                                                 {time && <span className="text-[10px] text-[#DCCBC4]/40">{time}</span>}
-                                                {m.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">• édité</span>}
+                                                {m.is_edited && <span className="text-[10px] text-[#DCCBC4]/40">{t("edited")}</span>}
                                                 {canEditThis && (
                                                     <button
                                                         onClick={() => onStartEdit(m.message_id)}
                                                         className="text-[10px] text-[#DCCBC4]/60 hover:text-white cursor-pointer"
-                                                        title="Éditer"
+                                                        title={t("edit")}
                                                     >
-                                                        ✏️ Éditer
+                                                        {t("editAction")}
                                                     </button>
                                                 )}
                                                 {canDeleteThis && (
                                                     <button
                                                         onClick={() => {
-                                                            if (!window.confirm("Supprimer ce message ?")) return;
+                                                            if (!window.confirm(t("messageDeleted"))) return;
                                                             onDeleteMessage(String(m.message_id));
                                                         }}
                                                         className="ml-auto text-[10px] text-[#DCCBC4]/60 hover:text-red-200 cursor-pointer"
-                                                        title="Supprimer"
+                                                        title={t("delete")}
                                                     >
-                                                        🗑 Supprimer
+                                                        {t("deleteAction")}
                                                     </button>
                                                 )}
                                             </div>
