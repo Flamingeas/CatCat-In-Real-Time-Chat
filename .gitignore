@@ -15,3 +15,4 @@ Cargo.lock
 Thumbs.db
 /client/package-lock.json
 target/
+node_modules

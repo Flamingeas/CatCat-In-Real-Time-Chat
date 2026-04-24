@@ -1,8 +1,13 @@
 {
   "nav": {
+    "presentation": "Présentation",
+    "project": "Le Projet",
+    "download": "Télécharger",
+    "demo": "Démo Interactive",
     "login": "Connexion / Inscription",
-    "goToChat": "Aller au chat",
-    "logout": "Se déconnecter"
+    "loggedInAs": "Connecté en tant que",
+    "goToChat": "Ouvrir CatCat",
+    "logout": "Déconnexion"
   },
   "hero": {
     "title": "Le coin le plus",
@@ -13,6 +18,50 @@
     "ctaAuthed": "Aller au chat",
     "logoAlt": "Logo CatCat",
     "imageAlt": "Illustration principale CatCat"
+  },
+  "download": {
+    "titlePart1": "Emporte CatCat",
+    "titleHighlight": "partout avec toi.",
+    "description": "Profite d'une expérience ultra-fluide. CatCat est conçu pour être léger, rapide et ne jamais te ralentir.",
+    "button": "Télécharger l'App",
+    "os": {
+      "windows": "Windows",
+      "windowsDesc": "10/11 (64-bit)",
+      "mac": "Mac OS",
+      "macDesc": "Apple Silicon & Intel",
+      "linux": "Linux",
+      "linuxDesc": ".deb / AppImage"
+    }
+  },
+  "features": {
+    "feature1": {
+      "titlePart1": "Crée un espace",
+      "titleHighlight": "sur mesure",
+      "description": "Les serveurs CatCat sont organisés en salons thématiques où tu peux collaborer, partager tes passions ou simplement parler de ta journée sans encombrer un groupe de discussion général.",
+      "imageAlt": "Illustration Serveurs"
+    },
+    "feature2": {
+      "titlePart1": "Là où se retrouver",
+      "titlePart2": "devient",
+      "titleHighlight": "facile",
+      "description": "Prends place dans un salon et vois qui est en ligne. L'indicateur de frappe en temps réel et les réactions aux messages rendent chaque conversation vivante et amusante.",
+      "imageAlt": "Illustration Chat"
+    },
+    "feature3": {
+      "titlePart1": "De quelques amis",
+      "titlePart2": "à toute une",
+      "titleHighlight": "communauté",
+      "description": "Crée des rôles, gère les permissions et donne des pouvoirs à tes membres. Du système d'invitation à l'exclusion, tu as le contrôle total de ton espace.",
+      "imageAlt": "Illustration Modération"
+    }
+  },
+  "ctaFinal": {
+    "title": "Prêt à commencer ton aventure ?",
+    "buttonUnauthed": "Rejoindre CatCat",
+    "buttonAuthed": "Ouvrir l'application"
+  },
+  "footer": {
+    "copyright": "CatCat. Conçu avec passion et beaucoup de croquettes par l'équipe Epitech."
   },
   "metadata": {
     "title": "CatCat | Le réseau social qui ronronne",
