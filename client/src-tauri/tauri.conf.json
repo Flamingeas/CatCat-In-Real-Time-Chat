@@ -26,7 +26,7 @@
     }
   },
   "plugins": {
-    "notification": {}
+    "notification": null
   },
   "bundle": {
     "active": true,
