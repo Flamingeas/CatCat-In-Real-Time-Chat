@@ -148,3 +148,58 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+  docker:
+    name: Build and publish Docker images
+    runs-on: self-hosted
+    needs:
+      - backend
+      - frontend
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+      - name: Define Docker image tags
+        run: |
+          OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO_LOWER=$(echo "${{ github.event.repository.name }}" | tr '[:upper:]' '[:lower:]')
+
+          echo "BACKEND_IMAGE=ghcr.io/${OWNER_LOWER}/${REPO_LOWER}/backend" >> "$GITHUB_ENV"
+          echo "FRONTEND_IMAGE=ghcr.io/${OWNER_LOWER}/${REPO_LOWER}/frontend" >> "$GITHUB_ENV"
+
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            echo "IMAGE_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+          else
+            echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build backend Docker image
+        run: |
+          docker build \
+            -t "$BACKEND_IMAGE:$IMAGE_TAG" \
+            -t "$BACKEND_IMAGE:latest" \
+            ./server
+
+      - name: Build frontend Docker image
+        run: |
+          docker build \
+            -t "$FRONTEND_IMAGE:$IMAGE_TAG" \
+            -t "$FRONTEND_IMAGE:latest" \
+            ./client
+
+      - name: Push backend Docker image
+        run: |
+          docker push "$BACKEND_IMAGE:$IMAGE_TAG"
+          docker push "$BACKEND_IMAGE:latest"
+
+      - name: Push frontend Docker image
+        run: |
+          docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
+          docker push "$FRONTEND_IMAGE:latest"
