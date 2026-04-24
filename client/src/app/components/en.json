@@ -67,6 +67,16 @@
     "title": "CatCat | The social network that purrs",
     "description": "Join CatCat, the perfect place to chill, meow with your crew and share your best finds."
   },
+  "settings": {
+    "title": "Account Settings",
+    "username": "Username",
+    "usernamePlaceholder": "Your new username",
+    "email": "Email Address",
+    "emailPlaceholder": "your@email.com",
+    "password": "New Password",
+    "language": "Application Language",
+    "save": "Save Changes"
+  },
   "authModal": {
     "close": "Close",
     "login": {

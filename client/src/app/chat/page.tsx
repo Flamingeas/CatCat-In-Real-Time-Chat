@@ -1168,10 +1168,6 @@ export default function ChatPage() {
     return (
         <div className={`flex h-screen bg-black text-[#DCCBC4] ${miskan.variable} ${nunito.variable} font-sans overflow-hidden p-[8px] gap-[8px]`}>
             <ToastStack toasts={toasts} />
-            <div className="absolute bottom-4 right-4 z-40">
-                <LanguageSwitcher />
-            </div>
-
             <ServerList
                 servers={servers}
                 selectedServerId={selectedServerId}
