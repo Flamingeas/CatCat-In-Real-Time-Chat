@@ -1,22 +1,20 @@
 services:
   postgres:
     image: postgres:16
-    container_name: catcat-postgres
+    container_name: catcat-postgres-registry
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: catcat
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
-      - catcat_postgres_data:/var/lib/postgresql/data
+      - catcat_postgres_registry_data:/var/lib/postgresql/data
       - ./server/script/schema-ci.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
 
   backend:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
-    container_name: catcat-backend
+    image: ghcr.io/epitechmscpropromo2028/t-dev-600-par_12/backend:latest
+    container_name: catcat-backend-registry
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/catcat
       TEST_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/catcat
@@ -25,24 +23,22 @@ services:
       SERVER_PORT: 8080
       MONGODB_URI: ${MONGODB_URI}
       MONGODB_DB_NAME: ${MONGODB_DB_NAME}
-      CORS_ORIGINS: http://localhost:3000
+      CORS_ORIGINS: http://localhost:3001
     ports:
-      - "8080:8080"
+      - "8081:8080"
     depends_on:
       - postgres
 
   frontend:
-    build:
-      context: ./client
-      dockerfile: Dockerfile
-    container_name: catcat-frontend
+    image: ghcr.io/epitechmscpropromo2028/t-dev-600-par_12/frontend:latest
+    container_name: catcat-frontend-registry
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8080
-      NEXT_PUBLIC_WS_URL: ws://localhost:8080
+      NEXT_PUBLIC_API_URL: http://127.0.0.1:8081
+      NEXT_PUBLIC_WS_URL: ws://127.0.0.1:8081
     ports:
-      - "3000:3000"
+      - "3001:3000"
     depends_on:
       - backend
 
 volumes:
-  catcat_postgres_data:
+  catcat_postgres_registry_data:
