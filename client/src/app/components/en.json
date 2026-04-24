@@ -1,7 +1,12 @@
 {
   "nav": {
+    "presentation": "Features",
+    "project": "The Project",
+    "download": "Download",
+    "demo": "Interactive Demo",
     "login": "Sign in / Sign up",
-    "goToChat": "Go to chat",
+    "loggedInAs": "Logged in as",
+    "goToChat": "Open CatCat",
     "logout": "Log out"
   },
   "hero": {
@@ -13,6 +18,50 @@
     "ctaAuthed": "Go to chat",
     "logoAlt": "CatCat logo",
     "imageAlt": "CatCat hero illustration"
+  },
+  "download": {
+    "titlePart1": "Take CatCat",
+    "titleHighlight": "everywhere with you.",
+    "description": "Enjoy an ultra-smooth experience. CatCat is designed to be lightweight, fast, and never slow you down.",
+    "button": "Download the App",
+    "os": {
+      "windows": "Windows",
+      "windowsDesc": "10/11 (64-bit)",
+      "mac": "Mac OS",
+      "macDesc": "Apple Silicon & Intel",
+      "linux": "Linux",
+      "linuxDesc": ".deb / AppImage"
+    }
+  },
+  "features": {
+    "feature1": {
+      "titlePart1": "Create a",
+      "titleHighlight": "custom space",
+      "description": "CatCat servers are organized into thematic channels where you can collaborate, share your passions, or simply talk about your day without cluttering a general chat.",
+      "imageAlt": "Servers Illustration"
+    },
+    "feature2": {
+      "titlePart1": "Where hanging out",
+      "titlePart2": "becomes",
+      "titleHighlight": "easy",
+      "description": "Take a seat in a channel and see who is online. Real-time typing indicators and message reactions make every conversation lively and fun.",
+      "imageAlt": "Chat Illustration"
+    },
+    "feature3": {
+      "titlePart1": "From a few friends",
+      "titlePart2": "to an entire",
+      "titleHighlight": "community",
+      "description": "Create roles, manage permissions, and empower your members. From invitations to bans, you have total control over your space.",
+      "imageAlt": "Moderation Illustration"
+    }
+  },
+  "ctaFinal": {
+    "title": "Ready to start your adventure?",
+    "buttonUnauthed": "Join CatCat",
+    "buttonAuthed": "Open the app"
+  },
+  "footer": {
+    "copyright": "CatCat. Designed with passion and lots of kibbles by the Epitech team."
   },
   "metadata": {
     "title": "CatCat | The social network that purrs",

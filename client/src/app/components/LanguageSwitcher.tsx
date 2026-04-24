@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 function getClientLocale() {
   if (typeof document === "undefined") return "fr";
@@ -8,21 +8,51 @@ function getClientLocale() {
 }
 
 export default function LanguageSwitcher() {
-  const [locale, setLocale] = useState<string>(getClientLocale);
+  const [locale, setLocale] = useState<string>("fr");
+  const [mounted, setMounted] = useState(false);
 
-  function switchLocale() {
-    const next = locale === "fr" ? "en" : "fr";
-    document.cookie = `locale=${next}; path=/; max-age=31536000`;
+  // Évite les erreurs d'hydratation
+  useEffect(() => {
+    setLocale(getClientLocale());
+    setMounted(true);
+  }, []);
+
+  function switchLocale(newLocale: string) {
+    if (newLocale === locale) return;
+    document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
     window.location.reload();
   }
 
+  // Espace réservé pendant le chargement initial pour éviter que la navbar ne saute
+  if (!mounted) return <div className="w-[100px] h-10"></div>;
+
   return (
-    <button
-      onClick={switchLocale}
-      suppressHydrationWarning
-      className="cursor-pointer font-[family-name:var(--font-cocogoose)] text-sm border border-[#FF7F50] text-[#FF7F50] rounded-full px-3 py-1 hover:bg-[#FF7F50] hover:text-[#1E1211] transition-colors"
-    >
-      {locale === "fr" ? "EN" : "FR"}
-    </button>
+    <div className="flex items-center p-1 bg-[#0F0908]/80 border border-[#ffffff]/10 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.2)] backdrop-blur-sm">
+      {/* Bouton Français */}
+      <button
+        onClick={() => switchLocale("fr")}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all duration-300 cursor-pointer ${
+          locale === "fr"
+            ? "bg-[#EB5E28] text-[#1E1211] shadow-[0_0_10px_rgba(235,94,40,0.4)]"
+            : "text-[#DCCBC4]/70 hover:text-[#FFF8F0] hover:bg-[#ffffff]/5"
+        }`}
+      >
+        <span className="text-base leading-none">🇫🇷</span>
+        <span className="hidden sm:inline font-[family-name:var(--font-cocogoose)] mt-0.5">FR</span>
+      </button>
+
+      {/* Bouton Anglais */}
+      <button
+        onClick={() => switchLocale("en")}
+        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all duration-300 cursor-pointer ${
+          locale === "en"
+            ? "bg-[#EB5E28] text-[#1E1211] shadow-[0_0_10px_rgba(235,94,40,0.4)]"
+            : "text-[#DCCBC4]/70 hover:text-[#FFF8F0] hover:bg-[#ffffff]/5"
+        }`}
+      >
+        <span className="text-base leading-none">🇬🇧</span>
+        <span className="hidden sm:inline font-[family-name:var(--font-cocogoose)] mt-0.5">EN</span>
+      </button>
+    </div>
   );
 }
