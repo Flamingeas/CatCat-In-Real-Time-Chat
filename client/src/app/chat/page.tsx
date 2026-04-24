@@ -42,6 +42,7 @@ import { useChannelMessages } from "@/hooks/useChannelMessages";
 import { useWebSocket } from "@/lib/WebSocketProvider";
 import { useTranslations, useLocale } from "next-intl";
 import LanguageSwitcher from "@/app/components/LanguageSwitcher";
+import { notifyDesktop } from "@/lib/notifications";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
@@ -103,6 +104,8 @@ export default function ChatPage() {
     const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
     const wsRef = useRef<WebSocket | null>(null);
     const myIdRef = useRef<string | null>(null);
+    const meRef = useRef(me);
+    const channelsRef = useRef(channels);
     const selectedServerIdRef = useRef<string | null>(null);
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
     const [settingsName, setSettingsName] = useState("");
@@ -201,6 +204,14 @@ export default function ChatPage() {
     useEffect(() => {
         myIdRef.current = me?.id ?? null;
     }, [me?.id]);
+
+    useEffect(() => {
+        meRef.current = me;
+    }, [me]);
+
+    useEffect(() => {
+        channelsRef.current = channels;
+    }, [channels]);
 
     useEffect(() => {
         selectedServerIdRef.current = selectedServerId;
@@ -822,6 +833,17 @@ export default function ChatPage() {
                     return;
                 }
 
+                if (msg.type === "new_message") {
+                    const isOwnMessage = myIdRef.current && String(msg.user_id) === String(myIdRef.current);
+                    const currentUser = meRef.current;
+                    if (!isOwnMessage && currentUser?.username && msg.content?.includes(`@${currentUser.username}`)) {
+                        const ch = channelsRef.current.find((c) => String(c.id) === String(msg.channel_id));
+                        notifyDesktop(
+                            t("notifications.mention.title", { channel: ch?.name ?? msg.channel_id }),
+                            t("notifications.mention.body", { username: msg.username })
+                        );
+                    }
+                }
                 if (channelMessages.handleWsEvent(msg)) return;
                 if (msg.type === "server_member_banned") {
                     const sid = String((msg as any).server_id ?? "");
@@ -874,6 +896,15 @@ export default function ChatPage() {
                     return;
                 }
 
+                if (msg.type === "new_direct_message") {
+                    const isOwnMessage = myIdRef.current && String(msg.sender_id) === String(myIdRef.current);
+                    if (!isOwnMessage) {
+                        notifyDesktop(
+                            t("notifications.newDirectMessage.title"),
+                            t("notifications.newDirectMessage.body", { username: msg.sender_username })
+                        );
+                    }
+                }
                 if (dm.handleWsEvent(msg)) return;
                 if (msg.type === "server_member_banned_temporary") {
                     const sid = String(msg.server_id ?? "");
