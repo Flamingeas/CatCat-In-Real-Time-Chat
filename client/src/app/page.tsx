@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link"; // Importation de Link pour Next.js
+import Link from "next/link";
 import localFont from "next/font/local";
-import { Nunito, Fredoka } from "next/font/google"; // Importation de Fredoka
+import { Nunito, Fredoka } from "next/font/google";
 import { useRouter } from "next/navigation";
 import { MessageSquare, Shield, Image as ImageIcon, LogOut, Sparkles } from "lucide-react";
 
@@ -19,8 +19,6 @@ import moderationImage from "./images/feature_moderation.jpg";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
 
-// --- POLICES ---
-// Chargement de Fredoka
 const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka", weight: ["600", "700"] });
 const nunito = Nunito({
   subsets: ["latin"],
@@ -53,8 +51,6 @@ const Dunkin = localFont({
   weight: "400",
 });
 
-// --- TYPES & HELPERS ---
-// Définition du type pour l'utilisateur
 interface User {
   id: string;
   username: string;
@@ -63,6 +59,53 @@ interface User {
 function getToken(): string | null {
   if (typeof window === "undefined") return null;
   return localStorage.getItem("access_token");
+}
+
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function subscribeToPushNotifications() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+
+    try {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+
+        const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapidPublicKey) {
+            console.error("Clé VAPID publique manquante dans le .env !");
+            return;
+        }
+
+        const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(vapidPublicKey)
+        });
+
+        await fetch(`${API_BASE}/api/users/me/push-subscription`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getToken()}`
+            },
+            body: JSON.stringify(subscription)
+        });
+
+        console.log("Abonnement Web Push réussi !");
+    } catch (error) {
+        console.error("Erreur lors de l'abonnement push :", error);
+    }
 }
 
 function clearAuth() {
@@ -82,13 +125,13 @@ export default function Home() {
     setIsAuthed(!!token);
     
     if (token) {
-      // Récupération de l'utilisateur stocké
       const storedUser = localStorage.getItem("user");
       if (storedUser) {
         try { 
             setMe(JSON.parse(storedUser)); 
         } catch {}
       }
+      subscribeToPushNotifications();
     } else {
       setMe(null);
     }
@@ -127,7 +170,6 @@ export default function Home() {
     }
   }
 
-  // Initiales de l'utilisateur pour l'avatar
   const initials = me?.username ? me.username.slice(0, 2).toUpperCase() : "??";
 
   return (
@@ -135,10 +177,8 @@ export default function Home() {
         
         <AuthModal isOpen={isModalOpen} onClose={closeAuthModal} />
         
-        {/* === NAVBAR (Fixe en haut avec flou, issue du JSX) === */}
         <nav className="fixed top-0 left-0 right-0 z-50 h-[auto] min-h-[70px] pt-[env(safe-area-inset-top)] px-4 md:px-8 flex justify-between items-center bg-[#1E1211]/80 backdrop-blur-md">
           
-          {/* Logo gauche */}
           <div className="flex items-center gap-2 md:gap-3 group cursor-[url('/paw.png'),_pointer] transition-transform duration-300 ease-in-out hover:scale-105">
             <div className="relative w-8 h-8 md:w-10 md:h-10 flex-shrink-0 transition-transform duration-300 group-hover:rotate-12">
               <Image src={logoImage} alt="Logo CatCat" fill className="object-contain" />
@@ -148,7 +188,6 @@ export default function Home() {
             </span>
           </div>
 
-          {/* Menu central (Caché sur mobile) */}
           <div className="hidden lg:flex items-center gap-2 font-[family-name:var(--font-cocogoose)] text-base tracking-wide">
             <a href="#features" className="px-5 py-2 rounded-full text-[#DCCBC4] hover:bg-[#EB5E28] hover:text-[#1E1211] transition-all duration-300 cursor-pointer">
               Présentation
@@ -164,12 +203,10 @@ export default function Home() {
             </Link>
           </div>
 
-          {/* Zone Droite (Bouton Auth ou Avatar) */}
           <div className="flex items-center">
             {!isAuthed ? (
                 <button
                     onClick={openAuthModal}
-                    // Plus petit sur mobile
                     className="cursor-pointer font-[family-name:var(--font-cocogoose)] text-xs md:text-base px-4 py-2 md:px-6 md:py-2.5 text-[#3E1C0A] bg-[#EB5E28] rounded-full hover:bg-[#ffffff] hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,127,80,0.3)] hover:shadow-[0_0_30px_rgba(255,127,80,0.5)]"
                 >
                   <span className="hidden sm:inline">Connexion / Inscription</span>
@@ -201,14 +238,12 @@ export default function Home() {
           </div>
         </nav>
         
-        {/* === SECTION 1 : HERO (Issue du JSX) === */}
         <section className="relative w-full min-h-[100dvh] overflow-hidden flex flex-col pt-[70px] md:pt-[80px]">
           
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[60px] z-10 pointer-events-none lg:hidden"></div>
           
           <div className="relative z-20 container mx-auto px-6 lg:px-12 flex-1 flex flex-col justify-center items-center lg:items-start pb-20">
             <div className="w-full lg:max-w-[50%] space-y-6 md:space-y-8 flex flex-col items-center text-center lg:items-start lg:text-left">
-              {/* Utilisation de Fredoka ici aussi */}
               <h1 className="font-[family-name:var(--font-fredoka)] font-bold text-4xl md:text-6xl lg:text-7xl leading-[1.1] text-[#E89E68]">
                 Le coin le plus <span className="text-[#FF7F50]">chill </span> d&apos;Internet.
               </h1>
@@ -224,7 +259,6 @@ export default function Home() {
               {!isAuthed ? (
                   <button
                       onClick={openAuthModal}
-                      // Bouton moins massif
                       className="cursor-pointer group relative inline-flex items-center justify-center px-6 py-3 md:px-8 md:py-3.5 font-[family-name:var(--font-cocogoose)] text-base md:text-lg text-[#3E1C0A] transition-all duration-200 bg-[#EB5E28] rounded-full hover:bg-[#ffffff] hover:scale-105 shadow-[0_0_20px_rgba(255,127,80,0.3)] hover:shadow-[0_0_30px_rgba(255,127,80,0.5)]"
                   >
                     Connexion / Inscription
@@ -252,14 +286,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* === SECTION 2 : PRÉSENTATION DES FONCTIONNALITÉS (Issue du JSX avec ICÔNES REMPLACÉES PAR IMAGES) === */}
         <section id="features" className="relative z-20 py-16 md:py-24 px-6 md:px-12 bg-[#0F0908] border-t border-[#ffffff]/5 scroll-mt-[70px] md:scroll-mt-[80px]">
             <div className="max-w-6xl mx-auto flex flex-col gap-20 md:gap-32">
                 
-                {/* FEATURE 1 */}
                 <div className="flex flex-col md:flex-row items-center gap-8 md:gap-20">
                     <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
-                        {/* Utilisation de Fredoka ici aussi */}
                         <h2 className="text-3xl md:text-5xl lg:text-6xl text-[#E89E68] font-[family-name:var(--font-fredoka)] font-bold leading-[1.1]">
                             Crée un espace <br className="hidden md:block" /> <span className="text-[#FF7F50]">sur mesure</span>
                         </h2>
@@ -269,14 +300,12 @@ export default function Home() {
                         </p>
                     </div>
                     <div className="flex-1 w-full">
-                        {/* 👇 BLOC IMAGE 1 👇 */}
                         <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden flex items-center justify-center group transition-all">
                             <Image src={serverImage} alt="Illustration Serveurs" fill className="object-cover transition-transform duration-500 group-hover:scale-105" /> 
                         </div>
                     </div>
                 </div>
 
-                {/* FEATURE 2 */}
                 <div className="flex flex-col md:flex-row-reverse items-center gap-8 md:gap-20">
                     <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
                         <h2 className="text-3xl md:text-5xl lg:text-6xl text-[#E89E68] font-[family-name:var(--font-fredoka)] font-bold leading-[1.1]">
@@ -294,7 +323,6 @@ export default function Home() {
                     </div>
                 </div>
 
-                {/* FEATURE 3 */}
                 <div className="flex flex-col md:flex-row items-center gap-8 md:gap-20">
                     <div className="flex-1 space-y-4 md:space-y-6 text-center md:text-left">
                         <h2 className="text-3xl md:text-5xl lg:text-6xl text-[#E89E68] font-[family-name:var(--font-fredoka)] font-bold leading-[1.1]">
@@ -315,7 +343,6 @@ export default function Home() {
             </div>
         </section>
 
-        {/* === SECTION 3 : CALL TO ACTION FINAL (Issue du JSX) === */}
         <section className="relative z-20 py-16 md:py-24 px-6 text-center bg-[#0a0605] overflow-hidden border-t border-[#ffffff]/5">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-3xl h-[200px] bg-[#FF7F50]/10 blur-[120px] rounded-full pointer-events-none" />
             <h2 className="text-3xl md:text-5xl text-[#E89E68] font-[family-name:var(--font-fredoka)] font-bold mb-8 md:mb-10">
@@ -339,7 +366,6 @@ export default function Home() {
             )}
         </section>
 
-        {/* === FOOTER (Issu du JSX) === */}
         <footer className="relative z-20 bg-[#0F0908] py-8 border-t border-[#ffffff]/5 text-center text-[#DCCBC4]/40 font-[family-name:var(--font-nunito)] font-bold text-xs md:text-sm px-4">
             <p>&copy; {new Date().getFullYear()} CatCat. Conçu avec passion et beaucoup de croquettes par l'équipe Epitech.</p>
         </footer>

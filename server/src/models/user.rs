@@ -85,6 +85,18 @@ impl User {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PushSubscription {
+    pub endpoint: String,
+    pub keys: SubscriptionKeys,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SubscriptionKeys {
+    pub p256dh: String,
+    pub auth: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

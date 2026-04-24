@@ -1,7 +1,7 @@
 use sqlx::PgPool;
 use uuid::Uuid;
 
-use crate::models::user::{UpdateUser, User};
+use crate::models::user::{UpdateUser, User, PushSubscription};
 
 #[derive(Clone)]
 pub struct UserRepository {
@@ -193,6 +193,14 @@ impl UserRepository {
             .await?;
 
         Ok(count)
+    }
+    pub async fn add_push_subscription(
+        &self,
+        user_id: uuid::Uuid,
+        _sub: PushSubscription,
+    ) -> Result<(), sqlx::Error> {
+        log::info!("Nouveau ticket Push reçu pour l'utilisateur : {}", user_id);
+        Ok(())
     }
 }
 

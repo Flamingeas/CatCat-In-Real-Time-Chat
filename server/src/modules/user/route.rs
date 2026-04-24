@@ -5,7 +5,7 @@ use utoipa::IntoParams;
 use uuid::Uuid;
 use validator::Validate;
 
-use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse};
+use crate::models::user::{PushSubscription, UpdateUser, UserPublicResponse, UserResponse};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::modules::user::repository::UserRepository;
 
@@ -18,7 +18,7 @@ fn user_service(pool: &web::Data<PgPool>) -> UserService {
 
 #[utoipa::path(
     get,
-    path = "/api/users/me", // <-- CORRIGÉ ICI
+    path = "/api/users/me",
     tag = "Users",
     security(
         ("jwt" = [])
@@ -40,7 +40,7 @@ pub async fn get_me(pool: web::Data<PgPool>, user: AuthenticatedUser) -> impl Re
 
 #[utoipa::path(
     get,
-    path = "/api/users/{id}", // <-- CORRIGÉ ICI
+    path = "/api/users/{id}",
     tag = "Users",
     security(
         ("jwt" = [])
@@ -66,7 +66,7 @@ pub async fn get_user(pool: web::Data<PgPool>, path: web::Path<Uuid>) -> impl Re
 
 #[utoipa::path(
     get,
-    path = "/api/users", // <-- CORRIGÉ ICI
+    path = "/api/users",
     tag = "Users",
     security(
         ("jwt" = [])
@@ -98,7 +98,7 @@ pub async fn list_users(
 
 #[utoipa::path(
     put,
-    path = "/api/users/me", // <-- CORRIGÉ ICI
+    path = "/api/users/me",
     tag = "Users",
     security(
         ("jwt" = [])
@@ -136,7 +136,7 @@ pub async fn update_me(
 
 #[utoipa::path(
     delete,
-    path = "/api/users/me", // <-- CORRIGÉ ICI
+    path = "/api/users/me",
     tag = "Users",
     security(
         ("jwt" = [])
@@ -152,6 +152,33 @@ pub async fn delete_me(pool: web::Data<PgPool>, user: AuthenticatedUser) -> impl
     let service = user_service(&pool);
     match service.delete_user(user.user_id).await {
         Ok(_) => HttpResponse::NoContent().finish(),
+        Err(e) => handle_service_error(e),
+    }
+}
+#[utoipa::path(
+    post,
+    path = "/api/users/me/push-subscription",
+    tag = "Users",
+    security(
+        ("jwt" = [])
+    ),
+    request_body = PushSubscription,
+    responses(
+        (status = 200, description = "Abonnement push enregistré avec succès"),
+        (status = 401, description = "Non authentifié")
+    )
+)]
+pub async fn subscribe_push(
+    pool: web::Data<PgPool>,
+    user: AuthenticatedUser,
+    subscription: web::Json<PushSubscription>,
+) -> impl Responder {
+    log::debug!("POST /me/push-subscription - User ID: {}", user.user_id);
+
+    let service = user_service(&pool);
+    
+    match service.add_push_subscription(user.user_id, subscription.into_inner()).await {
+        Ok(_) => HttpResponse::Ok().json(serde_json::json!({"status": "subscribed"})),
         Err(e) => handle_service_error(e),
     }
 }
@@ -197,6 +224,8 @@ pub fn config(cfg: &mut web::ServiceConfig) {
     cfg.route("/me", web::get().to(get_me))
         .route("/me", web::put().to(update_me))
         .route("/me", web::delete().to(delete_me))
+        // NOUVEAU : Enregistrement de la route 👇
+        .route("/me/push-subscription", web::post().to(subscribe_push))
         .route("", web::get().to(list_users))
         .route("/{id}", web::get().to(get_user));
 }

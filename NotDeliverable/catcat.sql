@@ -215,6 +215,20 @@ CREATE TABLE public.conversations (
     CONSTRAINT conversations_user_order CHECK (user1_id < user2_id)
 );
 
+--
+-- Name: push_subscriptions; Type: TABLE; Schema: public; Owner: postgres
+--
+CREATE TABLE public.push_subscriptions (
+    id uuid DEFAULT public.gen_random_uuid() NOT NULL,
+    user_id uuid NOT NULL,
+    endpoint text NOT NULL,
+    p256dh text NOT NULL,
+    auth text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT push_subscriptions_pkey PRIMARY KEY (id),
+    CONSTRAINT push_subscriptions_endpoint_key UNIQUE (endpoint),
+    CONSTRAINT push_subscriptions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
 
 ALTER TABLE public.conversations OWNER TO postgres;
 

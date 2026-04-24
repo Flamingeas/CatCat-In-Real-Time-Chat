@@ -1,5 +1,5 @@
 use super::repository::UserRepository;
-use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse};
+use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse, PushSubscription};
 use uuid::Uuid;
 
 pub struct UserService {
@@ -127,6 +127,17 @@ impl UserService {
             .map_err(ServiceError::Database)?;
 
         Ok(())
+    }
+
+    pub async fn add_push_subscription(
+        &self,
+        user_id: uuid::Uuid,
+        sub: PushSubscription,
+    ) -> Result<(), ServiceError> {
+        self.repository
+            .add_push_subscription(user_id, sub)
+            .await
+            .map_err(ServiceError::Database)
     }
 }
 
