@@ -148,6 +148,7 @@ jobs:
 
       - name: Build frontend
         run: npm run build
+
   docker:
     name: Build and publish Docker images
     runs-on: self-hosted
@@ -176,30 +177,50 @@ jobs:
 
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             echo "IMAGE_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
+            echo "FRONTEND_API_URL=https://catcat-backend.onrender.com" >> "$GITHUB_ENV"
+            echo "FRONTEND_WS_URL=wss://catcat-backend.onrender.com" >> "$GITHUB_ENV"
+            echo "PUSH_LATEST=true" >> "$GITHUB_ENV"
           else
             echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
+            echo "FRONTEND_API_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
+            echo "FRONTEND_WS_URL=ws://127.0.0.1:8080" >> "$GITHUB_ENV"
+            echo "PUSH_LATEST=false" >> "$GITHUB_ENV"
           fi
 
       - name: Build backend Docker image
         run: |
           docker build \
             -t "$BACKEND_IMAGE:$IMAGE_TAG" \
-            -t "$BACKEND_IMAGE:latest" \
             ./server
+
+          if [[ "$PUSH_LATEST" == "true" ]]; then
+            docker tag "$BACKEND_IMAGE:$IMAGE_TAG" "$BACKEND_IMAGE:latest"
+          fi
 
       - name: Build frontend Docker image
         run: |
           docker build \
+            --build-arg NEXT_PUBLIC_API_URL="$FRONTEND_API_URL" \
+            --build-arg NEXT_PUBLIC_WS_URL="$FRONTEND_WS_URL" \
             -t "$FRONTEND_IMAGE:$IMAGE_TAG" \
-            -t "$FRONTEND_IMAGE:latest" \
             ./client
+
+          if [[ "$PUSH_LATEST" == "true" ]]; then
+            docker tag "$FRONTEND_IMAGE:$IMAGE_TAG" "$FRONTEND_IMAGE:latest"
+          fi
 
       - name: Push backend Docker image
         run: |
           docker push "$BACKEND_IMAGE:$IMAGE_TAG"
-          docker push "$BACKEND_IMAGE:latest"
+
+          if [[ "$PUSH_LATEST" == "true" ]]; then
+            docker push "$BACKEND_IMAGE:latest"
+          fi
 
       - name: Push frontend Docker image
         run: |
           docker push "$FRONTEND_IMAGE:$IMAGE_TAG"
-          docker push "$FRONTEND_IMAGE:latest"
+
+          if [[ "$PUSH_LATEST" == "true" ]]; then
+            docker push "$FRONTEND_IMAGE:latest"
+          fi
