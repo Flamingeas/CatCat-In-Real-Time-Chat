@@ -56,7 +56,6 @@ impl Modify for SecurityAddon {
         crate::modules::user::route::list_users,
         crate::modules::user::route::update_me,
         crate::modules::user::route::delete_me,
-        
         // Routes des salons
         crate::modules::channel::route::create_channel,
         crate::modules::channel::route::channel_list,
@@ -96,7 +95,7 @@ impl Modify for SecurityAddon {
     components(
         schemas(
             // Modèles de requêtes et de réponses
-            crate::modules::auth::route::LoginRequest, 
+            crate::modules::auth::route::LoginRequest,
             crate::models::user::CreateUser,
             crate::models::user::UpdateUser,
             crate::models::user::UserResponse,

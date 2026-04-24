@@ -531,9 +531,9 @@ mod ws_tests {
     use actix::Actor;
     use actix::Addr;
     use actix_test::start;
-    use actix_web::{App, HttpRequest, web};
+    use actix_web::{web, App, HttpRequest};
     use actix_web_actors::ws as actix_ws;
-    use awc::{Client, ws as awc_ws};
+    use awc::{ws as awc_ws, Client};
     use futures_util::{Sink, SinkExt, Stream, StreamExt};
 
     use crate::utils::jwt::generate_token;

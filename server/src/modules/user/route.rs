@@ -177,15 +177,29 @@ fn default_per_page() -> i64 {
 
 fn handle_service_error(error: ServiceError) -> HttpResponse {
     match error {
-        ServiceError::NotFound(msg) => json_error(actix_web::http::StatusCode::NOT_FOUND, "USER_NOT_FOUND", msg),
-        ServiceError::Conflict(msg) => json_error(actix_web::http::StatusCode::CONFLICT, "USER_CONFLICT", msg),
+        ServiceError::NotFound(msg) => json_error(
+            actix_web::http::StatusCode::NOT_FOUND,
+            "USER_NOT_FOUND",
+            msg,
+        ),
+        ServiceError::Conflict(msg) => {
+            json_error(actix_web::http::StatusCode::CONFLICT, "USER_CONFLICT", msg)
+        }
         ServiceError::Database(e) => {
             log::error!("Database error: {}", e);
-            json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error")
+            json_error(
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                "Internal server error",
+            )
         }
         ServiceError::Internal(msg) => {
             log::error!("Internal error: {}", msg);
-            json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal server error")
+            json_error(
+                actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+                "Internal server error",
+            )
         }
     }
 }
