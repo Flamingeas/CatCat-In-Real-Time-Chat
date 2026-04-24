@@ -144,7 +144,8 @@
     "directMessages": "Direct messages",
     "createServer": "Create a server",
     "joinServer": "Join a server",
-    "logoAlt": "CatCat logo"
+    "logoAlt": "CatCat logo",
+    "settings": "Settings"
   },
   "membersSidebar": {
     "members": "Members",
@@ -258,5 +259,16 @@
     "noBans": "No active bans.",
     "reason": "Reason:",
     "unban": "Remove ban"
+  },
+  "settings": {
+    "title": "Account Settings",
+    "username": "Username",
+    "usernamePlaceholder": "Your new username",
+    "email": "Email Address",
+    "emailPlaceholder": "your@email.com",
+    "password": "New Password",
+    "theme": "App Theme", 
+    "language": "Application Language",
+    "save": "Save Changes"
   }
 }

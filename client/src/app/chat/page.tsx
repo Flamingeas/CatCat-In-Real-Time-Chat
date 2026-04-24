@@ -1166,8 +1166,16 @@ export default function ChatPage() {
     if (!hasCheckedAuth) return null;
 
     return (
-        <div className={`flex h-screen bg-black text-[#DCCBC4] ${miskan.variable} ${nunito.variable} font-sans overflow-hidden p-[8px] gap-[8px]`}>
+        /* 1. LE CONTENEUR GLOBAL : 
+           - bg-background : Fond principal de l'app (Orange clair / Marron foncé)
+           - text-primary : Texte de base (Noir / Blanc)
+           - p-2 gap-2 : Espacement automatique et parfait entre chaque colonne !
+        */
+        <div className={`flex h-screen bg-background text-primary ${miskan.variable} ${nunito.variable} font-sans overflow-hidden p-2 gap-2`}>
+            
             <ToastStack toasts={toasts} />
+            
+            {/* === COLONNE 1 : SERVEURS === */}
             <ServerList
                 servers={servers}
                 selectedServerId={selectedServerId}
@@ -1183,7 +1191,9 @@ export default function ChatPage() {
                 unreadDmCount={dm.totalUnreadCount}
             />
 
-            <div className="w-60 bg-[#150d0c] rounded-[20px] flex flex-col hidden md:flex h-full shadow-lg overflow-hidden">
+            {/* === COLONNE 2 : LISTE DES SALONS OU DM === */}
+            {/* Retrait de my-2, ajout de border-border-custom et bg-secondary */}
+            <div className="w-64 flex flex-col bg-secondary border border-border-custom overflow-hidden rounded-[20px] shadow-sm">
                 {view === "dm" ? (
                     <DirectMessageSidebar
                         conversations={dm.conversations}
@@ -1214,7 +1224,9 @@ export default function ChatPage() {
                 )}
             </div>
 
-            <div className="flex-1 flex flex-col bg-[#0F0908] rounded-[20px] relative h-full shadow-lg overflow-hidden">
+            {/* === COLONNE 3 : PANNEAU CENTRAL (CHAT) === */}
+            {/* Retrait de my-2 et mr-2 car le parent (gap-2) gère déjà l'espace. Ajout de bg-background */}
+            <div className="flex-1 flex flex-col bg-surface border border-border-custom rounded-[20px] overflow-hidden shadow-sm">
                 {view === "dm" ? (
                     <DirectMessagePanel
                         conversations={dm.conversations}
@@ -1291,6 +1303,7 @@ export default function ChatPage() {
                 )}
             </div>
 
+            {/* === COLONNE 4 : MEMBRES === */}
             {view !== "dm" && (
                 <MembersSidebar
                     members={members}
@@ -1314,9 +1327,13 @@ export default function ChatPage() {
                     onShowBans={() => setShowBans(true)}
                 />
             )}
+
+            {/* === MODALES === */}
             {showBans && myRole !== "member" && selectedServerId && (
                 <BannedUsersModal serverId={selectedServerId} onClose={() => setShowBans(false)} />
             )}
+            
+            {/* Reste des Modales inchangées ... */}
             {isChannelEditOpen && selectedChannel && canEditChannel && (
                 <ChannelEditModal
                     isOpen={true}
@@ -1329,85 +1346,15 @@ export default function ChatPage() {
                 />
             )}
 
-            <ChannelCreateModal
-                isOpen={isChannelCreateOpen}
-                onClose={() => setIsChannelCreateOpen(false)}
-                channelName={channelName}
-                setChannelName={setChannelName}
-                channelCreateError={channelCreateError}
-                isChannelCreating={isChannelCreating}
-                onCreate={createChannel}
-            />
-
-            <CreateServerModal
-                isOpen={isCreateOpen}
-                onClose={() => setIsCreateOpen(false)}
-                serverName={serverName}
-                setServerName={setServerName}
-                createError={createError}
-                isCreating={isCreating}
-                onCreate={createServer}
-            />
-
-            <JoinServerModal
-                isOpen={isJoinOpen}
-                onClose={() => setIsJoinOpen(false)}
-                joinCode={joinCode}
-                setJoinCode={setJoinCode}
-                joinError={joinError}
-                isJoining={isJoining}
-                onJoin={joinServer}
-            />
-
-            <InviteMemberModal
-                isOpen={isInviteOpen}
-                onClose={() => setIsInviteOpen(false)}
-                selectedServer={selectedServer}
-                inviteError={inviteError}
-                setInviteError={setInviteError}
-                inviteCopied={inviteCopied}
-                setInviteCopied={setInviteCopied}
-            />
-
-            <ServerSettingsModal
-                isOpen={isSettingsOpen}
-                onClose={() => setIsSettingsOpen(false)}
-                selectedServer={selectedServer}
-                settingsName={settingsName}
-                setSettingsName={setSettingsName}
-                deleteConfirm={deleteConfirm}
-                setDeleteConfirm={setDeleteConfirm}
-                settingsError={settingsError}
-                isSavingSettings={isSavingSettings}
-                onSave={saveServerSettings}
-                onDelete={deleteServer}
-            />
-
-            <LeaveServerModal
-                isOpen={isLeaveOpen}
-                onClose={() => setIsLeaveOpen(false)}
-                selectedServer={selectedServer}
-                leaveError={leaveError}
-                isLeaving={isLeaving}
-                onLeave={leaveServer}
-            />
+            <ChannelCreateModal isOpen={isChannelCreateOpen} onClose={() => setIsChannelCreateOpen(false)} channelName={channelName} setChannelName={setChannelName} channelCreateError={channelCreateError} isChannelCreating={isChannelCreating} onCreate={createChannel} />
+            <CreateServerModal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)} serverName={serverName} setServerName={setServerName} createError={createError} isCreating={isCreating} onCreate={createServer} />
+            <JoinServerModal isOpen={isJoinOpen} onClose={() => setIsJoinOpen(false)} joinCode={joinCode} setJoinCode={setJoinCode} joinError={joinError} isJoining={isJoining} onJoin={joinServer} />
+            <InviteMemberModal isOpen={isInviteOpen} onClose={() => setIsInviteOpen(false)} selectedServer={selectedServer} inviteError={inviteError} setInviteError={setInviteError} inviteCopied={inviteCopied} setInviteCopied={setInviteCopied} />
+            <ServerSettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} selectedServer={selectedServer} settingsName={settingsName} setSettingsName={setSettingsName} deleteConfirm={deleteConfirm} setDeleteConfirm={setDeleteConfirm} settingsError={settingsError} isSavingSettings={isSavingSettings} onSave={saveServerSettings} onDelete={deleteServer} />
+            <LeaveServerModal isOpen={isLeaveOpen} onClose={() => setIsLeaveOpen(false)} selectedServer={selectedServer} leaveError={leaveError} isLeaving={isLeaving} onLeave={leaveServer} />
+            
             {temporaryBanModal?.open && selectedServerId && (
-                <TemporaryBanModal
-                    isOpen={true}
-                    onClose={() => setTemporaryBanModal(null)}
-                    username={temporaryBanModal.username}
-                    duration={temporaryBanDuration}
-                    setDuration={setTemporaryBanDuration}
-                    error={temporaryBanError}
-                    isBanning={isTemporaryBanning}
-                    onBan={() =>
-                        handleBanTemporaryMember(
-                            selectedServerId,
-                            temporaryBanModal.userId,
-                            Number(temporaryBanDuration)
-                        )
-                    }
-                />
+                <TemporaryBanModal isOpen={true} onClose={() => setTemporaryBanModal(null)} username={temporaryBanModal.username} duration={temporaryBanDuration} setDuration={setTemporaryBanDuration} error={temporaryBanError} isBanning={isTemporaryBanning} onBan={() => handleBanTemporaryMember( selectedServerId, temporaryBanModal.userId, Number(temporaryBanDuration) )} />
             )}
         </div>
     );

@@ -54,16 +54,22 @@ export function MembersSidebar({
     const t = useTranslations("membersSidebar");
 
     return (
-        <div className="w-72 bg-[#0a0605] rounded-[20px] hidden xl:flex flex-col h-full shadow-lg overflow-hidden">
-            <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
+        /* - bg-background : pour être identique à la zone de message area
+           - On garde overflow-hidden pour la propreté
+        */
+        <div className="w-72 bg-background hidden xl:flex flex-col h-full overflow-hidden">
+            
+            {/* === HEADER === */}
+            <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-primary border-b border-border-custom">
                 {t("members")}
-                <span className="ml-auto text-xs text-[#DCCBC4]/40 font-normal">{members.length}</span>
+                <span className="ml-auto text-xs text-muted/80 font-normal">{members.length}</span>
             </div>
+            
             <div className="flex-1 overflow-y-auto p-3">
                 {!selectedServerId ? (
-                    <div className="text-sm text-[#DCCBC4]/50 px-2 py-2">{t("selectServer")}</div>
+                    <div className="text-sm text-muted px-2 py-2">{t("selectServer")}</div>
                 ) : members.length === 0 ? (
-                    <div className="text-sm text-[#DCCBC4]/50 px-2 py-2">{t("noMembers")}</div>
+                    <div className="text-sm text-muted px-2 py-2">{t("noMembers")}</div>
                 ) : (
                     <>
                         <div className="flex flex-col gap-1">
@@ -84,33 +90,36 @@ export function MembersSidebar({
                                     String(typingUsers[userId]?.channelId) === String(selectedChannelId);
 
                                 return (
-                                    <div key={member.user_id} className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#1E1211] transition-colors">
+                                    <div key={member.user_id} className="group flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-secondary/40 transition-colors">
+                                        
+                                        {/* Avatar : passe en bg-surface pour ressortir sur le fond bg-background */}
                                         <div className="relative">
-                                            <div className="w-9 h-9 rounded-full bg-[#2A1A18] border border-[#ffffff]/5 flex items-center justify-center text-xs font-bold text-[#DCCBC4]">
+                                            <div className="w-9 h-9 rounded-full bg-surface border border-border-custom flex items-center justify-center text-xs font-bold text-accent">
                                                 {getInitials(member.username)}
                                             </div>
                                             <span
                                                 className={[
-                                                    "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-[#0a0605]",
-                                                    isTyping ? "bg-[#EB5E28]" : online ? "bg-green-500" : "bg-[#ffffff]/20",
+                                                    "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background",
+                                                    isTyping ? "bg-accent" : online ? "bg-green-500" : "bg-muted/40",
                                                 ].join(" ")}
                                             />
                                         </div>
+                                        
                                         <div className="flex flex-col leading-tight min-w-0 flex-1">
                                             <div className="flex items-center gap-2 min-w-0">
-                                                <span className="text-white font-bold text-sm truncate">@{member.username}</span>
+                                                <span className="text-primary font-bold text-sm truncate">@{member.username}</span>
                                                 {isOwnerMember && (
                                                     <span title={t("ownerTitle")} className="text-[#FBBF24]">
                                                         <CrownIcon />
                                                     </span>
                                                 )}
                                                 {member.role === "admin" && !isOwnerMember && (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#1E1211] border border-[#ffffff]/10 text-[#DCCBC4]/70">
+                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-surface border border-border-custom text-muted">
                                                         {t("adminRole")}
                                                     </span>
                                                 )}
                                             </div>
-                                            <span className="text-xs text-[#DCCBC4]/50">
+                                            <span className="text-xs text-muted/70">
                                                 {isTyping ? t("typing") : online ? t("online") : t("offline")}
                                             </span>
                                         </div>
@@ -119,9 +128,9 @@ export function MembersSidebar({
                                             <button
                                                 onClick={() => onStartDm(userId)}
                                                 title={t("sendMessageTo", { username: member.username })}
-                                                className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-xl border border-[#ffffff]/10 text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
+                                                className="opacity-0 group-hover:opacity-100 w-8 h-8 rounded-xl border border-border-custom text-accent hover:bg-accent hover:text-white flex items-center justify-center transition-all cursor-pointer shrink-0"
                                             >
-                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                                                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                                     <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                                                 </svg>
                                             </button>
@@ -131,8 +140,7 @@ export function MembersSidebar({
                                             <div className="relative" ref={openMenuFor === userId ? menuRef : undefined}>
                                                 <button
                                                     onClick={() => onToggleMenu(userId)}
-                                                    className="w-9 h-9 rounded-xl border border-[#ffffff]/10 text-[#DCCBC4]/70 hover:bg-[#0F0908] hover:text-white cursor-pointer flex items-center justify-center"
-                                                    title={t("actions")}
+                                                    className="w-9 h-9 rounded-xl border border-border-custom text-muted hover:bg-surface hover:text-primary cursor-pointer flex items-center justify-center"
                                                 >
                                                     ⋯
                                                 </button>
@@ -155,16 +163,15 @@ export function MembersSidebar({
                                 );
                             })}
                         </div>
+                        
                         {myRole !== "member" && (
-                            <div className="flex flex-col gap-1">
-                                <div className="flex items-center gap-3 px-3 py-2 rounded-xl hover:bg-[#1E1211] transition-colors">
-                                    <button
-                                        onClick={onShowBans}
-                                        className="text-xs text-[#DCCBC4]/60 hover:text-white cursor-pointer"
-                                    >
-                                        {t("bannedUsersButton")}
-                                    </button>
-                                </div>
+                            <div className="mt-4 px-2">
+                                <button
+                                    onClick={onShowBans}
+                                    className="text-xs text-muted font-bold hover:text-primary transition-colors cursor-pointer"
+                                >
+                                    {t("bannedUsersButton")}
+                                </button>
                             </div>
                         )}
                     </>

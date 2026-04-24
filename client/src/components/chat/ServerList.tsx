@@ -2,9 +2,11 @@
 
 import { useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
+import { useTheme } from "next-themes"; // 👈 Import de next-themes
 import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Sun, Moon, Laptop } from "lucide-react"; // 👈 Import des icônes
 import logoImage from "@/app/images/logo_catcat.svg";
 import { EnterIcon } from "../icons";
 
@@ -34,6 +36,7 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     const t = useTranslations("settings");
     const currentLocale = useLocale();
     const router = useRouter();
+    const { theme, setTheme } = useTheme(); // 👈 Utilisation du hook useTheme
 
     // États du formulaire
     const [username, setUsername] = useState("");
@@ -57,12 +60,13 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
     return (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-            <div className="bg-[#0F0908] border border-[#ffffff]/10 rounded-3xl w-full max-w-md p-6 md:p-8 shadow-2xl relative font-[family-name:var(--font-nunito)]">
+            {/* Remplacement des couleurs en dur par bg-surface, border-border, etc. */}
+            <div className="bg-surface border border-border-custom rounded-3xl w-full max-w-md p-6 md:p-8 shadow-2xl relative font-[family-name:var(--font-nunito)]">
                 
                 {/* Bouton Fermer */}
                 <button 
                     onClick={onClose}
-                    className="absolute top-4 right-4 text-[#DCCBC4]/60 hover:text-[#FF7F50] transition-colors"
+                    className="absolute top-4 right-4 text-muted hover:text-accent-hover transition-colors cursor-pointer"
                 >
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -76,55 +80,83 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                 <form onSubmit={handleSave} className="space-y-5">
                     {/* Nom d'utilisateur */}
                     <div>
-                        <label className="block text-sm font-bold text-[#DCCBC4] mb-1.5">{t("username")}</label>
+                        <label className="block text-sm font-bold text-muted mb-1.5">{t("username")}</label>
                         <input 
                             type="text" 
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder={t("usernamePlaceholder")}
-                            className="w-full bg-[#1E1211] border border-[#ffffff]/10 rounded-xl px-4 py-3 text-[#FFF8F0] placeholder-[#DCCBC4]/30 focus:outline-none focus:border-[#EB5E28] transition-colors"
+                            className="w-full bg-background border border-border-custom rounded-xl px-4 py-3 text-primary placeholder-muted/50 focus:outline-none focus:border-accent transition-colors"
                         />
                     </div>
 
                     {/* Email */}
                     <div>
-                        <label className="block text-sm font-bold text-[#DCCBC4] mb-1.5">{t("email")}</label>
+                        <label className="block text-sm font-bold text-muted mb-1.5">{t("email")}</label>
                         <input 
                             type="email" 
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             placeholder={t("emailPlaceholder")}
-                            className="w-full bg-[#1E1211] border border-[#ffffff]/10 rounded-xl px-4 py-3 text-[#FFF8F0] placeholder-[#DCCBC4]/30 focus:outline-none focus:border-[#EB5E28] transition-colors"
+                            className="w-full bg-background border border-border-custom rounded-xl px-4 py-3 text-primary placeholder-muted/50 focus:outline-none focus:border-accent transition-colors"
                         />
                     </div>
 
                     {/* Mot de passe */}
                     <div>
-                        <label className="block text-sm font-bold text-[#DCCBC4] mb-1.5">{t("password")}</label>
+                        <label className="block text-sm font-bold text-muted mb-1.5">{t("password")}</label>
                         <input 
                             type="password" 
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
                             placeholder="••••••••"
-                            className="w-full bg-[#1E1211] border border-[#ffffff]/10 rounded-xl px-4 py-3 text-[#FFF8F0] placeholder-[#DCCBC4]/30 focus:outline-none focus:border-[#EB5E28] transition-colors"
+                            className="w-full bg-background border border-border-custom rounded-xl px-4 py-3 text-primary placeholder-muted/50 focus:outline-none focus:border-accent transition-colors"
                         />
+                    </div>
+
+                    {/* 👇 SÉLECTEUR DE THÈME 👇 */}
+                    <div className="pt-2">
+                        <label className="block text-sm font-bold text-muted mb-2">{t("theme", { fallback: "Thème de l'application" })}</label>
+                        <div className="flex bg-background border border-border-custom rounded-xl p-1">
+                            <button
+                                type="button"
+                                onClick={() => setTheme("light")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${theme === "light" ? "bg-surface text-primary shadow-sm" : "text-muted hover:text-primary"}`}
+                            >
+                                <Sun className="w-4 h-4" /> Clair
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTheme("dark")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${theme === "dark" ? "bg-surface text-primary shadow-sm" : "text-muted hover:text-primary"}`}
+                            >
+                                <Moon className="w-4 h-4" /> Sombre
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setTheme("system")}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg font-bold text-sm transition-all cursor-pointer ${theme === "system" ? "bg-surface text-primary shadow-sm" : "text-muted hover:text-primary"}`}
+                            >
+                                <Laptop className="w-4 h-4" /> Auto
+                            </button>
+                        </div>
                     </div>
 
                     {/* Sélecteur de Langue */}
                     <div className="pt-2">
-                        <label className="block text-sm font-bold text-[#DCCBC4] mb-2">{t("language")}</label>
+                        <label className="block text-sm font-bold text-muted mb-2">{t("language")}</label>
                         <div className="flex gap-3">
                             <button
                                 type="button"
                                 onClick={() => switchLocale("fr")}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-all ${currentLocale === "fr" ? "bg-[#EB5E28] text-[#1E1211]" : "bg-[#1E1211] text-[#DCCBC4] hover:bg-[#ffffff]/5 border border-[#ffffff]/10"}`}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${currentLocale === "fr" ? "bg-accent text-[#1E1211]" : "bg-background text-muted hover:bg-surface border border-border-custom"}`}
                             >
                                 🇫🇷 Français
                             </button>
                             <button
                                 type="button"
                                 onClick={() => switchLocale("en")}
-                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-all ${currentLocale === "en" ? "bg-[#EB5E28] text-[#1E1211]" : "bg-[#1E1211] text-[#DCCBC4] hover:bg-[#ffffff]/5 border border-[#ffffff]/10"}`}
+                                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl font-bold transition-all cursor-pointer ${currentLocale === "en" ? "bg-accent text-[#1E1211]" : "bg-background text-muted hover:bg-surface border border-border-custom"}`}
                             >
                                 🇬🇧 English
                             </button>
@@ -134,7 +166,7 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                     {/* Bouton de sauvegarde */}
                     <button 
                         type="submit"
-                        className="w-full mt-6 bg-[#EB5E28] text-[#1E1211] font-[family-name:var(--font-cocogoose)] font-bold py-3.5 rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(235,94,40,0.3)] hover:scale-[1.02]"
+                        className="w-full mt-6 bg-accent text-[#1E1211] font-[family-name:var(--font-cocogoose)] font-bold py-3.5 rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(235,94,40,0.3)] hover:scale-[1.02] cursor-pointer"
                     >
                         {t("save")}
                     </button>
@@ -148,7 +180,7 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 export function ServerList({ servers, selectedServerId, onSelectServer, onCreate, onJoin, initials, view, onToggleView, unreadDmCount }: ServerListProps) {
     const t = useTranslations("serverList");
     
-    // 👇 Nouvel état pour gérer l'ouverture du Modal
+    // Nouvel état pour gérer l'ouverture du Modal
     const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
     return (
@@ -156,7 +188,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
             {/* Modal des paramètres */}
             <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
 
-            <div className="w-[72px] bg-[#1E1211] rounded-[20px] flex flex-col items-center py-6 gap-4 z-20 h-full shadow-lg">
+            <div className="w-[72px] bg-background rounded-[20px] flex flex-col items-center py-6 gap-4 z-20 h-full shadow-lg">
                 <Link href="/" className="w-12 h-12 flex items-center justify-center hover:rounded-xl transition-all cursor-pointer group">
                     <div className="relative w-12 h-12 transition-transform duration-300 group-hover:rotate-12">
                         <Image src={logoImage} alt={t("logoAlt")} />
@@ -168,7 +200,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
                     title={t("directMessages")}
                     className={[
                         "relative w-12 h-12 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
-                        view === "dm" ? "bg-[#EB5E28] text-white" : "bg-[#2A1A18] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white",
+                        view === "dm" ? "bg-accent text-[#1E1211]" : "bg-secondary text-accent hover:bg-accent hover:text-[#1E1211]",
                     ].join(" ")}
                 >
                     <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
@@ -181,7 +213,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
                     )}
                 </button>
                 
-                <div className="w-8 h-[2px] bg-[#ffffff]/10 rounded-full" />
+                <div className="w-8 h-[2px] bg-border-custom rounded-full" />
                 
                 <div className="flex flex-col items-center gap-3 w-full px-2 overflow-y-auto overflow-x-hidden no-scrollbar">
                     {servers.map((s) => {
@@ -193,7 +225,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
                                 title={s.name}
                                 className={[
                                     "w-12 h-12 flex-shrink-0 rounded-[24px] hover:rounded-[16px] transition-all cursor-pointer flex items-center justify-center",
-                                    active ? "bg-[#EB5E28] text-white" : "bg-[#2A1A18] text-[#EB5E28] hover:bg-[#EB5E28] hover:text-white",
+                                    active ? "bg-accent text-[#1E1211]" : "bg-secondary text-accent hover:bg-accent hover:text-[#1E1211]",
                                 ].join(" ")}
                             >
                                 <span className="font-bold text-sm">{s.name?.slice(0, 2).toUpperCase() || "SV"}</span>
@@ -205,7 +237,7 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
                 <button
                     onClick={onCreate}
                     title={t("createServer")}
-                    className="w-12 h-12 flex-shrink-0 bg-[#2A1A18] rounded-[24px] hover:rounded-[16px] text-[#EB5E28] hover:text-white hover:bg-[#EB5E28] flex items-center justify-center transition-all cursor-pointer mt-auto"
+                    className="w-12 h-12 flex-shrink-0 bg-secondary rounded-[24px] hover:rounded-[16px] text-accent hover:text-[#1E1211] hover:bg-accent flex items-center justify-center transition-all cursor-pointer mt-auto"
                 >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
@@ -215,12 +247,11 @@ export function ServerList({ servers, selectedServerId, onSelectServer, onCreate
                 <button
                     onClick={onJoin}
                     title={t("joinServer")}
-                    className="w-12 h-12 flex-shrink-0 bg-[#2A1A18] rounded-[24px] hover:rounded-[16px] text-[#EB5E28] hover:text-white hover:bg-[#EB5E28] flex items-center justify-center transition-all cursor-pointer mt-2"
+                    className="w-12 h-12 flex-shrink-0 bg-secondary rounded-[24px] hover:rounded-[16px] text-accent hover:text-[#1E1211] hover:bg-accent flex items-center justify-center transition-all cursor-pointer mt-2"
                 >
                     <EnterIcon />
                 </button>
 
-                {/* 👇 Ton avatar est maintenant un bouton qui ouvre les paramètres ! */}
                 <button 
                     onClick={() => setIsSettingsOpen(true)}
                     title={t("settings")}
