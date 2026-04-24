@@ -34,7 +34,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install system dependencies
-        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libssl-dev
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libssl-dev postgresql-client
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -49,14 +49,8 @@ jobs:
       - name: Check Rust formatting
         run: cargo fmt --all -- --check
 
-      - name: Install SQLx CLI
-        run: |
-          if ! command -v sqlx >/dev/null 2>&1; then
-            cargo install sqlx-cli --no-default-features --features postgres
-          fi
-
-      - name: Run database migrations
-        run: sqlx migrate run
+      - name: Prepare database schema
+        run: psql "${DATABASE_URL}" -f script/schema-ci.sql
 
       - name: Run Clippy
         run: cargo clippy --all-targets --all-features
