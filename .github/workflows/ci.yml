@@ -151,7 +151,9 @@ jobs:
 
   desktop:
     name: Build Desktop App (${{ matrix.os }})
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: [self-hosted, "${{ matrix.os }}"]
+
     strategy:
       fail-fast: false
       matrix:

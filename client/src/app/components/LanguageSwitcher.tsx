@@ -1,25 +1,14 @@
 "use client";
-import { useSyncExternalStore } from "react";
-
-function getClientLocale() {
-  if (typeof document === "undefined") return "fr";
-  const match = document.cookie.match(/(?:^|;\s*)locale=([^;]*)/);
-  return match ? match[1] : "fr";
-}
-
-const subscribe = () => () => {};
+import { useLocale } from "next-intl";
 
 export default function LanguageSwitcher() {
-  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
-  const locale = mounted ? getClientLocale() : "fr";
+  const locale = useLocale();
 
   function switchLocale(newLocale: string) {
     if (newLocale === locale) return;
     document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
-    window.location.reload();
+    window.dispatchEvent(new Event("localechange"));
   }
-
-  if (!mounted) return <div className="w-[100px] h-10"></div>;
 
   return (
     <div className="flex items-center p-1 bg-[#0F0908]/80 border border-[#ffffff]/10 rounded-full shadow-[0_0_10px_rgba(0,0,0,0.2)] backdrop-blur-sm">

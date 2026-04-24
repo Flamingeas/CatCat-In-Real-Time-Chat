@@ -1,8 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { WebSocketProvider } from "@/lib/WebSocketProvider";
-import { NextIntlClientProvider } from "next-intl";
-import { getLocale, getMessages, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
+import { AppIntlProvider } from "./components/AppIntlProvider";
 
 // 👇 Importation de ton nouveau ThemeProvider
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -26,20 +26,17 @@ export async function generateMetadata() {
 }
 
 export default async function RootLayout({ children }) {
-  const locale = await getLocale();
-  const messages = await getMessages();
-  
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang="fr" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <ThemeProvider>
-          <NextIntlClientProvider locale={locale} messages={messages}>
+          <AppIntlProvider>
             <WebSocketProvider>
               {children}
             </WebSocketProvider>
-          </NextIntlClientProvider>
+          </AppIntlProvider>
         </ThemeProvider>
       </body>
     </html>

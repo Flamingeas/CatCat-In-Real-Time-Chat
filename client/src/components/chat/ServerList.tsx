@@ -48,6 +48,7 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
     const switchLocale = (newLocale: string) => {
         if (newLocale === currentLocale) return;
         document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
+        window.dispatchEvent(new Event("localechange"));
         router.refresh();
     };
 
