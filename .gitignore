@@ -13,5 +13,4 @@ Cargo.lock
 
 .DS_Store
 Thumbs.db
-/client/package-lock.json
 target/
