@@ -192,7 +192,11 @@ fn normalize_limit(limit: Option<i64>) -> i64 {
 }
 
 fn bad_request_response(error_message: String) -> HttpResponse {
-    json_error(actix_web::http::StatusCode::BAD_REQUEST, "BAD_REQUEST", error_message)
+    json_error(
+        actix_web::http::StatusCode::BAD_REQUEST,
+        "BAD_REQUEST",
+        error_message,
+    )
 }
 
 fn created_message_response(message: MessageResponse) -> HttpResponse {
@@ -469,10 +473,26 @@ pub async fn remove_reaction(
 
 fn handle_service_error(error: ServiceError) -> HttpResponse {
     match error {
-        ServiceError::NotFound(msg) => json_error(actix_web::http::StatusCode::NOT_FOUND, "MESSAGE_NOT_FOUND", msg),
-        ServiceError::Forbidden(msg) => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", msg),
-        ServiceError::Database(_e) => json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", "Database error"),
-        ServiceError::Internal(_msg) => json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal error"),
+        ServiceError::NotFound(msg) => json_error(
+            actix_web::http::StatusCode::NOT_FOUND,
+            "MESSAGE_NOT_FOUND",
+            msg,
+        ),
+        ServiceError::Forbidden(msg) => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            msg,
+        ),
+        ServiceError::Database(_e) => json_error(
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "DATABASE_ERROR",
+            "Database error",
+        ),
+        ServiceError::Internal(_msg) => json_error(
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "INTERNAL_ERROR",
+            "Internal error",
+        ),
     }
 }
 

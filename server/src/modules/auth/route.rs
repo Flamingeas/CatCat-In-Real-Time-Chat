@@ -15,7 +15,7 @@ pub struct LoginRequest {
     post,
     path = "/auth/signup",
     tag = "Authentication",
-    request_body = CreateUser, 
+    request_body = CreateUser,
     responses(
         (status = 201, description = "Utilisateur créé"),
         (status = 400, description = "Erreur de validation ou email existant")
@@ -31,7 +31,11 @@ pub async fn signup(
             "user": user,
             "token": token
         })),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "AUTH_SIGNUP_FAILED", e),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "AUTH_SIGNUP_FAILED",
+            e,
+        ),
     }
 }
 
@@ -57,7 +61,11 @@ pub async fn login(
             "user": user,
             "token": token
         })),
-        Err(e) => json_error(actix_web::http::StatusCode::UNAUTHORIZED, "AUTH_LOGIN_FAILED", e),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::UNAUTHORIZED,
+            "AUTH_LOGIN_FAILED",
+            e,
+        ),
     }
 }
 

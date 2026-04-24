@@ -1,5 +1,5 @@
 use actix::Addr;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{web, HttpResponse, Responder};
 use chrono::DateTime;
 use mongodb::Database;
 use sqlx::PgPool;
@@ -40,10 +40,26 @@ pub struct GetDmMessagesQuery {
 
 fn handle_service_error(error: ServiceError) -> HttpResponse {
     match error {
-        ServiceError::NotFound(msg) => json_error(actix_web::http::StatusCode::NOT_FOUND, "DIRECT_MESSAGE_NOT_FOUND", msg),
-        ServiceError::Forbidden(msg) => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", msg),
-        ServiceError::Database(_e) => json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "DATABASE_ERROR", "Database error"),
-        ServiceError::Internal(_msg) => json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "Internal error"),
+        ServiceError::NotFound(msg) => json_error(
+            actix_web::http::StatusCode::NOT_FOUND,
+            "DIRECT_MESSAGE_NOT_FOUND",
+            msg,
+        ),
+        ServiceError::Forbidden(msg) => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            msg,
+        ),
+        ServiceError::Database(_e) => json_error(
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "DATABASE_ERROR",
+            "Database error",
+        ),
+        ServiceError::Internal(_msg) => json_error(
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "INTERNAL_ERROR",
+            "Internal error",
+        ),
     }
 }
 

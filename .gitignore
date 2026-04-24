@@ -3,15 +3,15 @@
 /server/.env
 /target
 **/*.rs.bk
-Cargo.lock
 
 .vscode
 *.swp
 *.swo
 
 .env
+server/.env
+client/.env
 
 .DS_Store
 Thumbs.db
-/client/package-lock.json
 target/

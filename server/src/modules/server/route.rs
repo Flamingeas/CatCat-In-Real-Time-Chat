@@ -30,12 +30,20 @@ pub async fn create_server(
     payload: web::Json<CreateServer>,
 ) -> impl Responder {
     if let Err(e) = payload.validate() {
-        return json_error(actix_web::http::StatusCode::BAD_REQUEST, "VALIDATION_ERROR", e.to_string());
+        return json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "VALIDATION_ERROR",
+            e.to_string(),
+        );
     }
 
     match service.create_server(user.user_id, &payload.name).await {
         Ok(server) => HttpResponse::Created().json(ServerResponse::from(server)),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_CREATE_FAILED", e),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_CREATE_FAILED",
+            e,
+        ),
     }
 }
 
@@ -57,7 +65,11 @@ pub async fn list_servers(
             let resp: Vec<ServerResponse> = servers.into_iter().map(ServerResponse::from).collect();
             HttpResponse::Ok().json(resp)
         }
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVERS_LIST_FAILED", e),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVERS_LIST_FAILED",
+            e,
+        ),
     }
 }
 
@@ -83,7 +95,11 @@ pub async fn update_server(
     payload: web::Json<UpdateServer>,
 ) -> impl Responder {
     if let Err(e) = payload.validate() {
-        return json_error(actix_web::http::StatusCode::BAD_REQUEST, "VALIDATION_ERROR", e.to_string());
+        return json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "VALIDATION_ERROR",
+            e.to_string(),
+        );
     }
 
     let server_id = path.into_inner();
@@ -96,8 +112,16 @@ pub async fn update_server(
             ws.do_send(ServerEvent::ServerUpdated { server_id });
             HttpResponse::Ok().json(ServerResponse::from(server))
         }
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_UPDATE_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_UPDATE_FAILED",
+            e,
+        ),
     }
 }
 
@@ -120,7 +144,11 @@ pub async fn join_server(
     payload: web::Json<JoinServerRequest>,
 ) -> impl Responder {
     if let Err(e) = payload.validate() {
-        return json_error(actix_web::http::StatusCode::BAD_REQUEST, "VALIDATION_ERROR", e.to_string());
+        return json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "VALIDATION_ERROR",
+            e.to_string(),
+        );
     }
 
     match service
@@ -142,15 +170,31 @@ pub async fn join_server(
 
             HttpResponse::Ok().json(ServerResponse::from(server))
         }
-        Err(JoinServerError::InvalidCode) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "INVALID_INVITATION_CODE", "Invalid invitation code."),
-        Err(JoinServerError::NotFound) => json_error(actix_web::http::StatusCode::NOT_FOUND, "SERVER_NOT_FOUND", "Server not found."),
-        Err(JoinServerError::AlreadyMember) => json_error(actix_web::http::StatusCode::CONFLICT, "ALREADY_SERVER_MEMBER", "Already a member."),
+        Err(JoinServerError::InvalidCode) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "INVALID_INVITATION_CODE",
+            "Invalid invitation code.",
+        ),
+        Err(JoinServerError::NotFound) => json_error(
+            actix_web::http::StatusCode::NOT_FOUND,
+            "SERVER_NOT_FOUND",
+            "Server not found.",
+        ),
+        Err(JoinServerError::AlreadyMember) => json_error(
+            actix_web::http::StatusCode::CONFLICT,
+            "ALREADY_SERVER_MEMBER",
+            "Already a member.",
+        ),
         Err(JoinServerError::Forbidden { expires_at }) => HttpResponse::Forbidden().json(json!({
             "code": "SERVER_JOIN_FORBIDDEN",
             "message": "You are banned from this server.",
             "expires_at": expires_at,
         })),
-        Err(JoinServerError::Db) => json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "SERVER_JOIN_FAILED", "Unable to join server."),
+        Err(JoinServerError::Db) => json_error(
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "SERVER_JOIN_FAILED",
+            "Unable to join server.",
+        ),
     }
 }
 
@@ -188,11 +232,27 @@ pub async fn leave_server(
                 username,
             });
 
-            json_message(actix_web::http::StatusCode::OK, "SERVER_LEFT", "Server left successfully")
+            json_message(
+                actix_web::http::StatusCode::OK,
+                "SERVER_LEFT",
+                "Server left successfully",
+            )
         }
-        Err(LeaveServerError::NotFound) => json_error(actix_web::http::StatusCode::NOT_FOUND, "SERVER_NOT_FOUND", "Server not found."),
-        Err(LeaveServerError::AlreadyLeave) => json_error(actix_web::http::StatusCode::CONFLICT, "SERVER_MEMBER_NOT_FOUND", "Already left or member not found."),
-        Err(LeaveServerError::Db) => json_error(actix_web::http::StatusCode::INTERNAL_SERVER_ERROR, "SERVER_LEAVE_FAILED", "Unable to leave server."),
+        Err(LeaveServerError::NotFound) => json_error(
+            actix_web::http::StatusCode::NOT_FOUND,
+            "SERVER_NOT_FOUND",
+            "Server not found.",
+        ),
+        Err(LeaveServerError::AlreadyLeave) => json_error(
+            actix_web::http::StatusCode::CONFLICT,
+            "SERVER_MEMBER_NOT_FOUND",
+            "Already left or member not found.",
+        ),
+        Err(LeaveServerError::Db) => json_error(
+            actix_web::http::StatusCode::INTERNAL_SERVER_ERROR,
+            "SERVER_LEAVE_FAILED",
+            "Unable to leave server.",
+        ),
     }
 }
 
@@ -218,8 +278,16 @@ pub async fn list_members(
 
     match service.list_members(user.user_id, server_id).await {
         Ok(members) => HttpResponse::Ok().json(members),
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "MEMBERS_LIST_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "MEMBERS_LIST_FAILED",
+            e,
+        ),
     }
 }
 
@@ -250,7 +318,11 @@ pub async fn set_member_role(
     payload: web::Json<UpdateServerMemberRole>,
 ) -> impl Responder {
     if payload.role.as_str() == "owner" {
-        return json_error(actix_web::http::StatusCode::BAD_REQUEST, "USE_TRANSFER_OWNER_ENDPOINT", "Use /transfer-owner endpoint");
+        return json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "USE_TRANSFER_OWNER_ENDPOINT",
+            "Use /transfer-owner endpoint",
+        );
     }
 
     let server_id = path.id;
@@ -276,10 +348,22 @@ pub async fn set_member_role(
                 username,
                 role: payload.role.as_str().to_string(),
             });
-            json_message(actix_web::http::StatusCode::OK, "SERVER_MEMBER_ROLE_UPDATED", "Role updated")
+            json_message(
+                actix_web::http::StatusCode::OK,
+                "SERVER_MEMBER_ROLE_UPDATED",
+                "Role updated",
+            )
         }
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_MEMBER_ROLE_UPDATE_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_MEMBER_ROLE_UPDATE_FAILED",
+            e,
+        ),
     }
 }
 
@@ -310,7 +394,13 @@ pub async fn transfer_owner(
     let server_id = path.into_inner();
     let old_owner_id = match service.get_server_owner_id(server_id).await {
         Ok(id) => id,
-        Err(e) => return json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_OWNER_LOOKUP_FAILED", e),
+        Err(e) => {
+            return json_error(
+                actix_web::http::StatusCode::BAD_REQUEST,
+                "SERVER_OWNER_LOOKUP_FAILED",
+                e,
+            )
+        }
     };
 
     match service
@@ -342,7 +432,11 @@ pub async fn transfer_owner(
 
             HttpResponse::Ok().json(ServerResponse::from(server))
         }
-        Err(e) => json_error(actix_web::http::StatusCode::FORBIDDEN, "SERVER_OWNER_TRANSFER_FAILED", e),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "SERVER_OWNER_TRANSFER_FAILED",
+            e,
+        ),
     }
 }
 
@@ -380,10 +474,22 @@ pub async fn kick_member(
                 user_id: target_user_id,
                 username,
             });
-            json_message(actix_web::http::StatusCode::OK, "SERVER_MEMBER_KICKED", "Member removed")
+            json_message(
+                actix_web::http::StatusCode::OK,
+                "SERVER_MEMBER_KICKED",
+                "Member removed",
+            )
         }
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_MEMBER_KICK_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_MEMBER_KICK_FAILED",
+            e,
+        ),
     }
 }
 
@@ -423,10 +529,22 @@ pub async fn ban_member(
                 username,
             });
 
-            json_message(actix_web::http::StatusCode::OK, "SERVER_MEMBER_BANNED", "Member banned")
+            json_message(
+                actix_web::http::StatusCode::OK,
+                "SERVER_MEMBER_BANNED",
+                "Member banned",
+            )
         }
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_MEMBER_BAN_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_MEMBER_BAN_FAILED",
+            e,
+        ),
     }
 }
 
@@ -456,7 +574,11 @@ pub async fn ban_temporary_member(
     let server_id = path.id;
     let target_user_id = path.user_id;
     if payload.duration_minutes == 0 {
-        return json_error(actix_web::http::StatusCode::BAD_REQUEST, "INVALID_BAN_DURATION", "duration_minutes must be greater than 0");
+        return json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "INVALID_BAN_DURATION",
+            "duration_minutes must be greater than 0",
+        );
     }
     match service
         .ban_temporary_member(
@@ -486,8 +608,16 @@ pub async fn ban_temporary_member(
                 "expires_at": expires_at,
             }))
         }
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_MEMBER_TEMP_BAN_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_MEMBER_TEMP_BAN_FAILED",
+            e,
+        ),
     }
 }
 
@@ -511,8 +641,16 @@ pub async fn ban_list(
 
     match service.list_bans(user.user_id, server_id).await {
         Ok(bans) => HttpResponse::Ok().json(bans),
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_BANS_LIST_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_BANS_LIST_FAILED",
+            e,
+        ),
     }
 }
 
@@ -552,10 +690,22 @@ pub async fn unban_member(
                 username,
             });
 
-            json_message(actix_web::http::StatusCode::OK, "SERVER_MEMBER_UNBANNED", "Member unbanned")
+            json_message(
+                actix_web::http::StatusCode::OK,
+                "SERVER_MEMBER_UNBANNED",
+                "Member unbanned",
+            )
         }
-        Err(e) if e == "Forbidden" => json_error(actix_web::http::StatusCode::FORBIDDEN, "PERMISSION_DENIED", "Forbidden"),
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_MEMBER_UNBAN_FAILED", e),
+        Err(e) if e == "Forbidden" => json_error(
+            actix_web::http::StatusCode::FORBIDDEN,
+            "PERMISSION_DENIED",
+            "Forbidden",
+        ),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_MEMBER_UNBAN_FAILED",
+            e,
+        ),
     }
 }
 
@@ -580,9 +730,17 @@ pub async fn delete_server(
     match service.delete_server(server_id, user.user_id).await {
         Ok(_) => {
             ws.do_send(ServerEvent::ServerDeleted { server_id });
-            json_message(actix_web::http::StatusCode::OK, "SERVER_DELETED", "Server deleted successfully")
+            json_message(
+                actix_web::http::StatusCode::OK,
+                "SERVER_DELETED",
+                "Server deleted successfully",
+            )
         }
-        Err(e) => json_error(actix_web::http::StatusCode::BAD_REQUEST, "SERVER_DELETE_FAILED", e),
+        Err(e) => json_error(
+            actix_web::http::StatusCode::BAD_REQUEST,
+            "SERVER_DELETE_FAILED",
+            e,
+        ),
     }
 }
 

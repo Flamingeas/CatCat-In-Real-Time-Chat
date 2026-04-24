@@ -1,9 +1,9 @@
 use chrono::DateTime;
 use futures::stream::TryStreamExt;
 use mongodb::{
-    Database,
     bson::spec::BinarySubtype,
-    bson::{Binary, doc},
+    bson::{doc, Binary},
+    Database,
 };
 use uuid::Uuid;
 
