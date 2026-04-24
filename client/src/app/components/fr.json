@@ -67,6 +67,16 @@
     "title": "CatCat | Le réseau social qui ronronne",
     "description": "Rejoignez CatCat, l'endroit idéal pour se poser, miauler avec votre bande et partager vos meilleures trouvailles."
   },
+  "settings": {
+    "title": "Paramètres du compte",
+    "username": "Nom d'utilisateur",
+    "usernamePlaceholder": "Ton nouveau pseudo",
+    "email": "Adresse Email",
+    "emailPlaceholder": "ton@email.com",
+    "password": "Nouveau mot de passe",
+    "language": "Langue de l'application",
+    "save": "Sauvegarder les modifications"
+  },
   "authModal": {
     "close": "Fermer",
     "login": {

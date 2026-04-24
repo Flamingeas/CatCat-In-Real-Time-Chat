@@ -38,17 +38,22 @@ export function ServerChannelsSidebar({
 }: ServerChannelsSidebarProps) {
     const t = useTranslations("serverSidebar");
     const tCommon = useTranslations("common");
+    
     return (
         <>
-            <div className="h-16 flex items-center px-4 font-[family-name:var(--font-nunito)] font-bold text-[#FFF8F0] border-b border-[#ffffff]/5">
-                <span className="mr-2 text-[#EB5E28]">&gt;</span>
+            {/* Header du serveur : Remplacement par text-primary et border-border-custom */}
+            <div className="h-16 flex items-center px-4 font-bold text-primary border-b border-border-custom bg-transparent">
+                {/* La flèche passe en couleur accent */}
+                <span className="mr-2 text-accent">&gt;</span>
                 {selectedServer ? selectedServer.name : tCommon("noServer")}
+                
                 {selectedServer &&
                     (isOwner ? (
                         <button
                             onClick={onOpenServerSettings}
                             title={t("settings")}
-                            className="ml-auto p-2 rounded-xl hover:bg-[#1E1211] border border-transparent hover:border-[#ffffff]/10 transition-colors text-[#DCCBC4]/70 hover:text-white cursor-pointer"
+                            // Paramètres : bg-secondary au survol, text-muted vers text-primary
+                            className="ml-auto p-2 rounded-xl hover:bg-secondary border border-transparent hover:border-border-custom transition-colors text-muted hover:text-primary cursor-pointer"
                         >
                             <GearIcon />
                         </button>
@@ -56,7 +61,8 @@ export function ServerChannelsSidebar({
                         <button
                             onClick={onOpenLeaveServer}
                             title={t("leave")}
-                            className="ml-auto p-2 rounded-xl hover:bg-[#1E1211] border border-transparent hover:border-red-500/30 transition-colors text-red-300 hover:text-red-200 cursor-pointer"
+                            // Bouton Quitter : On gère le rouge dynamiquement selon le mode (clair/sombre)
+                            className="ml-auto p-2 rounded-xl hover:bg-red-500/10 border border-transparent hover:border-red-500/30 transition-colors text-red-500 hover:text-red-600 dark:text-red-400 dark:hover:text-red-300 cursor-pointer"
                         >
                             <LeaveIcon />
                         </button>
