@@ -13,7 +13,7 @@ services:
       - ./server/script/schema-ci.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
 
   backend:
-    image: ghcr.io/epitechmscpropromo2028/t-dev-600-par_12/backend:latest
+    image: ghcr.io/epitechmscpropromo2028/t-dev-600-par_12/backend:${IMAGE_TAG:-latest}
     container_name: catcat-backend-registry
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/catcat
@@ -30,11 +30,11 @@ services:
       - postgres
 
   frontend:
-    image: ghcr.io/epitechmscpropromo2028/t-dev-600-par_12/frontend:latest
+    image: ghcr.io/epitechmscpropromo2028/t-dev-600-par_12/frontend:${IMAGE_TAG:-latest}
     container_name: catcat-frontend-registry
     environment:
       NEXT_PUBLIC_API_URL: http://127.0.0.1:8081
-      NEXT_PUBLIC_WS_URL: ws://127.0.0.1:8081
+      NEXT_PUBLIC_WS_URL: ws://127.0.0.1:8081/ws
     ports:
       - "3001:3000"
     depends_on:

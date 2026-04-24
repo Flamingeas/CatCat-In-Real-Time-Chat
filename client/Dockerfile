@@ -15,19 +15,10 @@ COPY . .
 
 RUN npm run build
 
-FROM node:20-bookworm AS runner
+FROM nginx:1.27-alpine AS runner
 
-WORKDIR /app
+COPY --from=builder /app/out /usr/share/nginx/html
 
-ENV NODE_ENV=production
+EXPOSE 80
 
-COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
-
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./next.config.mjs
-
-EXPOSE 3000
-
-CMD ["npm", "start"]
+CMD ["nginx", "-g", "daemon off;"]
