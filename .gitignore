@@ -3,7 +3,7 @@
 /server/.env
 /target
 **/*.rs.bk
-
+client/src-tauri/gen/schemas
 .vscode
 *.swp
 *.swo

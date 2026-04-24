@@ -270,5 +270,15 @@
     "theme": "Thème de l'application", 
     "language": "Langue de l'application",
     "save": "Sauvegarder les modifications"
+  },
+  "notifications": {
+    "newDirectMessage": {
+      "title": "Nouveau message",
+      "body": "{username} vous a envoyé un message"
+    },
+    "mention": {
+      "title": "#{channel}",
+      "body": "{username} vous a mentionné"
+    }
   }
 }

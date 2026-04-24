@@ -1,6 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useSyncExternalStore } from "react";
 
 function getClientLocale() {
   if (typeof document === "undefined") return "fr";
@@ -8,21 +7,16 @@ function getClientLocale() {
   return match ? match[1] : "fr";
 }
 
-export default function LanguageSwitcher() {
-  const router = useRouter();
-  const [locale, setLocale] = useState<string>("fr");
-  const [mounted, setMounted] = useState(false);
+const subscribe = () => () => {};
 
-  useEffect(() => {
-    setLocale(getClientLocale());
-    setMounted(true);
-  }, []);
+export default function LanguageSwitcher() {
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
+  const locale = mounted ? getClientLocale() : "fr";
 
   function switchLocale(newLocale: string) {
     if (newLocale === locale) return;
-    setLocale(newLocale); 
     document.cookie = `locale=${newLocale}; path=/; max-age=31536000`;
-    router.refresh(); 
+    window.location.reload();
   }
 
   if (!mounted) return <div className="w-[100px] h-10"></div>;
