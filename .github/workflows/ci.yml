@@ -150,14 +150,12 @@ jobs:
         run: npm run build
 
   desktop:
-    name: Build Desktop App (release only)
+    name: Build Desktop App Linux (release only)
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: [self-hosted, "${{ matrix.os }}"]
-
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [Linux, Windows]
+    runs-on: self-hosted
+    needs:
+      - backend
+      - frontend
 
     steps:
       - name: Checkout repository
@@ -170,8 +168,7 @@ jobs:
           cache: npm
           cache-dependency-path: client/package-lock.json
 
-      - name: Install system dependencies (Linux)
-        if: matrix.os == 'Linux'
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
@@ -204,23 +201,12 @@ jobs:
           projectPath: ./client
 
       - name: Upload Linux bundles
-        if: matrix.os == 'Linux'
         uses: actions/upload-artifact@v4
         with:
           name: linux-desktop-app
           path: |
             **/bundle/appimage/*.AppImage
             **/bundle/deb/*.deb
-
-      - name: Upload Windows bundles
-        if: matrix.os == 'Windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: windows-desktop-app
-          path: |
-            **/bundle/msi/*.msi
-            **/bundle/nsis/*.exe
-
   docker:
     name: Build and publish Docker images
     runs-on: self-hosted
