@@ -3,7 +3,6 @@
 /server/.env
 /target
 **/*.rs.bk
-Cargo.lock
 
 .vscode
 *.swp
