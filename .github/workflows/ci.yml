@@ -16,7 +16,7 @@ jobs:
     runs-on: self-hosted
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/catcat_ci
       JWT_SECRET: ${{ secrets.JWT_SECRET }}
       SERVER_HOST: 127.0.0.1
       SERVER_PORT: 8080
@@ -35,6 +35,24 @@ jobs:
 
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libssl-dev postgresql-client
+
+      - name: Start PostgreSQL with Docker
+        run: |
+          docker rm -f catcat-ci-postgres || true
+          docker run -d \
+            --name catcat-ci-postgres \
+            -e POSTGRES_USER=postgres \
+            -e POSTGRES_PASSWORD=postgres \
+            -e POSTGRES_DB=catcat_ci \
+            -p 5432:5432 \
+            postgres:16
+
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h 127.0.0.1 -p 5432 -U postgres -d catcat_ci; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
