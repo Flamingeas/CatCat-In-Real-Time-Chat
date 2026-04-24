@@ -16,3 +16,5 @@ client/.env
 Thumbs.db
 target/
 node_modules
+.gitignore
+GUIDE_TAURI_DESKTOP.txt

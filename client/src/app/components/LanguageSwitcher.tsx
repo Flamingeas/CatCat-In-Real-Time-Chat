@@ -8,12 +8,11 @@ function getClientLocale() {
 }
 
 export default function LanguageSwitcher() {
-  const [locale, setLocale] = useState<string>("fr");
   const [mounted, setMounted] = useState(false);
+  const locale = mounted ? getClientLocale() : "fr";
 
   // Évite les erreurs d'hydratation
   useEffect(() => {
-    setLocale(getClientLocale());
     setMounted(true);
   }, []);
 
