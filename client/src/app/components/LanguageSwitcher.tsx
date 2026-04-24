@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 
 function getClientLocale() {
   if (typeof document === "undefined") return "fr";
@@ -7,14 +7,12 @@ function getClientLocale() {
   return match ? match[1] : "fr";
 }
 
-export default function LanguageSwitcher() {
-  const [mounted, setMounted] = useState(false);
-  const locale = mounted ? getClientLocale() : "fr";
+const subscribe = () => () => {};
 
+export default function LanguageSwitcher() {
   // Évite les erreurs d'hydratation
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useSyncExternalStore(subscribe, () => true, () => false);
+  const locale = mounted ? getClientLocale() : "fr";
 
   function switchLocale(newLocale: string) {
     if (newLocale === locale) return;

@@ -3,7 +3,7 @@
 /server/.env
 /target
 **/*.rs.bk
-
+client/src-tauri/gen/schemas
 .vscode
 *.swp
 *.swo
@@ -16,5 +16,3 @@ client/.env
 Thumbs.db
 target/
 node_modules
-.gitignore
-GUIDE_TAURI_DESKTOP.txt
