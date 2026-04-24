@@ -151,7 +151,7 @@ jobs:
 
   desktop:
     name: Build Desktop App (Windows)
-    runs-on: windows-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout repository
