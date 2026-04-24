@@ -258,5 +258,15 @@
     "noBans": "No active bans.",
     "reason": "Reason:",
     "unban": "Remove ban"
+  },
+  "notifications": {
+    "newDirectMessage": {
+      "title": "New message",
+      "body": "{username} sent you a message"
+    },
+    "mention": {
+      "title": "#{channel}",
+      "body": "{username} mentioned you"
+    }
   }
 }

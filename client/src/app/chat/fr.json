@@ -258,5 +258,15 @@
     "noBans": "Aucun ban actif.",
     "reason": "Raison :",
     "unban": "Retirer le bannissement"
+  },
+  "notifications": {
+    "newDirectMessage": {
+      "title": "Nouveau message",
+      "body": "{username} vous a envoyé un message"
+    },
+    "mention": {
+      "title": "#{channel}",
+      "body": "{username} vous a mentionné"
+    }
   }
 }
