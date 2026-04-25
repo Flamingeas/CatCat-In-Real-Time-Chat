@@ -1,6 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { WebSocketProvider } from "@/lib/WebSocketProvider";
 import { getTranslations } from "next-intl/server";
 import { AppIntlProvider } from "./components/AppIntlProvider";
 
@@ -33,9 +32,7 @@ export default async function RootLayout({ children }) {
       >
         <ThemeProvider>
           <AppIntlProvider>
-            <WebSocketProvider>
-              {children}
-            </WebSocketProvider>
+            {children}
           </AppIntlProvider>
         </ThemeProvider>
       </body>

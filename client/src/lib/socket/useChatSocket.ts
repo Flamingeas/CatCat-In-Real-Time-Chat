@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { getWebSocketUrl } from "@/lib/websocket-url";
 
 type ChatEvent =
     | { type: "auth"; token: string }
@@ -16,7 +17,7 @@ export function useChatSocket() {
         const token = localStorage.getItem("access_token");
         if (!token) return;
 
-        const ws = new WebSocket("ws://127.0.0.1:8080/ws");
+        const ws = new WebSocket(getWebSocketUrl());
 
         ws.onopen = () => {
             ws.send(JSON.stringify({ type: "auth", token }));

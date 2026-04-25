@@ -2,6 +2,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { useEffect, useState } from "react";
 import { getServerBans, unbanMember, type ServerBan } from "../services/bans.service";
+import { getWebSocketUrl } from "@/lib/websocket-url";
 
 type WsBanEvent =
   | {
@@ -30,7 +31,7 @@ export default function BanList({ serverId }: { serverId: string }) {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    const ws = new WebSocket("ws://127.0.0.1:8080/ws");
+    const ws = new WebSocket(getWebSocketUrl());
 
     ws.onopen = () => {
       ws.send(JSON.stringify({ type: "auth", token }));

@@ -1,8 +1,9 @@
 use crate::models::server::{Server, UpdateServer};
 use crate::models::server_ban::ServerBanResponse;
 use crate::models::server_member::{ServerMemberResponse, ServerMemberRole};
-use chrono::{DateTime, Duration, Utc};
-use sqlx::{FromRow, PgPool, Postgres, Transaction};
+use chrono::{DateTime, NaiveDateTime, Utc};
+use sqlx::postgres::PgRow;
+use sqlx::{FromRow, PgPool, Postgres, Row, Transaction};
 use uuid::Uuid;
 
 #[derive(Debug, FromRow)]
@@ -115,7 +116,7 @@ impl ServerRepository {
     }
 
     pub async fn list_bans(&self, server_id: Uuid) -> Result<Vec<ServerBanResponse>, sqlx::Error> {
-        let bans = sqlx::query_as::<_, ServerBanResponse>(
+        let rows = sqlx::query(
             r#"
         SELECT
             sb.user_id,
@@ -134,7 +135,7 @@ impl ServerRepository {
         .fetch_all(&self.pool)
         .await?;
 
-        Ok(bans)
+        rows.into_iter().map(server_ban_from_row).collect()
     }
 
     pub async fn unban_member(&self, server_id: Uuid, user_id: Uuid) -> Result<(), sqlx::Error> {
@@ -563,6 +564,36 @@ impl ServerRepository {
 
         Ok(())
     }
+}
+
+fn server_ban_from_row(row: PgRow) -> Result<ServerBanResponse, sqlx::Error> {
+    Ok(ServerBanResponse {
+        user_id: row.try_get("user_id")?,
+        username: row.try_get("username")?,
+        reason: row.try_get("reason")?,
+        created_at: decode_utc_datetime(&row, "created_at")?,
+        expires_at: decode_optional_utc_datetime(&row, "expires_at")?,
+    })
+}
+
+fn decode_utc_datetime(row: &PgRow, column: &'static str) -> Result<DateTime<Utc>, sqlx::Error> {
+    row.try_get::<DateTime<Utc>, _>(column).or_else(|_| {
+        row.try_get::<NaiveDateTime, _>(column)
+            .map(|value| DateTime::from_naive_utc_and_offset(value, Utc))
+    })
+}
+
+fn decode_optional_utc_datetime(
+    row: &PgRow,
+    column: &'static str,
+) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
+    row.try_get::<Option<DateTime<Utc>>, _>(column)
+        .or_else(|_| {
+            row.try_get::<Option<NaiveDateTime>, _>(column)
+                .map(|value| {
+                    value.map(|datetime| DateTime::from_naive_utc_and_offset(datetime, Utc))
+                })
+        })
 }
 
 #[cfg(test)]

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import type { WsEvent } from "@/types/chat";
+import { getWebSocketUrl } from "@/lib/websocket-url";
 
 type WebSocketContextType = {
   send: (event: any) => void;
@@ -20,7 +21,7 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
     const token = localStorage.getItem("access_token");
     if (!token) return;
 
-    const ws = new WebSocket("ws://127.0.0.1:8080/ws");
+    const ws = new WebSocket(getWebSocketUrl());
     wsRef.current = ws;
 
     ws.onopen = () => {

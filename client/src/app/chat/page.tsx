@@ -39,7 +39,7 @@ import { useServers } from "@/hooks/useServers";
 import { useChannels } from "@/hooks/useChannels";
 import { useDirectMessages } from "@/hooks/useDirectMessages";
 import { useChannelMessages } from "@/hooks/useChannelMessages";
-import { useWebSocket } from "@/lib/WebSocketProvider";
+import { getWebSocketUrl } from "@/lib/websocket-url";
 import { useTranslations, useLocale } from "next-intl";
 import LanguageSwitcher from "@/app/components/LanguageSwitcher";
 import { notifyDesktop } from "@/lib/notifications";
@@ -47,10 +47,9 @@ import { notifyDesktop } from "@/lib/notifications";
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
 
-const WS_URL = (process.env.NEXT_PUBLIC_WS_URL ?? "ws://127.0.0.1:8080/ws") as string;
-
 export default function ChatPage() {
     const t = useTranslations("chatPage");
+    const tRef = useRef(t);
     const locale = useLocale();
     const [initials, setInitials] = useState("??");
     const [me, setMe] = useState<{ id: string; username: string } | null>(null);
@@ -168,6 +167,10 @@ export default function ChatPage() {
     useEffect(() => {
         selectedChannelIdRef.current = selectedChannelId;
     }, [selectedChannelId]);
+
+    useEffect(() => {
+        tRef.current = t;
+    }, [t]);
 
     useEffect(() => {
         onlineUserIdsRef.current = onlineUserIds;
@@ -571,7 +574,7 @@ export default function ChatPage() {
             return;
         }
 
-        const ws = new WebSocket(WS_URL);
+        const ws = new WebSocket(getWebSocketUrl());
         wsRef.current = ws;
 
         ws.onopen = () => {
@@ -947,9 +950,10 @@ export default function ChatPage() {
                 }
                 if (dm.handleWsEvent(msg)) return;
                 if (msg.type === "server_member_banned_temporary") {
+                    const translate = tRef.current;
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
-                    const username = String(msg.username ?? t("fallbackUsername"));
+                    const username = String(msg.username ?? translate("fallbackUsername"));
 
                     if (!sid || !uid) return;
 
@@ -967,10 +971,10 @@ export default function ChatPage() {
                             if (diffMs > 0) {
                                 const minutes = Math.ceil(diffMs / 60000);
                                 if (minutes < 60) {
-                                    durationText = t("duration.minutes", { count: minutes });
+                                    durationText = translate("duration.minutes", { count: minutes });
                                 } else {
                                     const hours = Math.ceil(minutes / 60);
-                                    durationText = t("duration.hours", { count: hours });
+                                    durationText = translate("duration.hours", { count: hours });
                                 }
                             }
                         }
@@ -978,13 +982,13 @@ export default function ChatPage() {
                         pushToastOnce(
                             `member_temp_banned:${sid}:${uid}:me`,
                             durationText
-                                ? t("toast.tempBannedSelf", { duration: durationText })
-                                : t("toast.tempBannedSelfNoDuration"),
+                                ? translate("toast.tempBannedSelf", { duration: durationText })
+                                : translate("toast.tempBannedSelfNoDuration"),
                             "warn"
                         );
                         removeServerAfterOwnBan(sid, uid);
                     } else {
-                        pushToastOnce(`member_temp_banned:${sid}:${uid}`, t("toast.tempBannedOther", { username }), "warn");
+                        pushToastOnce(`member_temp_banned:${sid}:${uid}`, translate("toast.tempBannedOther", { username }), "warn");
                     }
                     return;
                 }
