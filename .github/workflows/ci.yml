@@ -88,25 +88,37 @@ jobs:
           echo "## Rust test coverage" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          if [ -f coverage/cobertura.xml ]; then
-            COVERAGE=$(python3 - <<'PY'
+          echo "Generated coverage files:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          find coverage -maxdepth 3 -type f -print >> "$GITHUB_STEP_SUMMARY" || true
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          COVERAGE_FILE=$(find coverage -type f \( -name "cobertura.xml" -o -name "*.xml" \) | head -n 1)
+
+          if [ -n "$COVERAGE_FILE" ]; then
+            COVERAGE=$(COVERAGE_FILE="$COVERAGE_FILE" python3 - <<'PY'
+          import os
           import xml.etree.ElementTree as ET
 
-          tree = ET.parse("coverage/cobertura.xml")
+          coverage_file = os.environ["COVERAGE_FILE"]
+
+          tree = ET.parse(coverage_file)
           root = tree.getroot()
 
           line_rate = float(root.attrib.get("line-rate", 0)) * 100
           branch_rate = float(root.attrib.get("branch-rate", 0)) * 100
 
-          print(f"| Metric | Value |")
-          print(f"|---|---:|")
+          print("| Metric | Value |")
+          print("|---|---:|")
           print(f"| Line coverage | {line_rate:.2f}% |")
           print(f"| Branch coverage | {branch_rate:.2f}% |")
           PY
           )
             echo "$COVERAGE" >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "Coverage report generated, but cobertura.xml was not found." >> "$GITHUB_STEP_SUMMARY"
+            echo "Coverage report generated, but no XML coverage file was found." >> "$GITHUB_STEP_SUMMARY"
           fi
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
@@ -206,6 +218,7 @@ jobs:
           name: linux-desktop-app
           path: |
             **/bundle/deb/*.deb
+
   docker:
     name: Build and publish Docker images
     runs-on: self-hosted
