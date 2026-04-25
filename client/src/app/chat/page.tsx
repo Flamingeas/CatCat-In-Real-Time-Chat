@@ -42,7 +42,7 @@ import { useChannelMessages } from "@/hooks/useChannelMessages";
 import { getWebSocketUrl } from "@/lib/websocket-url";
 import { useTranslations, useLocale } from "next-intl";
 import LanguageSwitcher from "@/app/components/LanguageSwitcher";
-import { notifyDesktop } from "@/lib/notifications";
+import { ensureDesktopNotificationsEnabled, notifyDesktop } from "@/lib/notifications";
 
 const miskan = localFont({ src: "../fonts/Miskan.woff", variable: "--font-miskan" });
 const nunito = Nunito({ subsets: ["latin"], variable: "--font-nunito", weight: ["400", "700"] });
@@ -175,6 +175,10 @@ export default function ChatPage() {
     useEffect(() => {
         onlineUserIdsRef.current = onlineUserIds;
     }, [onlineUserIds]);
+
+    useEffect(() => {
+        ensureDesktopNotificationsEnabled().catch(() => {});
+    }, []);
 
     function pushToast(text: string, kind: Toast["kind"] = "info") {
         const id = `${Date.now()}_${Math.random()}`;
