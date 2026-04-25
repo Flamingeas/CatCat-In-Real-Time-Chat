@@ -205,7 +205,6 @@ jobs:
         with:
           name: linux-desktop-app
           path: |
-            **/bundle/appimage/*.AppImage
             **/bundle/deb/*.deb
   docker:
     name: Build and publish Docker images
