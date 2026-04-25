@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "next-themes"; // 👈 Import de next-themes
 import Image from "next/image";
@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Sun, Moon, Laptop } from "lucide-react"; // 👈 Import des icônes
 import logoImage from "@/app/images/logo_catcat.svg";
 import { EnterIcon } from "../icons";
+import { api, ApiError } from "@/lib/api";
 
 interface Server {
     id: string;
@@ -31,6 +32,11 @@ function formatBadgeCount(count: number) {
     return count > 99 ? "99+" : String(count);
 }
 
+interface UserProfile {
+    id: string;
+    username: string;
+}
+
 // --- COMPOSANT MODAL DES PARAMÈTRES ---
 function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
     const t = useTranslations("settings");
@@ -40,8 +46,30 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
 
     // États du formulaire
     const [username, setUsername] = useState("");
-    const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!isOpen) return;
+
+        setPassword("");
+        setError(null);
+
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            try {
+                const user = JSON.parse(storedUser);
+                setUsername(String(user?.username ?? ""));
+            } catch {}
+        }
+
+        api<UserProfile>("/api/users/me")
+            .then((profile) => {
+                setUsername(profile.username ?? "");
+            })
+            .catch(() => {});
+    }, [isOpen]);
 
     if (!isOpen) return null;
 
@@ -52,11 +80,46 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
         router.refresh();
     };
 
-    const handleSave = (e: React.FormEvent) => {
+    const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        // TODO: Appeler ton API backend ici pour sauvegarder les modifications (username, email, password)
-        console.log("Sauvegarde des paramètres...", { username, email, password });
-        onClose();
+
+        const payload: Record<string, string> = {};
+        const trimmedUsername = username.trim();
+
+        if (trimmedUsername) payload.username = trimmedUsername;
+        if (password.trim()) payload.password = password;
+
+        if (password.trim() && password.trim().length < 8) {
+            setError("Password must be at least 8 characters.");
+            return;
+        }
+
+        if (Object.keys(payload).length === 0) {
+            onClose();
+            return;
+        }
+
+        try {
+            setIsSaving(true);
+            setError(null);
+
+            const profile = await api<UserProfile>("/api/users/me", {
+                method: "PUT",
+                body: JSON.stringify(payload),
+            });
+
+            localStorage.setItem("user", JSON.stringify(profile));
+            window.dispatchEvent(new CustomEvent("userchange", { detail: profile }));
+            onClose();
+        } catch (err) {
+            if (err instanceof ApiError) {
+                setError(err.message);
+            } else {
+                setError("Unable to update account settings.");
+            }
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     return (
@@ -87,18 +150,6 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
                             placeholder={t("usernamePlaceholder")}
-                            className="w-full bg-background border border-border-custom rounded-xl px-4 py-3 text-primary placeholder-muted/50 focus:outline-none focus:border-accent transition-colors"
-                        />
-                    </div>
-
-                    {/* Email */}
-                    <div>
-                        <label className="block text-sm font-bold text-muted mb-1.5">{t("email")}</label>
-                        <input 
-                            type="email" 
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder={t("emailPlaceholder")}
                             className="w-full bg-background border border-border-custom rounded-xl px-4 py-3 text-primary placeholder-muted/50 focus:outline-none focus:border-accent transition-colors"
                         />
                     </div>
@@ -164,12 +215,19 @@ function SettingsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () => vo
                         </div>
                     </div>
 
+                    {error && (
+                        <p className="text-sm font-bold text-red-400">
+                            {error}
+                        </p>
+                    )}
+
                     {/* Bouton de sauvegarde */}
                     <button 
                         type="submit"
-                        className="w-full mt-6 bg-accent text-[#1E1211] font-[family-name:var(--font-cocogoose)] font-bold py-3.5 rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(235,94,40,0.3)] hover:scale-[1.02] cursor-pointer"
+                        disabled={isSaving}
+                        className="w-full mt-6 bg-accent text-[#1E1211] font-[family-name:var(--font-cocogoose)] font-bold py-3.5 rounded-xl hover:bg-white transition-all shadow-[0_0_15px_rgba(235,94,40,0.3)] hover:scale-[1.02] cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100"
                     >
-                        {t("save")}
+                        {isSaving ? "..." : t("save")}
                     </button>
                 </form>
             </div>

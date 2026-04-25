@@ -1,3 +1,4 @@
+use actix::Addr;
 use actix_web::{web, HttpResponse, Responder};
 use serde::Deserialize;
 use sqlx::PgPool;
@@ -9,6 +10,7 @@ use crate::models::user::{UpdateUser, UserPublicResponse, UserResponse};
 use crate::modules::auth::middleware::AuthenticatedUser;
 use crate::modules::user::repository::UserRepository;
 use crate::utils::errors::{json_error, json_error_with_details};
+use crate::websocket::server::{ServerEvent, WsServer};
 
 use super::service::{ServiceError, UserService};
 
@@ -113,6 +115,7 @@ pub async fn list_users(
 )]
 pub async fn update_me(
     pool: web::Data<PgPool>,
+    ws_server: web::Data<Addr<WsServer>>,
     user: AuthenticatedUser,
     data: web::Json<UpdateUser>,
 ) -> impl Responder {
@@ -128,11 +131,19 @@ pub async fn update_me(
     }
 
     let service = user_service(&pool);
-    match service
-        .update_profile(user.user_id, data.into_inner())
-        .await
-    {
-        Ok(profile) => HttpResponse::Ok().json(profile),
+    let update = data.into_inner();
+    let should_broadcast_username = update.username.is_some();
+
+    match service.update_profile(user.user_id, update).await {
+        Ok(profile) => {
+            if should_broadcast_username {
+                ws_server.do_send(ServerEvent::UserProfileUpdated {
+                    user_id: user.user_id,
+                    username: profile.username.clone(),
+                });
+            }
+            HttpResponse::Ok().json(profile)
+        }
         Err(e) => handle_service_error(e),
     }
 }

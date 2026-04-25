@@ -324,6 +324,10 @@ export default function ChatPage() {
         const currentSid = selectedServerIdRef.current;
         if (!currentSid || String(serverId) !== String(currentSid)) return;
 
+        updateMemberUsername(user_id, username);
+    }
+
+    function updateMemberUsername(user_id: string, username: string) {
         setMembers((prev) => {
             const idStr = String(user_id);
             const idx = prev.findIndex((m) => String(m.user_id) === idStr);
@@ -334,6 +338,24 @@ export default function ChatPage() {
             }
             return [...prev, { user_id: idStr, username }];
         });
+    }
+
+    function applyUsernameUpdate(userId: string, username: string) {
+        updateMemberUsername(userId, username);
+        setTypingUsers((prev) => {
+            const next = { ...prev };
+            for (const [key, value] of Object.entries(next)) {
+                if (String(key) === String(userId)) {
+                    next[key] = { ...value, username };
+                }
+            }
+            return next;
+        });
+
+        if (String(myIdRef.current ?? "") === String(userId)) {
+            setMe((prev) => (prev ? { ...prev, username } : prev));
+            setInitials(getInitials(username));
+        }
     }
 
     async function handleBanMember(serverId: string, userId: string) {
@@ -445,18 +467,30 @@ export default function ChatPage() {
     }, [typingUsers, selectedChannelId]);
 
     useEffect(() => {
-        const storedUser = localStorage.getItem("user");
-        if (!storedUser) return;
-        try {
-            const user = JSON.parse(storedUser);
+        const syncStoredUser = (user: any) => {
             const id = String(user?.id ?? "");
             const username = String(user?.username ?? "");
             setMe(id ? { id, username } : null);
             setInitials(getInitials(username));
-        } catch {
-            setMe(null);
-            setInitials("??");
+        };
+
+        const storedUser = localStorage.getItem("user");
+        if (storedUser) {
+            try {
+                syncStoredUser(JSON.parse(storedUser));
+            } catch {
+                setMe(null);
+                setInitials("??");
+            }
         }
+
+        const onUserChange = (event: Event) => {
+            const profile = (event as CustomEvent).detail;
+            syncStoredUser(profile);
+        };
+
+        window.addEventListener("userchange", onUserChange);
+        return () => window.removeEventListener("userchange", onUserChange);
     }, []);
 
     useEffect(() => {
@@ -591,6 +625,12 @@ export default function ChatPage() {
                     const meId = String((msg as any).user_id ?? myIdRef.current ?? "");
                     if (meId) addOnline(meId);
                     return;
+                }
+                if (msg.type === "user_profile_updated") {
+                    const userId = String(msg.user_id ?? "");
+                    const username = String(msg.username ?? "");
+                    if (!userId || !username) return;
+                    applyUsernameUpdate(userId, username);
                 }
                 if (msg.type === "channel_created") {
                     const sid = String(msg.server_id ?? "");

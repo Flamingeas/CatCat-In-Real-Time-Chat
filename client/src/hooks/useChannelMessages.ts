@@ -235,6 +235,17 @@ export function useChannelMessages({
     }
 
     function handleWsEvent(msg: WsEvent) {
+        if (msg.type === "user_profile_updated") {
+            setMessages((prev) =>
+                prev.map((message) =>
+                    String(message.user_id) === String(msg.user_id)
+                        ? { ...message, username: String(msg.username) }
+                        : message
+                )
+            );
+            return false;
+        }
+
         if (msg.type === "new_message") {
             const currentChannel = selectedChannelIdRef.current;
             const currentServer = selectedServerIdRef.current;

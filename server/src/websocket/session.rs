@@ -158,6 +158,10 @@ pub enum OutgoingMessage {
         username: String,
         status: UserStatus,
     },
+    UserProfileUpdated {
+        user_id: Uuid,
+        username: String,
+    },
     NewMessage {
         message_id: Uuid,
         channel_id: Uuid,
@@ -519,6 +523,12 @@ impl Handler<OutgoingMessage> for WsSession {
     type Result = ();
 
     fn handle(&mut self, msg: OutgoingMessage, ctx: &mut Self::Context) {
+        if let OutgoingMessage::UserProfileUpdated { user_id, username } = &msg {
+            if Some(*user_id) == self.user_id {
+                self.username = Some(username.clone());
+            }
+        }
+
         if let Ok(json) = serde_json::to_string(&msg) {
             ctx.text(json);
         }

@@ -40,6 +40,7 @@ export type WsEvent =
     | { type: "user_connected"; server_id: string; user_id: string; username?: string; status?: string }
     | { type: "user_disconnected"; server_id: string; user_id: string; username?: string }
     | { type: "user_status_changed"; server_id: string; user_id: string; username?: string; status?: string }
+    | { type: "user_profile_updated"; user_id: string; username: string }
     | { type: "server_member_joined"; server_id: string; user_id: string; username: string }
     | { type: "server_member_left"; server_id: string; user_id: string; username: string }
     | { type: "server_member_role_updated"; server_id: string; user_id: string; username: string; role: string }

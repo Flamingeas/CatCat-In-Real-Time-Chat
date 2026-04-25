@@ -305,6 +305,28 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
     }
 
     function handleWsEvent(msg: WsEvent) {
+        if (msg.type === "user_profile_updated") {
+            const userId = String(msg.user_id ?? "");
+            const username = String(msg.username ?? "");
+            if (!userId || !username) return true;
+
+            setConversations((prev) =>
+                prev.map((conversation) =>
+                    String(conversation.other_user_id) === userId
+                        ? { ...conversation, other_username: username }
+                        : conversation
+                )
+            );
+            setMessages((prev) =>
+                prev.map((message) =>
+                    String(message.sender_id) === userId
+                        ? { ...message, sender_username: username }
+                        : message
+                )
+            );
+            return true;
+        }
+
         if (msg.type === "new_direct_message") {
             const convId = String(msg.conversation_id ?? "");
             const currentConv = selectedConvIdRef.current;

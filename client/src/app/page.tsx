@@ -43,6 +43,21 @@ interface User {
   username: string;
 }
 
+function isRunningInTauri() {
+  if (typeof window === "undefined") return false;
+
+  const tauriWindow = window as typeof window & {
+    __TAURI__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
+  };
+
+  return (
+    "__TAURI__" in tauriWindow ||
+    "__TAURI_INTERNALS__" in tauriWindow ||
+    navigator.userAgent.toLowerCase().includes("tauri")
+  );
+}
+
 export default function Home() {
   const router = useRouter();
   const t = useTranslations(); 
@@ -52,6 +67,8 @@ export default function Home() {
   const [isAuthed, setIsAuthed] = useState(false);
   const [me, setMe] = useState<User | null>(null);
   const [isMounted, setIsMounted] = useState(false); // Pour éviter le flash d'hydratation
+  const [isTauriApp, setIsTauriApp] = useState(false);
+  const showDownloadSection = isMounted && !isTauriApp;
 
   function refreshAuthState() {
     if (typeof window === "undefined") return;
@@ -70,6 +87,7 @@ export default function Home() {
 
   useEffect(() => {
     refreshAuthState();
+    setIsTauriApp(isRunningInTauri());
     setIsMounted(true); // Marque le composant comme monté côté client
 
     const onStorage = (e: StorageEvent) => {
@@ -195,6 +213,7 @@ export default function Home() {
         </section>
 
         {/* === SECTION 1.5 : DOWNLOAD === */}
+        {showDownloadSection && (
         <section className="relative z-30 py-24 px-6 md:px-12 flex flex-col items-center text-center bg-[#0a0605] border-t border-[#ffffff]/5">
             <div className="absolute inset-0 z-0 opacity-30 pointer-events-none">
                 <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] bg-[#E89E68]/20 blur-[150px] rounded-full" />
@@ -247,6 +266,7 @@ export default function Home() {
                 </div>
             </div>
         </section>
+        )}
 
         {/* === SECTION 2 : FEATURES === */}
         <section id="features" className="relative z-20 py-16 md:py-24 px-6 md:px-12 bg-[#0F0908] border-t border-[#ffffff]/5">

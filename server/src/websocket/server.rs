@@ -203,6 +203,10 @@ pub enum ServerEvent {
         user_id: Uuid,
         username: String,
     },
+    UserProfileUpdated {
+        user_id: Uuid,
+        username: String,
+    },
 }
 
 pub struct WsServer {
@@ -870,6 +874,28 @@ impl Handler<ServerEvent> for WsServer {
                         username,
                     },
                 );
+            }
+
+            ServerEvent::UserProfileUpdated { user_id, username } => {
+                self.usernames.insert(user_id, username.clone());
+
+                let mut recipients: HashSet<Uuid> = self
+                    .server_rooms
+                    .values()
+                    .filter(|members| members.contains(&user_id))
+                    .flat_map(|members| members.iter().copied())
+                    .collect();
+                recipients.insert(user_id);
+
+                for recipient_id in recipients {
+                    self.send_to(
+                        recipient_id,
+                        OutgoingMessage::UserProfileUpdated {
+                            user_id,
+                            username: username.clone(),
+                        },
+                    );
+                }
             }
         }
     }
