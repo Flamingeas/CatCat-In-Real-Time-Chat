@@ -574,6 +574,7 @@ export default function ChatPage() {
             return;
         }
 
+        let isClosingExpected = false;
         const ws = new WebSocket(getWebSocketUrl());
         wsRef.current = ws;
 
@@ -1013,11 +1014,21 @@ export default function ChatPage() {
             } catch {}
         };
 
-        ws.onerror = (err) => console.error("WS error:", err);
+        ws.onerror = (err) => {
+            if (isClosingExpected || ws.readyState === WebSocket.CLOSING || ws.readyState === WebSocket.CLOSED) {
+                return;
+            }
+
+            console.error("WS error:", err);
+        };
 
         ws.onclose = () => {
-            wsRef.current = null;
-            setOnlineUserIds(new Set());
+            if (wsRef.current === ws) {
+                wsRef.current = null;
+            }
+            if (!isClosingExpected) {
+                setOnlineUserIds(new Set());
+            }
         };
 
         const heartbeatId = window.setInterval(() => {
@@ -1025,8 +1036,13 @@ export default function ChatPage() {
         }, 15000);
 
         return () => {
+            isClosingExpected = true;
             window.clearInterval(heartbeatId);
-            // ws.close(); // Keep WS open to stay online when navigating away
+            window.clearInterval((ws as any).pingInterval);
+            if (wsRef.current === ws) {
+                wsRef.current = null;
+            }
+            ws.close();
         };
     }, []);
 

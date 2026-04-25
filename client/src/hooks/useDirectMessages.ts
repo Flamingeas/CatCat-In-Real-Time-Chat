@@ -68,6 +68,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
     const selectedConvIdRef = useRef<string | null>(null);
     const viewRef = useRef<"servers" | "dm">(view);
     const messagesEndRef = useRef<HTMLDivElement | null>(null);
+    const unreadMessageIdsRef = useRef<Set<string>>(new Set());
 
     useEffect(() => {
         viewRef.current = view;
@@ -105,6 +106,19 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             ...prev,
             [conversationId]: (prev[conversationId] ?? 0) + 1,
         }));
+    }
+
+    function incrementUnreadCountOnce(conversationId: string, messageId: string) {
+        if (!conversationId || !messageId) return;
+        if (unreadMessageIdsRef.current.has(messageId)) return;
+
+        unreadMessageIdsRef.current.add(messageId);
+        if (unreadMessageIdsRef.current.size > 500) {
+            const [oldestMessageId] = unreadMessageIdsRef.current;
+            unreadMessageIdsRef.current.delete(oldestMessageId);
+        }
+
+        incrementUnreadCount(conversationId);
     }
 
     async function loadConversations() {
@@ -329,13 +343,14 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
 
         if (msg.type === "new_direct_message") {
             const convId = String(msg.conversation_id ?? "");
+            const messageId = String(msg.message_id ?? "");
             const currentConv = selectedConvIdRef.current;
             const isOwnMessage = myIdRef.current && String(msg.sender_id) === String(myIdRef.current);
             const isActiveConversationOpen = viewRef.current === "dm" && currentConv === convId;
 
             if (currentConv && convId === String(currentConv)) {
                 const newMsg: DmMessage = {
-                    message_id: String(msg.message_id ?? ""),
+                    message_id: messageId,
                     conversation_id: convId,
                     sender_id: String(msg.sender_id ?? ""),
                     sender_username: String(msg.sender_username ?? ""),
@@ -357,7 +372,7 @@ export function useDirectMessages({ myIdRef, pushToast }: UseDirectMessagesOptio
             }
 
             if (!isOwnMessage && !isActiveConversationOpen) {
-                incrementUnreadCount(convId);
+                incrementUnreadCountOnce(convId, messageId);
             }
 
             if (!isActiveConversationOpen) {

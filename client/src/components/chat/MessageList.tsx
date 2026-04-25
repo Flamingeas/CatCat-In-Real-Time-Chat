@@ -59,11 +59,22 @@ export function MessageList({
     const locale = useLocale();
     
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
+    const [emojiPickerPlacement, setEmojiPickerPlacement] = useState<"top" | "bottom">("bottom");
     const [showFullPicker, setShowFullPicker] = useState(false);
     const reactionPickerBottomPadding = emojiPickerFor ? (showFullPicker ? "pb-[480px]" : "pb-24") : "pb-0";
 
     const closePicker = () => {
         setEmojiPickerFor(null);
+        setShowFullPicker(false);
+    };
+
+    const openPicker = (messageId: string, target: HTMLElement) => {
+        const anchor = target.closest<HTMLElement>("[data-reaction-anchor]");
+        const rect = (anchor ?? target).getBoundingClientRect();
+        const availableBelow = window.innerHeight - rect.bottom;
+
+        setEmojiPickerPlacement(availableBelow < 240 ? "top" : "bottom");
+        setEmojiPickerFor(messageId);
         setShowFullPicker(false);
     };
 
@@ -150,7 +161,7 @@ export function MessageList({
                                                 </div>
                                             </div>
                                         ) : (
-                                            <div className="relative">
+                                            <div className="relative" data-reaction-anchor>
                                                 
                                                 {/* 1. CONTENEUR FLEX : Bulle + Actions au survol */}
                                                 <div className={`flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
@@ -177,10 +188,7 @@ export function MessageList({
                                                         <div className={`flex items-center gap-1 bg-[#0F0908] border border-[#ffffff]/10 rounded-full shadow-lg p-0.5 shrink-0 transition-opacity duration-200 ${emojiPickerFor === m.message_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                                                             {canReact && (
                                                                 <button
-                                                                    onClick={() => {
-                                                                        setEmojiPickerFor(m.message_id);
-                                                                        setShowFullPicker(false);
-                                                                    }}
+                                                                    onClick={(event) => openPicker(m.message_id, event.currentTarget)}
                                                                     className={`p-1.5 rounded-full transition-colors cursor-pointer ${emojiPickerFor === m.message_id ? "bg-[#ffffff]/10 text-white" : "text-[#DCCBC4]/70 hover:text-white hover:bg-[#ffffff]/10"}`}
                                                                     title={t("addReactionTitle")}
                                                                 >
@@ -216,8 +224,20 @@ export function MessageList({
                                                 {emojiPickerFor === m.message_id && (
                                                     <>
                                                         <div className="fixed inset-0 z-40" onClick={closePicker} />
-                                                        <div className={`absolute z-50 mt-2 top-full ${isMe ? "right-0" : "left-0"}`}>
-                                                            <div className={`flex flex-col gap-2 ${isMe ? "items-end" : "items-start"}`}>
+                                                        <div
+                                                            className={[
+                                                                "absolute z-50",
+                                                                emojiPickerPlacement === "top" ? "bottom-full mb-2" : "top-full mt-2",
+                                                                isMe ? "right-0" : "left-0",
+                                                            ].join(" ")}
+                                                        >
+                                                            <div
+                                                                className={[
+                                                                    "flex gap-2",
+                                                                    emojiPickerPlacement === "top" ? "flex-col-reverse" : "flex-col",
+                                                                    isMe ? "items-end" : "items-start",
+                                                                ].join(" ")}
+                                                            >
                                                                 
                                                                 <div className="flex items-center gap-1.5 bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl shadow-2xl p-2 animate-in fade-in zoom-in duration-200 relative z-50">
                                                                     {QUICK_EMOJIS.map(emoji => {

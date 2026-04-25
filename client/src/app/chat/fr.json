@@ -45,6 +45,16 @@
     "duration": {
       "minutes": "{count, plural, one {# minute} other {# minutes}}",
       "hours": "{count, plural, one {# heure} other {# heures}}"
+    },
+    "notifications": {
+      "newDirectMessage": {
+        "title": "Nouveau message",
+        "body": "{username} vous a envoyé un message"
+      },
+      "mention": {
+        "title": "#{channel}",
+        "body": "{username} vous a mentionné"
+      }
     }
   },
   "channelMessages": {

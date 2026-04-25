@@ -79,6 +79,7 @@ export function DirectMessagePanel({
     
     // États pour le menu d'emojis
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
+    const [emojiPickerPlacement, setEmojiPickerPlacement] = useState<"top" | "bottom">("bottom");
     const [showFullPicker, setShowFullPicker] = useState(false);
     const reactionPickerBottomPadding = emojiPickerFor ? (showFullPicker ? "pb-[480px]" : "pb-24") : "pb-0";
 
@@ -90,6 +91,16 @@ export function DirectMessagePanel({
     // Fonction pour fermer les menus proprement
     const closePicker = () => {
         setEmojiPickerFor(null);
+        setShowFullPicker(false);
+    };
+
+    const openPicker = (messageId: string, target: HTMLElement) => {
+        const anchor = target.closest<HTMLElement>("[data-reaction-anchor]");
+        const rect = (anchor ?? target).getBoundingClientRect();
+        const availableBelow = window.innerHeight - rect.bottom;
+
+        setEmojiPickerPlacement(availableBelow < 240 ? "top" : "bottom");
+        setEmojiPickerFor(messageId);
         setShowFullPicker(false);
     };
 
@@ -201,7 +212,7 @@ export function DirectMessagePanel({
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <div className="relative">
+                                                        <div className="relative" data-reaction-anchor>
                                                             
                                                             {/* === BULLE + BARRE D'ACTIONS === */}
                                                             <div className={`flex items-center gap-2 ${isMe ? "flex-row-reverse" : "flex-row"}`}>
@@ -228,10 +239,7 @@ export function DirectMessagePanel({
                                                                     <div className={`flex items-center gap-1 bg-surface border border-border-custom rounded-full shadow-lg p-0.5 shrink-0 transition-opacity duration-200 ${emojiPickerFor === message.message_id ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`}>
                                                                         {canReact && (
                                                                             <button
-                                                                                onClick={() => {
-                                                                                    setEmojiPickerFor(message.message_id);
-                                                                                    setShowFullPicker(false);
-                                                                                }}
+                                                                                onClick={(event) => openPicker(message.message_id, event.currentTarget)}
                                                                                 className={`p-1.5 rounded-full transition-colors cursor-pointer ${emojiPickerFor === message.message_id ? "bg-background text-primary" : "text-muted hover:text-primary hover:bg-background"}`}
                                                                                 title={tCommon("addReactionTitle")}
                                                                             >
@@ -267,8 +275,20 @@ export function DirectMessagePanel({
                                                             {emojiPickerFor === message.message_id && (
                                                                 <>
                                                                     <div className="fixed inset-0 z-40" onClick={closePicker} />
-                                                                    <div className={`absolute z-50 mt-2 top-full ${isMe ? "right-0" : "left-0"}`}>
-                                                                        <div className={`flex flex-col gap-2 ${isMe ? "items-end" : "items-start"}`}>
+                                                                    <div
+                                                                        className={[
+                                                                            "absolute z-50",
+                                                                            emojiPickerPlacement === "top" ? "bottom-full mb-2" : "top-full mt-2",
+                                                                            isMe ? "right-0" : "left-0",
+                                                                        ].join(" ")}
+                                                                    >
+                                                                        <div
+                                                                            className={[
+                                                                                "flex gap-2",
+                                                                                emojiPickerPlacement === "top" ? "flex-col-reverse" : "flex-col",
+                                                                                isMe ? "items-end" : "items-start",
+                                                                            ].join(" ")}
+                                                                        >
                                                                             
                                                                             <div className="flex items-center gap-1.5 bg-surface border border-border-custom rounded-2xl shadow-2xl p-2 animate-in fade-in zoom-in duration-200 relative z-50">
                                                                                 {QUICK_EMOJIS.map(emoji => {
