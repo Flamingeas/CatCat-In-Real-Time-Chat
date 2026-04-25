@@ -38,9 +38,25 @@ function normalizeWsUrl(value: string, path: string) {
   return trimmed;
 }
 
+function isLoopbackWsUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
 export function getWebSocketUrl(path = DEFAULT_WS_PATH) {
   const configured = normalizeWsUrl(process.env.NEXT_PUBLIC_WS_URL ?? "", path);
-  if (configured) return configured;
+  if (configured) {
+    if (process.env.NODE_ENV === "production" && isLoopbackWsUrl(configured)) {
+      const sameOriginUrl = getSameOriginWsUrl(path);
+      if (sameOriginUrl) return sameOriginUrl;
+    }
+
+    return configured;
+  }
 
   if (process.env.NODE_ENV !== "production") {
     return LOCAL_DEV_WS_URL;
