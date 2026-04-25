@@ -7,9 +7,24 @@ function normalizeApiUrl(value: string) {
   return trimmed.replace(/\/+$/, "");
 }
 
+function isLoopbackUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.hostname === "127.0.0.1" || url.hostname === "localhost";
+  } catch {
+    return false;
+  }
+}
+
 export function getApiBaseUrl() {
   const configured = normalizeApiUrl(process.env.NEXT_PUBLIC_API_URL ?? "");
-  if (configured) return configured;
+  if (configured) {
+    if (process.env.NODE_ENV === "production" && isLoopbackUrl(configured)) {
+      return "";
+    }
+
+    return configured;
+  }
 
   if (process.env.NODE_ENV !== "production") {
     return LOCAL_DEV_API_URL;

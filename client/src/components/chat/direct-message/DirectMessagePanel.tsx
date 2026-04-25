@@ -80,6 +80,7 @@ export function DirectMessagePanel({
     // États pour le menu d'emojis
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
     const [showFullPicker, setShowFullPicker] = useState(false);
+    const reactionPickerBottomPadding = emojiPickerFor ? (showFullPicker ? "pb-[480px]" : "pb-24") : "pb-0";
 
     const selectedConversation = selectedConvId
         ? conversations.find((conversation) => conversation.id === selectedConvId) ?? null
@@ -146,7 +147,7 @@ export function DirectMessagePanel({
                             ) : messages.length === 0 ? (
                                 <div className="text-sm text-muted">{tCommon("noMessages")}</div>
                             ) : (
-                                <div className="flex flex-col gap-4">
+                                <div className={`flex flex-col gap-4 transition-[padding] duration-200 ${reactionPickerBottomPadding}`}>
                                     {messages.map((message) => {
                                         const isMe = me && String(me.id) === String(message.sender_id);
                                         const time = formatTime(message.created_at, locale);

@@ -60,6 +60,7 @@ export function MessageList({
     
     const [emojiPickerFor, setEmojiPickerFor] = useState<string | null>(null);
     const [showFullPicker, setShowFullPicker] = useState(false);
+    const reactionPickerBottomPadding = emojiPickerFor ? (showFullPicker ? "pb-[480px]" : "pb-24") : "pb-0";
 
     const closePicker = () => {
         setEmojiPickerFor(null);
@@ -94,7 +95,7 @@ export function MessageList({
                 ) : messages.length === 0 ? (
                     <div className="text-sm text-[#DCCBC4]/50">{t("noMessages")}</div>
                 ) : (
-                    <div className="flex flex-col gap-4">
+                    <div className={`flex flex-col gap-4 transition-[padding] duration-200 ${reactionPickerBottomPadding}`}>
                         {messages.map((m) => {
                             const isMe = me && String(me.id) === String(m.user_id);
                             const time = formatTime(m.created_at, locale);
