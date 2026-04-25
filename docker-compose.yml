@@ -36,8 +36,8 @@ services:
       context: ./client
       dockerfile: Dockerfile
       args:
-        NEXT_PUBLIC_API_URL: http://localhost:8080
-        NEXT_PUBLIC_WS_URL: ws://localhost:8080/ws
+        NEXT_PUBLIC_API_URL: ""
+        NEXT_PUBLIC_WS_URL: ""
     container_name: catcat-frontend
     ports:
       - "3000:80"

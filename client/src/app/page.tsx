@@ -18,6 +18,7 @@ import {
 
 import AuthModal from "./components/AuthModal";
 import LanguageSwitcher from "./components/LanguageSwitcher"; 
+import { getApiBaseUrl } from "@/lib/api-url";
 
 // Importation des assets (images)
 import heroImage from "./images/catcat_illustration_hero.png";
@@ -26,7 +27,7 @@ import serverImage from "./images/feature_server.png";
 import chatImage from "./images/feature_chat.png"; 
 import moderationImage from "./images/feature_moderation.jpg"; 
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+const API_BASE = getApiBaseUrl();
 
 // --- POLICES ---
 const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka", weight: ["600", "700"] });

@@ -4,13 +4,14 @@ import React, { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { getApiBaseUrl } from "@/lib/api-url";
 
 type AuthModalProps = {
     isOpen: boolean;
     onClose: () => void;
 };
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+const API_BASE = getApiBaseUrl();
 
 const isValidEmail = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 const isValidPassword = (value: string) => value.trim().length >= 8;

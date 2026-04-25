@@ -1,5 +1,6 @@
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8080";
+import { getApiBaseUrl } from "@/lib/api-url";
+
+const API_BASE = getApiBaseUrl();
 
 export class ApiError extends Error {
   status: number;
