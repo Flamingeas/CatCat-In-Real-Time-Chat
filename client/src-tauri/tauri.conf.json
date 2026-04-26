@@ -1,6 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "CatCat",
+  "mainBinaryName": "CatCat",
   "version": "1.0.0",
   "identifier": "com.catcat.app",
   "build": {
