@@ -81,7 +81,27 @@ jobs:
           fi
 
       - name: Run tests and publish Rust coverage
-        run: cargo tarpaulin --all-features --out Html --out Xml --output-dir coverage -- --test-threads=1
+        run: |
+          set -o pipefail
+          export TEST_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/catcat_ci"
+          unset DATABASE_URL
+          mkdir -p coverage
+          cd ..
+          cargo tarpaulin \
+            -p rtc_backend \
+            --out Html \
+            --out Xml \
+            --out Json \
+            --out Markdown \
+            --ignore-tests \
+            --exclude-files \
+              'target/*' \
+              'client/*' \
+              'server/src/main.rs' \
+              'server/src/modules/*/repository.rs' \
+              'server/src/modules/*/route.rs' \
+            --output-dir server/coverage \
+            -- --test-threads=1 2>&1 | tee server/coverage/tarpaulin.log
 
       - name: Publish Rust coverage summary
         run: |
@@ -100,6 +120,7 @@ jobs:
           if [ -n "$COVERAGE_FILE" ]; then
             COVERAGE=$(COVERAGE_FILE="$COVERAGE_FILE" python3 - <<'PY'
           import os
+          from pathlib import Path
           import xml.etree.ElementTree as ET
 
           coverage_file = os.environ["COVERAGE_FILE"]
@@ -110,15 +131,60 @@ jobs:
           line_rate = float(root.attrib.get("line-rate", 0)) * 100
           branch_rate = float(root.attrib.get("branch-rate", 0)) * 100
 
+          classes = []
+          for class_node in root.findall(".//class"):
+              filename = class_node.attrib.get("filename", "")
+              if not filename:
+                  continue
+
+              lines = class_node.findall("./lines/line")
+              covered = sum(1 for line in lines if int(line.attrib.get("hits", 0)) > 0)
+              coverable = len(lines)
+              file_rate = (covered / coverable * 100) if coverable else 0
+              uncovered = [
+                  int(line.attrib["number"])
+                  for line in lines
+                  if int(line.attrib.get("hits", 0)) == 0 and line.attrib.get("number", "").isdigit()
+              ]
+              classes.append((file_rate, filename, covered, coverable, uncovered))
+
           print("| Metric | Value |")
           print("|---|---:|")
           print(f"| Line coverage | {line_rate:.2f}% |")
           print(f"| Branch coverage | {branch_rate:.2f}% |")
+
+          if classes:
+              print("")
+              print("### File coverage")
+              print("")
+              print("| File | Coverage | Covered lines | Uncovered lines |")
+              print("|---|---:|---:|---|")
+
+              for file_rate, filename, covered, coverable, uncovered in sorted(classes):
+                  short_name = Path(filename).as_posix()
+                  uncovered_preview = ", ".join(map(str, uncovered[:12]))
+                  if len(uncovered) > 12:
+                      uncovered_preview += f", +{len(uncovered) - 12} more"
+                  if not uncovered_preview:
+                      uncovered_preview = "-"
+
+                  print(
+                      f"| `{short_name}` | {file_rate:.2f}% | "
+                      f"{covered}/{coverable} | {uncovered_preview} |"
+                  )
           PY
           )
             echo "$COVERAGE" >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Coverage report generated, but no XML coverage file was found." >> "$GITHUB_STEP_SUMMARY"
+            if [ -f coverage/tarpaulin.log ]; then
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo "Tarpaulin output:" >> "$GITHUB_STEP_SUMMARY"
+              echo "" >> "$GITHUB_STEP_SUMMARY"
+              echo '```text' >> "$GITHUB_STEP_SUMMARY"
+              tail -n 80 coverage/tarpaulin.log >> "$GITHUB_STEP_SUMMARY"
+              echo '```' >> "$GITHUB_STEP_SUMMARY"
+            fi
           fi
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
