@@ -32,6 +32,9 @@ services:
   frontend:
     image: ghcr.io/epitechmscpropromo2028/t-dev-600-par_12/frontend:${IMAGE_TAG:-latest}
     container_name: catcat-frontend-registry
+    environment:
+      BACKEND_HTTP_URL: http://backend:8080
+      BACKEND_WS_URL: http://backend:8080/ws
     ports:
       - "3001:80"
     depends_on:

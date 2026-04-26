@@ -39,6 +39,9 @@ services:
         NEXT_PUBLIC_API_URL: ""
         NEXT_PUBLIC_WS_URL: ""
     container_name: catcat-frontend
+    environment:
+      BACKEND_HTTP_URL: http://backend:8080
+      BACKEND_WS_URL: http://backend:8080/ws
     ports:
       - "3000:80"
     depends_on:
