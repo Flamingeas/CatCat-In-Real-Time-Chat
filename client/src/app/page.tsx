@@ -11,7 +11,6 @@ import {
     LogOut, 
     Download, 
     Monitor, 
-    Laptop, 
     Terminal, 
     ChevronDown 
 } from "lucide-react";
@@ -28,6 +27,10 @@ import chatImage from "./images/feature_chat.png";
 import moderationImage from "./images/feature_moderation.jpg"; 
 
 const API_BASE = getApiBaseUrl();
+const WINDOWS_DOWNLOAD_URL =
+  "https://github.com/EpitechMscProPromo2028/T-DEV-600-PAR_12/releases/latest/download/CatCat.exe";
+const LINUX_DOWNLOAD_URL =
+  "https://github.com/EpitechMscProPromo2028/T-DEV-600-PAR_12/releases/latest/download/CatCat.deb";
 
 // --- POLICES ---
 const fredoka = Fredoka({ subsets: ["latin"], variable: "--font-fredoka", weight: ["600", "700"] });
@@ -242,21 +245,14 @@ export default function Home() {
                     </button>
 
                     <div className="absolute top-full left-1/2 -translate-x-1/2 mt-4 w-72 bg-[#0F0908] border border-[#ffffff]/10 rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-y-2 group-hover:translate-y-0 overflow-hidden font-[family-name:var(--font-nunito)] z-50 text-left">
-                        <a href="#" className="flex items-center gap-4 px-5 py-4 w-full hover:bg-[#1E1211] text-[#DCCBC4] hover:text-[#EB5E28] border-b border-[#ffffff]/5">
+                        <a href={WINDOWS_DOWNLOAD_URL} className="flex items-center gap-4 px-5 py-4 w-full hover:bg-[#1E1211] text-[#DCCBC4] hover:text-[#EB5E28] border-b border-[#ffffff]/5">
                             <Monitor className="w-6 h-6 flex-shrink-0" />
                             <div>
                                 <div className="font-bold text-base">{t("download.os.windows")}</div>
                                 <div className="text-xs opacity-60">{t("download.os.windowsDesc")}</div>
                             </div>
                         </a>
-                        <a href="#" className="flex items-center gap-4 px-5 py-4 w-full hover:bg-[#1E1211] text-[#DCCBC4] hover:text-[#EB5E28] border-b border-[#ffffff]/5">
-                            <Laptop className="w-6 h-6 flex-shrink-0" />
-                            <div>
-                                <div className="font-bold text-base">{t("download.os.mac")}</div>
-                                <div className="text-xs opacity-60">{t("download.os.macDesc")}</div>
-                            </div>
-                        </a>
-                        <a href="#" className="flex items-center gap-4 px-5 py-4 w-full hover:bg-[#1E1211] text-[#DCCBC4] hover:text-[#EB5E28]">
+                        <a href={LINUX_DOWNLOAD_URL} className="flex items-center gap-4 px-5 py-4 w-full hover:bg-[#1E1211] text-[#DCCBC4] hover:text-[#EB5E28]">
                             <Terminal className="w-6 h-6 flex-shrink-0" />
                             <div>
                                 <div className="font-bold text-base">{t("download.os.linux")}</div>
