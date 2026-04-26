@@ -600,6 +600,7 @@ export default function ChatPage() {
             try {
                 const msg = JSON.parse(e.data) as WsEvent;
                 if (!msg || typeof msg !== "object") return;
+                const translate = tRef.current;
                 console.log(msg)
 
                 if (msg.type === "presence_snapshot" && msg.server_id && Array.isArray(msg.online)) {
@@ -645,7 +646,7 @@ export default function ChatPage() {
                     if (sid !== String(selectedServerIdRef.current)) return;
 
                     reloadChannels(sid).catch(() => {});
-                    pushToastOnce(`channel_created:${sid}:${msg.channel_id ?? msg.name}`, t("toast.channelCreated", { name: msg.name }), "success");
+                    pushToastOnce(`channel_created:${sid}:${msg.channel_id ?? msg.name}`, translate("toast.channelCreated", { name: msg.name }), "success");
                     return;
                 }
                 if (msg.type === "channel_deleted") {
@@ -668,7 +669,7 @@ export default function ChatPage() {
                         return next;
                     });
 
-                    pushToastOnce(`channel_deleted:${sid}:${cid}`, t("toast.channelDeleted"), "warn");
+                    pushToastOnce(`channel_deleted:${sid}:${cid}`, translate("toast.channelDeleted"), "warn");
                     return;
                 }
                 if (msg.type === "channel_updated") {
@@ -681,17 +682,17 @@ export default function ChatPage() {
                     if (currentSid && sid !== String(currentSid)) return;
 
                     reloadChannels(sid).catch(() => {});
-                    pushToastOnce(`channel_updated:${sid}:${cid}`, t("toast.channelUpdated"), "info");
+                    pushToastOnce(`channel_updated:${sid}:${cid}`, translate("toast.channelUpdated"), "info");
                     return;
                 }
                 if (msg.type === "server_member_joined") {
                     const currentSid = selectedServerIdRef.current;
                     if (currentSid && String(msg.server_id) !== String(currentSid)) return;
 
-                    upsertMember(String(msg.server_id), String(msg.user_id), String(msg.username ?? t("fallbackUsername")));
+                    upsertMember(String(msg.server_id), String(msg.user_id), String(msg.username ?? translate("fallbackUsername")));
 
                     const isMe = myIdRef.current && String(myIdRef.current) === String(msg.user_id);
-                    if (!isMe) pushToastOnce(`member_joined:${msg.server_id}:${msg.user_id}`, t("toast.memberJoined", { username: msg.username }), "success");
+                    if (!isMe) pushToastOnce(`member_joined:${msg.server_id}:${msg.user_id}`, translate("toast.memberJoined", { username: msg.username }), "success");
                     return;
                 }
 
@@ -702,7 +703,7 @@ export default function ChatPage() {
                     removeMember(String(msg.server_id), String(msg.user_id));
 
                     const isMe = myIdRef.current && String(myIdRef.current) === String(msg.user_id);
-                    if (!isMe) pushToastOnce(`member_left:${msg.server_id}:${msg.user_id}`, t("toast.memberLeft", { username: msg.username }), "warn");
+                    if (!isMe) pushToastOnce(`member_left:${msg.server_id}:${msg.user_id}`, translate("toast.memberLeft", { username: msg.username }), "warn");
                     return;
                 }
 
@@ -713,7 +714,7 @@ export default function ChatPage() {
                     const roleRaw = (msg as any).role;
                     const role = (roleRaw === "owner" || roleRaw === "admin" || roleRaw === "member" ? roleRaw : "member") as MemberRole;
 
-                    upsertMember(String(msg.server_id), String(msg.user_id), String(msg.username ?? t("fallbackUsername")));
+                    upsertMember(String(msg.server_id), String(msg.user_id), String(msg.username ?? translate("fallbackUsername")));
                     setMemberRoleLocal(String(msg.server_id), String(msg.user_id), role);
 
                     if (role === "owner") {
@@ -723,13 +724,13 @@ export default function ChatPage() {
                     }
 
                     const isMe = myIdRef.current && String(myIdRef.current) === String(msg.user_id);
-                    if (!isMe) pushToastOnce(`member_role:${msg.server_id}:${msg.user_id}:${role}`, t("toast.memberNowRole", { username: msg.username, role }), "info");
+                    if (!isMe) pushToastOnce(`member_role:${msg.server_id}:${msg.user_id}:${role}`, translate("toast.memberNowRole", { username: msg.username, role }), "info");
                     return;
                 }
                 if (msg.type === "server_member_kicked") {
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
-                    const username = String(msg.username ?? t("fallbackUsername"));
+                    const username = String(msg.username ?? translate("fallbackUsername"));
 
                     if (!sid || !uid) return;
 
@@ -743,7 +744,7 @@ export default function ChatPage() {
                     if (isMe) {
                         wsSend({ type: "leave_server", server_id: sid });
 
-                        pushToastOnce(`member_kicked:${sid}:${uid}:me`, t("toast.kickedSelf"), "warn");
+                        pushToastOnce(`member_kicked:${sid}:${uid}:me`, translate("toast.kickedSelf"), "warn");
 
                         setSelectedServerId(null);
                         setMembers([]);
@@ -760,7 +761,7 @@ export default function ChatPage() {
                             })
                             .catch(() => {});
                     } else {
-                        pushToastOnce(`member_kicked:${sid}:${uid}`, t("toast.kickedOther", { username }), "warn");
+                        pushToastOnce(`member_kicked:${sid}:${uid}`, translate("toast.kickedOther", { username }), "warn");
                     }
 
                     return;
@@ -770,7 +771,7 @@ export default function ChatPage() {
                     const sid = String(msg.server_id ?? "");
                     if (!sid) return;
 
-                    pushToastOnce(`server_deleted:${sid}`, t("toast.serverDeleted"), "warn");
+                    pushToastOnce(`server_deleted:${sid}`, translate("toast.serverDeleted"), "warn");
 
                     if (selectedServerIdRef.current && String(selectedServerIdRef.current) === sid) {
                         setSelectedServerId(null);
@@ -787,7 +788,7 @@ export default function ChatPage() {
                     if (!sid) return;
 
                     refreshServers(sid).catch(() => {});
-                    pushToastOnce(`server_updated:${sid}`, t("toast.serverUpdated"), "info");
+                    pushToastOnce(`server_updated:${sid}`, translate("toast.serverUpdated"), "info");
                     return;
                 }
                 if (msg.type === "user_connected" || msg.type === "user_disconnected" || msg.type === "user_status_changed") {
@@ -811,9 +812,9 @@ export default function ChatPage() {
                     const isBoot = !seenPresenceRef.current[sid];
 
                     if (!isMe && !isBoot && presenceChanged) {
-                        const username = typeof (msg as any).username === "string" ? String((msg as any).username) : t("fallbackUsername");
-                        if (msg.type === "user_connected") pushToastOnce(`presence:online:${sid}:${id}`, t("toast.userOnline", { username }), "info");
-                        if (msg.type === "user_disconnected") pushToastOnce(`presence:offline:${sid}:${id}`, t("toast.userOffline", { username }), "warn");
+                        const username = typeof (msg as any).username === "string" ? String((msg as any).username) : translate("fallbackUsername");
+                        if (msg.type === "user_connected") pushToastOnce(`presence:online:${sid}:${id}`, translate("toast.userOnline", { username }), "info");
+                        if (msg.type === "user_disconnected") pushToastOnce(`presence:offline:${sid}:${id}`, translate("toast.userOffline", { username }), "warn");
                     }
                     return;
                 }
@@ -839,9 +840,9 @@ export default function ChatPage() {
                     const isBoot = !seenPresenceRef.current[sid];
 
                     if (!isMe && !isBoot && presenceChanged) {
-                        const username = typeof (msg as any).username === "string" ? String((msg as any).username) : t("fallbackUsername");
-                        if (status === "online") pushToastOnce(`presence:online:${sid}:${id}`, t("toast.userOnline", { username }), "info");
-                        if (status === "offline") pushToastOnce(`presence:offline:${sid}:${id}`, t("toast.userOffline", { username }), "warn");
+                        const username = typeof (msg as any).username === "string" ? String((msg as any).username) : translate("fallbackUsername");
+                        if (status === "online") pushToastOnce(`presence:online:${sid}:${id}`, translate("toast.userOnline", { username }), "info");
+                        if (status === "offline") pushToastOnce(`presence:offline:${sid}:${id}`, translate("toast.userOffline", { username }), "warn");
                     }
                     return;
                 }
@@ -887,8 +888,8 @@ export default function ChatPage() {
                     if (!isOwnMessage && currentUser?.username && msg.content?.includes(`@${currentUser.username}`)) {
                         const ch = channelsRef.current.find((c) => String(c.id) === String(msg.channel_id));
                         notifyDesktop(
-                            t("notifications.mention.title", { channel: ch?.name ?? msg.channel_id }),
-                            t("notifications.mention.body", { username: msg.username })
+                            translate("notifications.mention.title", { channel: ch?.name ?? msg.channel_id }),
+                            translate("notifications.mention.body", { username: msg.username })
                         );
                     }
                 }
@@ -896,7 +897,7 @@ export default function ChatPage() {
                 if (msg.type === "server_member_banned") {
                     const sid = String((msg as any).server_id ?? "");
                     const uid = String((msg as any).user_id ?? "");
-                    const username = String((msg as any).username ?? t("fallbackUsername"));
+                    const username = String((msg as any).username ?? translate("fallbackUsername"));
 
                     if (!sid || !uid) return;
 
@@ -908,7 +909,7 @@ export default function ChatPage() {
                     removeMember(sid, uid);
 
                     if (isMe) {
-                        pushToastOnce(`member_banned:${sid}:${uid}:me`, t("toast.bannedSelf"), "warn");
+                        pushToastOnce(`member_banned:${sid}:${uid}:me`, translate("toast.bannedSelf"), "warn");
 
                         setSelectedServerId(null);
                         setMembers([]);
@@ -924,7 +925,7 @@ export default function ChatPage() {
                             })
                             .catch(() => {});
                     } else {
-                        pushToastOnce(`member_banned:${sid}:${uid}`, t("toast.bannedOther", { username }), "warn");
+                        pushToastOnce(`member_banned:${sid}:${uid}`, translate("toast.bannedOther", { username }), "warn");
                     }
 
                     return;
@@ -932,14 +933,14 @@ export default function ChatPage() {
                 if (msg.type === "server_member_unbanned") {
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
-                    const username = String(msg.username ?? t("fallbackUsername"));
+                    const username = String(msg.username ?? translate("fallbackUsername"));
 
                     if (!sid || !uid) return;
 
                     const currentSid = selectedServerIdRef.current;
                     if (currentSid && sid !== String(currentSid)) return;
 
-                    pushToastOnce(`member_unbanned:${sid}:${uid}`, t("toast.unbanned", { username }), "success");
+                    pushToastOnce(`member_unbanned:${sid}:${uid}`, translate("toast.unbanned", { username }), "success");
 
                     return;
                 }
@@ -948,14 +949,13 @@ export default function ChatPage() {
                     const isOwnMessage = myIdRef.current && String(msg.sender_id) === String(myIdRef.current);
                     if (!isOwnMessage) {
                         notifyDesktop(
-                            t("notifications.newDirectMessage.title"),
-                            t("notifications.newDirectMessage.body", { username: msg.sender_username })
+                            translate("notifications.newDirectMessage.title"),
+                            translate("notifications.newDirectMessage.body", { username: msg.sender_username })
                         );
                     }
                 }
                 if (dm.handleWsEvent(msg)) return;
                 if (msg.type === "server_member_banned_temporary") {
-                    const translate = tRef.current;
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
                     const username = String(msg.username ?? translate("fallbackUsername"));
@@ -1001,16 +1001,16 @@ export default function ChatPage() {
                if (msg.type === "server_member_temporary_ban_lifted") {
                     const sid = String(msg.server_id ?? "");
                     const uid = String(msg.user_id ?? "");
-                    const username = String(msg.username ?? t("fallbackUsername"));
+                    const username = String(msg.username ?? translate("fallbackUsername"));
 
                     if (!sid || !uid) return;
 
                     const isMe = String(myIdRef.current ?? "") === uid;
 
                     if (isMe) {
-                        pushToastOnce(`member_temp_ban_lifted:${sid}:${uid}:me`, t("toast.tempBanLiftedSelf"), "success");
+                        pushToastOnce(`member_temp_ban_lifted:${sid}:${uid}:me`, translate("toast.tempBanLiftedSelf"), "success");
                     } else {
-                        pushToastOnce(`member_temp_ban_lifted:${sid}:${uid}`, t("toast.tempBanLiftedOther", { username }), "success");
+                        pushToastOnce(`member_temp_ban_lifted:${sid}:${uid}`, translate("toast.tempBanLiftedOther", { username }), "success");
                     }
 
                     return;

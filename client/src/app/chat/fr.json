@@ -97,6 +97,7 @@
     "messageCount": "{count} message(s)",
     "edited": "• édité",
     "messageDeleted": "Message supprimé",
+    "confirmDeleteMessage": "Supprimer ce message ?",
     "deleteAction": "🗑 Supprimer",
     "editAction": "✏️ Éditer",
     "edit": "Éditer",

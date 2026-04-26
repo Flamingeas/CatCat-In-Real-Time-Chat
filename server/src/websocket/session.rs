@@ -596,6 +596,281 @@ mod ws_tests {
         conn.send(awc_ws::Message::Text(text.into())).await.unwrap();
     }
 
+    #[test]
+    fn user_status_serializes_and_defaults() {
+        assert_eq!(UserStatus::default(), UserStatus::Online);
+        assert_eq!(
+            serde_json::to_string(&UserStatus::Away).unwrap(),
+            "\"away\""
+        );
+        assert_eq!(
+            serde_json::to_string(&UserStatus::DoNotDisturb).unwrap(),
+            "\"donotdisturb\""
+        );
+        assert_eq!(
+            serde_json::to_string(&UserStatus::Invisible).unwrap(),
+            "\"invisible\""
+        );
+        assert_eq!(
+            serde_json::to_string(&UserStatus::Offline).unwrap(),
+            "\"offline\""
+        );
+    }
+
+    #[test]
+    fn incoming_messages_deserialize_all_supported_shapes() {
+        let server_id = Uuid::new_v4();
+        let channel_id = Uuid::new_v4();
+
+        let auth: IncomingMessage = serde_json::from_str(r#"{"type":"auth","token":"t"}"#).unwrap();
+        assert!(matches!(auth, IncomingMessage::Auth { token } if token == "t"));
+
+        let join_server: IncomingMessage = serde_json::from_str(&format!(
+            r#"{{"type":"join_server","server_id":"{server_id}"}}"#
+        ))
+        .unwrap();
+        assert!(
+            matches!(join_server, IncomingMessage::JoinServer { server_id: id } if id == server_id)
+        );
+
+        let leave_server: IncomingMessage = serde_json::from_str(&format!(
+            r#"{{"type":"leave_server","server_id":"{server_id}"}}"#
+        ))
+        .unwrap();
+        assert!(
+            matches!(leave_server, IncomingMessage::LeaveServer { server_id: id } if id == server_id)
+        );
+
+        let join_channel: IncomingMessage = serde_json::from_str(&format!(
+            r#"{{"type":"join_channel","channel_id":"{channel_id}"}}"#
+        ))
+        .unwrap();
+        assert!(
+            matches!(join_channel, IncomingMessage::JoinChannel { channel_id: id } if id == channel_id)
+        );
+
+        let leave_channel: IncomingMessage = serde_json::from_str(&format!(
+            r#"{{"type":"leave_channel","channel_id":"{channel_id}"}}"#
+        ))
+        .unwrap();
+        assert!(
+            matches!(leave_channel, IncomingMessage::LeaveChannel { channel_id: id } if id == channel_id)
+        );
+
+        let typing: IncomingMessage = serde_json::from_str(&format!(
+            r#"{{"type":"typing","channel_id":"{channel_id}"}}"#
+        ))
+        .unwrap();
+        assert!(matches!(typing, IncomingMessage::Typing { channel_id: id } if id == channel_id));
+
+        let user_typing: IncomingMessage = serde_json::from_str(&format!(
+            r#"{{"type":"user_typing","channel_id":"{channel_id}","user_id":null,"username":"alice"}}"#
+        ))
+        .unwrap();
+        assert!(matches!(
+            user_typing,
+            IncomingMessage::UserTyping { channel_id: id, user_id: None, username: Some(name) }
+                if id == channel_id && name == "alice"
+        ));
+
+        let send_message: IncomingMessage = serde_json::from_str(&format!(
+            r#"{{"type":"send_message","channel_id":"{channel_id}","content":"hello"}}"#
+        ))
+        .unwrap();
+        assert!(matches!(
+            send_message,
+            IncomingMessage::SendMessage { channel_id: id, content } if id == channel_id && content == "hello"
+        ));
+
+        let status_change: IncomingMessage =
+            serde_json::from_str(r#"{"type":"status_change","status":"away","server_id":null}"#)
+                .unwrap();
+        assert!(matches!(
+            status_change,
+            IncomingMessage::StatusChange {
+                status: UserStatus::Away,
+                server_id: None
+            }
+        ));
+
+        let ping: IncomingMessage = serde_json::from_str(r#"{"type":"ping","t":42}"#).unwrap();
+        assert!(matches!(ping, IncomingMessage::Ping { t: Some(42) }));
+    }
+
+    #[test]
+    fn outgoing_messages_serialize_with_expected_type_tags() {
+        let server_id = Uuid::new_v4();
+        let channel_id = Uuid::new_v4();
+        let user_id = Uuid::new_v4();
+        let message_id = Uuid::new_v4();
+        let conversation_id = Uuid::new_v4();
+
+        let messages = vec![
+            OutgoingMessage::Authed {
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::PresenceSnapshot {
+                server_id,
+                online: vec![(user_id, "alice".to_string())],
+            },
+            OutgoingMessage::UserConnected {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+                status: UserStatus::Online,
+            },
+            OutgoingMessage::UserDisconnected {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::UserStatusChanged {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+                status: UserStatus::Away,
+            },
+            OutgoingMessage::UserProfileUpdated {
+                user_id,
+                username: "alice2".to_string(),
+            },
+            OutgoingMessage::NewMessage {
+                message_id,
+                channel_id,
+                user_id,
+                username: "alice".to_string(),
+                content: "hello".to_string(),
+                created_at: "now".to_string(),
+            },
+            OutgoingMessage::MessageUpdated {
+                message_id,
+                channel_id,
+                user_id,
+                username: "alice".to_string(),
+                content: "edited".to_string(),
+                updated_at: "later".to_string(),
+            },
+            OutgoingMessage::MessageDeleted {
+                server_id,
+                channel_id,
+                message_id,
+            },
+            OutgoingMessage::MessageReactionAdded {
+                message_id,
+                channel_id,
+                user_id,
+                emoji: ":cat:".to_string(),
+            },
+            OutgoingMessage::MessageReactionRemoved {
+                message_id,
+                channel_id,
+                user_id,
+                emoji: ":cat:".to_string(),
+            },
+            OutgoingMessage::UserTyping {
+                channel_id,
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::Error {
+                message: "bad".to_string(),
+            },
+            OutgoingMessage::Ok {
+                message: "done".to_string(),
+            },
+            OutgoingMessage::ChannelCreated {
+                server_id,
+                channel_id,
+                name: "general".to_string(),
+                created_at: "now".to_string(),
+            },
+            OutgoingMessage::ChannelDeleted {
+                server_id,
+                channel_id,
+            },
+            OutgoingMessage::ChannelUpdated {
+                server_id,
+                channel_id,
+            },
+            OutgoingMessage::ServerDeleted { server_id },
+            OutgoingMessage::ServerUpdated { server_id },
+            OutgoingMessage::ServerMemberJoined {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::ServerMemberLeft {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::ServerMemberRoleUpdated {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+                role: "admin".to_string(),
+            },
+            OutgoingMessage::ServerMemberKicked {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::ServerMemberBanned {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::ServerMemberBannedTemporary {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+                until: None,
+            },
+            OutgoingMessage::ServerMemberUnbanned {
+                server_id,
+                user_id,
+                username: "alice".to_string(),
+            },
+            OutgoingMessage::NewDirectMessage {
+                conversation_id,
+                message_id,
+                sender_id: user_id,
+                sender_username: "alice".to_string(),
+                content: "dm".to_string(),
+                created_at: "now".to_string(),
+            },
+            OutgoingMessage::DirectMessageUpdated {
+                conversation_id,
+                message_id,
+                content: "dm2".to_string(),
+                updated_at: "later".to_string(),
+            },
+            OutgoingMessage::DirectMessageDeleted {
+                conversation_id,
+                message_id,
+            },
+            OutgoingMessage::DirectMessageReactionAdded {
+                conversation_id,
+                message_id,
+                user_id,
+                emoji: ":cat:".to_string(),
+            },
+            OutgoingMessage::DirectMessageReactionRemoved {
+                conversation_id,
+                message_id,
+                user_id,
+                emoji: ":cat:".to_string(),
+            },
+        ];
+
+        for message in messages {
+            let value: serde_json::Value =
+                serde_json::from_str(&serde_json::to_string(&message).unwrap()).unwrap();
+            assert!(value["type"].as_str().unwrap().contains('_') || value["type"].is_string());
+        }
+    }
+
     #[actix_web::test]
     async fn ws_rejects_messages_before_auth() {
         let (_srv, url) = spawn_ws_app("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".to_string());

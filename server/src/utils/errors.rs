@@ -289,41 +289,293 @@ macro_rules! internal_error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use actix_web::body::to_bytes;
+    use serde_json::Value;
+
+    fn all_error_cases() -> Vec<(AppError, &'static str, &'static str, StatusCode)> {
+        vec![
+            (
+                AppError::UserNotFound,
+                "USER_NOT_FOUND",
+                "User not found",
+                StatusCode::NOT_FOUND,
+            ),
+            (
+                AppError::EmailAlreadyExists,
+                "EMAIL_ALREADY_EXISTS",
+                "This email is already in use",
+                StatusCode::CONFLICT,
+            ),
+            (
+                AppError::UsernameAlreadyExists,
+                "USERNAME_ALREADY_EXISTS",
+                "This username is already taken",
+                StatusCode::CONFLICT,
+            ),
+            (
+                AppError::InvalidPassword,
+                "INVALID_PASSWORD",
+                "Invalid password",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AppError::InvalidCredentials,
+                "INVALID_CREDENTIALS",
+                "Invalid email or password",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AppError::ServerNotFound,
+                "SERVER_NOT_FOUND",
+                "Server not found",
+                StatusCode::NOT_FOUND,
+            ),
+            (
+                AppError::NotServerMember,
+                "NOT_SERVER_MEMBER",
+                "You are not a member of this server",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+            (
+                AppError::PermissionDenied,
+                "PERMISSION_DENIED",
+                "Permission denied",
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                AppError::InvalidInviteCode,
+                "INVALID_INVITE_CODE",
+                "Invalid invite code",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+            (
+                AppError::AlreadyServerMember,
+                "ALREADY_SERVER_MEMBER",
+                "You are already a member of this server",
+                StatusCode::CONFLICT,
+            ),
+            (
+                AppError::OwnerCannotLeave,
+                "OWNER_CANNOT_LEAVE",
+                "The owner cannot leave the server",
+                StatusCode::FORBIDDEN,
+            ),
+            (
+                AppError::ChannelNotFound,
+                "CHANNEL_NOT_FOUND",
+                "Channel not found",
+                StatusCode::NOT_FOUND,
+            ),
+            (
+                AppError::InvalidChannelName,
+                "INVALID_CHANNEL_NAME",
+                "Invalid channel name",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                AppError::MessageNotFound,
+                "MESSAGE_NOT_FOUND",
+                "Message not found",
+                StatusCode::NOT_FOUND,
+            ),
+            (
+                AppError::MessageTooLong,
+                "MESSAGE_TOO_LONG",
+                "Message is too long (max 2000 characters)",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                AppError::MessageEmpty,
+                "MESSAGE_EMPTY",
+                "Message cannot be empty",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                AppError::InvalidToken,
+                "INVALID_TOKEN",
+                "Invalid token",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AppError::TokenExpired,
+                "TOKEN_EXPIRED",
+                "Token expired",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AppError::MissingToken,
+                "MISSING_TOKEN",
+                "Missing token",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AppError::Unauthorized,
+                "UNAUTHORIZED",
+                "Unauthorized",
+                StatusCode::UNAUTHORIZED,
+            ),
+            (
+                AppError::ValidationError("bad".to_string()),
+                "VALIDATION_ERROR",
+                "Validation error: bad",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                AppError::MissingField("email".to_string()),
+                "MISSING_FIELD",
+                "Required field missing: email",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                AppError::InvalidFormat("uuid".to_string()),
+                "INVALID_FORMAT",
+                "Invalid format: uuid",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                AppError::DatabaseError("down".to_string()),
+                "DATABASE_ERROR",
+                "Database error: down",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+            (
+                AppError::ConnectionError,
+                "CONNECTION_ERROR",
+                "Database connection error",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+            (
+                AppError::UniqueViolation("users_email_key".to_string()),
+                "UNIQUE_VIOLATION",
+                "Unique constraint violation: users_email_key",
+                StatusCode::CONFLICT,
+            ),
+            (
+                AppError::InternalError("oops".to_string()),
+                "INTERNAL_ERROR",
+                "Internal error: oops",
+                StatusCode::INTERNAL_SERVER_ERROR,
+            ),
+            (
+                AppError::NotFound("thing".to_string()),
+                "NOT_FOUND",
+                "Not found: thing",
+                StatusCode::NOT_FOUND,
+            ),
+            (
+                AppError::BadRequest("bad".to_string()),
+                "BAD_REQUEST",
+                "Invalid request: bad",
+                StatusCode::BAD_REQUEST,
+            ),
+            (
+                AppError::Conflict("taken".to_string()),
+                "CONFLICT",
+                "Conflict: taken",
+                StatusCode::CONFLICT,
+            ),
+            (
+                AppError::TooManyRequests,
+                "TOO_MANY_REQUESTS",
+                "Too many requests, please try again later",
+                StatusCode::TOO_MANY_REQUESTS,
+            ),
+        ]
+    }
 
     #[test]
     fn test_error_codes() {
-        assert_eq!(AppError::UserNotFound.error_code(), "USER_NOT_FOUND");
-        assert_eq!(AppError::PermissionDenied.error_code(), "PERMISSION_DENIED");
-        assert_eq!(AppError::InvalidToken.error_code(), "INVALID_TOKEN");
+        for (error, code, _, _) in all_error_cases() {
+            assert_eq!(error.error_code(), code);
+        }
     }
 
     #[test]
     fn test_status_codes() {
-        assert_eq!(AppError::UserNotFound.status_code(), StatusCode::NOT_FOUND);
-        assert_eq!(
-            AppError::InvalidToken.status_code(),
-            StatusCode::UNAUTHORIZED
-        );
-        assert_eq!(
-            AppError::PermissionDenied.status_code(),
-            StatusCode::FORBIDDEN
-        );
-        assert_eq!(
-            AppError::EmailAlreadyExists.status_code(),
-            StatusCode::CONFLICT
-        );
+        for (error, _, _, status) in all_error_cases() {
+            assert_eq!(error.status_code(), status);
+        }
     }
 
     #[test]
     fn test_display() {
-        let err = AppError::UserNotFound;
-        assert_eq!(err.to_string(), "User not found");
+        for (error, _, message, _) in all_error_cases() {
+            assert_eq!(error.to_string(), message);
+        }
+    }
+
+    #[actix_web::test]
+    async fn test_error_response() {
+        for (error, code, message, status) in all_error_cases() {
+            let response = error.error_response();
+            assert_eq!(response.status(), status);
+
+            let body = to_bytes(response.into_body()).await.unwrap();
+            let value: Value = serde_json::from_slice(&body).unwrap();
+            assert_eq!(value["code"], code);
+            assert_eq!(value["message"], message);
+        }
+    }
+
+    #[actix_web::test]
+    async fn json_helpers_return_expected_shapes() {
+        let response = json_error(StatusCode::BAD_REQUEST, "BAD", "bad request");
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+        let body = to_bytes(response.into_body()).await.unwrap();
+        let value: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(value["code"], "BAD");
+        assert_eq!(value["message"], "bad request");
+        assert!(value.get("details").is_none() || value["details"].is_null());
+
+        let response =
+            json_error_with_details(StatusCode::BAD_REQUEST, "BAD", "bad request", "field");
+        let body = to_bytes(response.into_body()).await.unwrap();
+        let value: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(value["details"], "field");
+
+        let response = json_message(StatusCode::OK, "OK", "done");
+        let body = to_bytes(response.into_body()).await.unwrap();
+        let value: Value = serde_json::from_slice(&body).unwrap();
+        assert_eq!(value["code"], "OK");
+        assert_eq!(value["message"], "done");
     }
 
     #[test]
-    fn test_error_response() {
-        let err = AppError::UserNotFound;
-        let response = err.error_response();
-        assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    fn sqlx_row_not_found_maps_to_not_found() {
+        let error = AppError::from(sqlx::Error::RowNotFound);
+        assert!(matches!(error, AppError::NotFound(message) if message == "Resource not found"));
+    }
+
+    #[test]
+    fn jwt_errors_map_to_token_variants() {
+        let expired =
+            jsonwebtoken::errors::Error::from(jsonwebtoken::errors::ErrorKind::ExpiredSignature);
+        let invalid =
+            jsonwebtoken::errors::Error::from(jsonwebtoken::errors::ErrorKind::InvalidToken);
+        let invalid_signature =
+            jsonwebtoken::errors::Error::from(jsonwebtoken::errors::ErrorKind::InvalidSignature);
+
+        assert!(matches!(AppError::from(expired), AppError::TokenExpired));
+        assert!(matches!(AppError::from(invalid), AppError::InvalidToken));
+        assert!(matches!(
+            AppError::from(invalid_signature),
+            AppError::InvalidToken
+        ));
+    }
+
+    #[test]
+    fn convenience_macros_create_expected_errors() {
+        assert!(matches!(
+            not_found!("missing {}", "cat"),
+            AppError::NotFound(message) if message == "missing cat"
+        ));
+        assert!(matches!(
+            bad_request!("bad {}", "input"),
+            AppError::BadRequest(message) if message == "bad input"
+        ));
+        assert!(matches!(
+            internal_error!("boom {}", 1),
+            AppError::InternalError(message) if message == "boom 1"
+        ));
     }
 }

@@ -257,10 +257,7 @@ export function DirectMessagePanel({
                                                                         )}
                                                                         {canDeleteThis && (
                                                                             <button
-                                                                                onClick={() => {
-                                                                                    if (!window.confirm(tCommon("confirmDeleteMessage"))) return;
-                                                                                    onDeleteMessage(message.message_id);
-                                                                                }}
+                                                                                onClick={() => onDeleteMessage(message.message_id)}
                                                                                 className="p-1.5 text-muted hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors cursor-pointer"
                                                                                 title={tCommon("delete")}
                                                                             >

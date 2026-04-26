@@ -221,7 +221,7 @@ mod tests {
         let recipient_id = Uuid::new_v4();
         let reactions = vec![Reaction {
             emoji: ":+1:".to_string(),
-            users: vec!["alice".to_string(), "bob".to_string()],
+            users: vec![Uuid::new_v4(), Uuid::new_v4()],
         }];
 
         let response: DirectMessageResponse = DirectMessage {

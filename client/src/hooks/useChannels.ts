@@ -65,8 +65,8 @@ export function useChannels() {
 
         try {
             setIsChannelEditing(true);
-            await api(`/api/servers/${serverId}/channels/${channelId}`, {
-                method: "PATCH",
+            await api(`/api/channels/${channelId}`, {
+                method: "PUT",
                 body: JSON.stringify({ name }),
             });
             setChannels((prev) => prev.map((c) => (String(c.id) === String(channelId) ? { ...c, name } : c)));

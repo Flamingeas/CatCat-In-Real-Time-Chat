@@ -68,7 +68,7 @@ fn bad_request(msg: String) -> HttpResponse {
 }
 
 async fn start_conversation_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     user_id: Uuid,
     recipient_id: Uuid,
 ) -> HttpResponse {
@@ -82,7 +82,7 @@ async fn start_conversation_with_service(
 }
 
 async fn list_conversations_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     user_id: Uuid,
 ) -> HttpResponse {
     match service.list_conversations(user_id).await {
@@ -92,7 +92,7 @@ async fn list_conversations_with_service(
 }
 
 async fn get_messages_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     conversation_id: Uuid,
     user_id: Uuid,
     query: &GetDmMessagesQuery,
@@ -108,7 +108,7 @@ async fn get_messages_with_service(
 }
 
 async fn send_message_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     ws_server: &Addr<WsServer>,
     conversation_id: Uuid,
     sender_id: Uuid,
@@ -142,7 +142,7 @@ async fn send_message_with_service(
 }
 
 async fn update_message_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     ws_server: &Addr<WsServer>,
     message_id: Uuid,
     user_id: Uuid,
@@ -170,7 +170,7 @@ async fn update_message_with_service(
 }
 
 async fn delete_message_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     ws_server: &Addr<WsServer>,
     message_id: Uuid,
     user_id: Uuid,
@@ -199,7 +199,7 @@ fn validate_reaction_request(data: &ReactionRequest) -> Result<String, String> {
 }
 
 async fn add_reaction_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     ws_server: &Addr<WsServer>,
     user_id: Uuid,
     message_id: Uuid,
@@ -229,7 +229,7 @@ async fn add_reaction_with_service(
 }
 
 async fn remove_reaction_with_service(
-    service: &DirectMessageService<'_>,
+    service: &DirectMessageService,
     ws_server: &Addr<WsServer>,
     user_id: Uuid,
     message_id: Uuid,
@@ -469,4 +469,179 @@ pub fn config(cfg: &mut web::ServiceConfig) {
                 web::delete().to(remove_reaction),
             ),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use actix_web::body::to_bytes;
+    use actix_web::http::StatusCode;
+    use actix_web::App;
+    use serde_json::Value;
+    use validator::Validate;
+
+    async fn json_body(response: HttpResponse) -> Value {
+        let body = to_bytes(response.into_body()).await.unwrap();
+        serde_json::from_slice(&body).unwrap()
+    }
+
+    #[actix_web::test]
+    async fn service_errors_map_to_expected_status_codes_and_payloads() {
+        let cases = vec![
+            (
+                ServiceError::NotFound("missing".to_string()),
+                StatusCode::NOT_FOUND,
+                "DIRECT_MESSAGE_NOT_FOUND",
+            ),
+            (
+                ServiceError::Forbidden("nope".to_string()),
+                StatusCode::FORBIDDEN,
+                "PERMISSION_DENIED",
+            ),
+            (
+                ServiceError::Database(sqlx::Error::RowNotFound),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "DATABASE_ERROR",
+            ),
+            (
+                ServiceError::Internal("boom".to_string()),
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "INTERNAL_ERROR",
+            ),
+        ];
+
+        for (error, status, code) in cases {
+            let response = handle_service_error(error);
+            assert_eq!(response.status(), status);
+            let body = json_body(response).await;
+            assert_eq!(body["code"], code);
+        }
+    }
+
+    #[actix_web::test]
+    async fn bad_request_returns_json_error() {
+        let response = bad_request("invalid".to_string());
+        assert_eq!(response.status(), StatusCode::BAD_REQUEST);
+
+        let body = json_body(response).await;
+        assert_eq!(body["code"], "BAD_REQUEST");
+        assert_eq!(body["message"], "invalid");
+    }
+
+    #[test]
+    fn direct_message_request_validation_accepts_boundaries() {
+        assert!(SendDirectMessageRequest {
+            content: "a".to_string()
+        }
+        .validate()
+        .is_ok());
+        assert!(SendDirectMessageRequest {
+            content: "a".repeat(2000)
+        }
+        .validate()
+        .is_ok());
+        assert!(UpdateDirectMessageRequest {
+            content: "b".to_string()
+        }
+        .validate()
+        .is_ok());
+        assert!(UpdateDirectMessageRequest {
+            content: "b".repeat(2000)
+        }
+        .validate()
+        .is_ok());
+    }
+
+    #[test]
+    fn direct_message_request_validation_rejects_empty_and_too_long_content() {
+        assert!(SendDirectMessageRequest {
+            content: String::new()
+        }
+        .validate()
+        .is_err());
+        assert!(SendDirectMessageRequest {
+            content: "a".repeat(2001)
+        }
+        .validate()
+        .is_err());
+        assert!(UpdateDirectMessageRequest {
+            content: String::new()
+        }
+        .validate()
+        .is_err());
+        assert!(UpdateDirectMessageRequest {
+            content: "b".repeat(2001)
+        }
+        .validate()
+        .is_err());
+    }
+
+    #[test]
+    fn validate_reaction_request_trims_and_limits_emoji() {
+        assert_eq!(
+            validate_reaction_request(&ReactionRequest {
+                emoji: "  :cat:  ".to_string()
+            })
+            .unwrap(),
+            ":cat:"
+        );
+        assert!(validate_reaction_request(&ReactionRequest {
+            emoji: " ".to_string()
+        })
+        .is_err());
+        assert!(validate_reaction_request(&ReactionRequest {
+            emoji: "x".repeat(17)
+        })
+        .is_err());
+    }
+
+    #[test]
+    fn get_dm_messages_query_holds_limit_and_before_values() {
+        let before = chrono::Utc::now();
+        let query = GetDmMessagesQuery {
+            limit: Some(250),
+            before: Some(before),
+        };
+
+        assert_eq!(query.limit, Some(250));
+        assert_eq!(query.before, Some(before));
+        assert_eq!(query.limit.unwrap_or(50).clamp(1, 100), 100);
+
+        let defaulted = GetDmMessagesQuery {
+            limit: None,
+            before: None,
+        };
+        assert_eq!(defaulted.limit.unwrap_or(50).clamp(1, 100), 50);
+    }
+
+    #[actix_web::test]
+    async fn config_registers_dm_routes() {
+        let app = actix_web::test::init_service(App::new().configure(config)).await;
+
+        let conversation_id = Uuid::new_v4();
+        let message_id = Uuid::new_v4();
+        for (method, path) in [
+            ("POST", "/dm/conversations".to_string()),
+            ("GET", "/dm/conversations".to_string()),
+            (
+                "GET",
+                format!("/dm/conversations/{conversation_id}/messages"),
+            ),
+            (
+                "POST",
+                format!("/dm/conversations/{conversation_id}/messages"),
+            ),
+            ("PUT", format!("/dm/messages/{message_id}")),
+            ("DELETE", format!("/dm/messages/{message_id}")),
+            ("POST", format!("/dm/messages/{message_id}/reactions")),
+            ("DELETE", format!("/dm/messages/{message_id}/reactions")),
+        ] {
+            let method = actix_web::http::Method::from_bytes(method.as_bytes()).unwrap();
+            let req = actix_web::test::TestRequest::with_uri(&path)
+                .method(method)
+                .to_request();
+            let response = actix_web::test::call_service(&app, req).await;
+            assert_ne!(response.status(), StatusCode::NOT_FOUND);
+        }
+    }
 }
