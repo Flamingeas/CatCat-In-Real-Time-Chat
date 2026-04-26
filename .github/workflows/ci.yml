@@ -128,7 +128,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rust-coverage-report
-          path: server/coverage/
+          path: coverage/
 
       - name: Build Rust project
         run: cargo build --release
