@@ -84,7 +84,7 @@ jobs:
         run: |
           set -o pipefail
           export TEST_DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/catcat_ci"
-          unset DATABASE_URL
+          export DATABASE_URL="$TEST_DATABASE_URL"
           mkdir -p coverage
           cd ..
           cargo tarpaulin \
