@@ -316,11 +316,13 @@ Les binaires sont générés dans `client/src-tauri/target/release/bundle/` :
 
 ## Docker (local)
 
-```bash
-cp .env.example .env   # Renseigner MONGODB_URI et MONGODB_DB_NAME
+Seul prérequis : **Docker** (avec Docker Compose). Aucune configuration n'est nécessaire, PostgreSQL et MongoDB sont lancés en local par le compose.
 
+```bash
 docker compose up --build
 ```
+
+Pour utiliser une base MongoDB externe (ex. Atlas) à la place, définir `MONGODB_URI` et `MONGODB_DB_NAME` dans un fichier `.env` à la racine.
 
 | Service | URL |
 |---|---|

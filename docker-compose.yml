@@ -12,24 +12,34 @@ services:
       - catcat_postgres_data:/var/lib/postgresql/data
       - ./server/script/schema-ci.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
 
+  mongo:
+    image: mongo:7
+    container_name: catcat-mongo
+    ports:
+      - "27018:27017"
+    volumes:
+      - catcat_mongo_data:/data/db
+
   backend:
     build:
       context: ./server
       dockerfile: Dockerfile
     container_name: catcat-backend
+    restart: on-failure
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/catcat
       TEST_DATABASE_URL: postgresql://postgres:postgres@postgres:5432/catcat
       JWT_SECRET: dev_super_secret_key_change_me_1234567890
       SERVER_HOST: 0.0.0.0
       SERVER_PORT: 8080
-      MONGODB_URI: ${MONGODB_URI}
-      MONGODB_DB_NAME: ${MONGODB_DB_NAME}
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongo:27017}
+      MONGODB_DB_NAME: ${MONGODB_DB_NAME:-catcat}
       CORS_ORIGINS: http://localhost:3000,tauri://localhost,https://tauri.localhost
     ports:
       - "8080:8080"
     depends_on:
       - postgres
+      - mongo
 
   frontend:
     build:
@@ -49,3 +59,4 @@ services:
 
 volumes:
   catcat_postgres_data:
+  catcat_mongo_data:
