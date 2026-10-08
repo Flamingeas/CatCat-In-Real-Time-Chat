@@ -13,7 +13,7 @@ on:
 jobs:
   backend:
     name: Backend Rust
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/catcat_ci
@@ -194,14 +194,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rust-coverage-report
-          path: coverage/
+          path: server/coverage/
 
       - name: Build Rust project
         run: cargo build --release
 
   frontend:
     name: Frontend Next.js
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     defaults:
       run:
@@ -230,7 +230,7 @@ jobs:
   desktop:
     name: Build Desktop App Linux (release only)
     if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs:
       - backend
       - frontend
@@ -287,7 +287,7 @@ jobs:
 
   docker:
     name: Build and publish Docker images
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs:
       - backend
       - frontend
@@ -313,8 +313,8 @@ jobs:
 
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             echo "IMAGE_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
-            echo "FRONTEND_API_URL=https://catcat-backend.onrender.com" >> "$GITHUB_ENV"
-            echo "FRONTEND_WS_URL=wss://catcat-backend.onrender.com/ws" >> "$GITHUB_ENV"
+            echo "FRONTEND_API_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
+            echo "FRONTEND_WS_URL=ws://127.0.0.1:8080/ws" >> "$GITHUB_ENV"
             echo "PUSH_LATEST=true" >> "$GITHUB_ENV"
           else
             echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
@@ -360,16 +360,3 @@ jobs:
           if [[ "$PUSH_LATEST" == "true" ]]; then
             docker push "$FRONTEND_IMAGE:latest"
           fi
-  deploy:
-    name: Deploy to Render
-    runs-on: self-hosted
-    needs:
-      - docker
-    if: startsWith(github.ref, 'refs/tags/v')
-
-    steps:
-      - name: Deploy backend to Render
-        run: curl -X POST "${{ secrets.RENDER_BACKEND_DEPLOY_HOOK_URL }}"
-
-      - name: Deploy frontend to Render
-        run: curl -X POST "${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK_URL }}"
