@@ -17,8 +17,8 @@ RUN npm run build
 
 FROM nginx:1.27-alpine AS runner
 
-ENV BACKEND_HTTP_URL=https://catcat-backend.onrender.com
-ENV BACKEND_WS_URL=https://catcat-backend.onrender.com/ws
+ENV BACKEND_HTTP_URL=http://backend:8080
+ENV BACKEND_WS_URL=http://backend:8080/ws
 ENV NGINX_ENVSUBST_FILTER="^BACKEND_"
 
 COPY --from=builder /app/out /usr/share/nginx/html

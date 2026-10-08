@@ -313,13 +313,13 @@ jobs:
 
           if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
             echo "IMAGE_TAG=${GITHUB_REF#refs/tags/}" >> "$GITHUB_ENV"
-            echo "FRONTEND_API_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
-            echo "FRONTEND_WS_URL=ws://127.0.0.1:8080/ws" >> "$GITHUB_ENV"
+            echo "FRONTEND_API_URL=" >> "$GITHUB_ENV"
+            echo "FRONTEND_WS_URL=" >> "$GITHUB_ENV"
             echo "PUSH_LATEST=true" >> "$GITHUB_ENV"
           else
             echo "IMAGE_TAG=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
-            echo "FRONTEND_API_URL=http://127.0.0.1:8080" >> "$GITHUB_ENV"
-            echo "FRONTEND_WS_URL=ws://127.0.0.1:8080/ws" >> "$GITHUB_ENV"
+            echo "FRONTEND_API_URL=" >> "$GITHUB_ENV"
+            echo "FRONTEND_WS_URL=" >> "$GITHUB_ENV"
             echo "PUSH_LATEST=false" >> "$GITHUB_ENV"
           fi
 
