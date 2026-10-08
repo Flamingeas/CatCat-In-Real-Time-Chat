@@ -26,7 +26,6 @@ C'est une application de communication similaire à un système de chat collabor
 - [Déploiement](#déploiement)
   - [Docker (local)](#docker-local)
   - [CI/CD — GitHub Actions](#cicd--github-actions)
-  - [Render](#render)
 - [Améliorations futures](#améliorations-futures)
 
 ---
@@ -334,7 +333,7 @@ Pour utiliser une base MongoDB externe (ex. Atlas) à la place, définir `MONGOD
 
 ## CI/CD — GitHub Actions
 
-Le pipeline est défini dans `.github/workflows/ci.yml` et s'exécute sur un runner **self-hosted**.
+Le pipeline est défini dans `.github/workflows/ci.yml` et s'exécute sur les runners hébergés par GitHub (`ubuntu-latest`).
 
 ### Jobs et déclencheurs
 
@@ -344,15 +343,14 @@ Le pipeline est défini dans `.github/workflows/ci.yml` et s'exécute sur un run
 | `frontend` | Tous les pushs / PRs | Lint ESLint, build Next.js |
 | `docker` | Tous les pushs / PRs | Build images backend + frontend, push sur **GHCR** |
 | `desktop` | Tag `v*` uniquement | Build application Tauri Linux (`.deb`), upload artifact |
-| `deploy` | Tag `v*` uniquement | Déploiement automatique sur **Render** via deploy hooks |
 
-### Flux de déploiement sur release
+### Flux sur release
 
 ```
 git tag v1.x.x && git push --tags
         │
         ├── backend  ──┐
-        └── frontend ──┤──> docker (push :latest sur GHCR) ──> deploy (Render)
+        └── frontend ──┤──> docker (push :latest sur GHCR)
                        │
                        └──> desktop (build .deb)
 ```
@@ -360,19 +358,6 @@ git tag v1.x.x && git push --tags
 Les images Docker sont publiées sur le **GitHub Container Registry** (`ghcr.io`) :
 * tag court (SHA) sur chaque push
 * tag de version + `:latest` sur les tags `v*`
-
----
-
-## Render
-
-Le déploiement sur Render est déclenché **automatiquement** lors d'un push de tag `v*` via des deploy hooks (secrets `RENDER_BACKEND_DEPLOY_HOOK_URL` et `RENDER_FRONTEND_DEPLOY_HOOK_URL`).
-
-Les services Render récupèrent les images `:latest` publiées sur GHCR par le job `docker`.
-
-| Service | URL de production |
-|---|---|
-| Backend API | `https://catcat-backend.onrender.com` |
-| WebSocket | `wss://catcat-backend.onrender.com/ws` |
 
 ---
 
